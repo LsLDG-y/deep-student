@@ -1,0 +1,41 @@
+{
+  "task_id": "DS-D07",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "load lifecycle ownership F2P creation retires an older load and cannot publish over a newer load",
+    "load lifecycle ownership F2P destroy retires pending loads",
+    "load lifecycle ownership F2P reset retires pending loads"
+  ],
+  "PASS_TO_PASS": [
+    "load lifecycle ownership P2P ordinary loads and creation publish their documents"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "load lifecycle ownership F2P reset retires pending loads": "failed",
+      "load lifecycle ownership F2P destroy retires pending loads": "failed",
+      "load lifecycle ownership F2P creation retires an older load and cannot publish over a newer load": "failed",
+      "load lifecycle ownership P2P ordinary loads and creation publish their documents": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.779,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "load lifecycle ownership F2P reset retires pending loads": "passed",
+      "load lifecycle ownership F2P destroy retires pending loads": "passed",
+      "load lifecycle ownership F2P creation retires an older load and cannot publish over a newer load": "passed",
+      "load lifecycle ownership P2P ordinary loads and creation publish their documents": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.82,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-D07"
+}

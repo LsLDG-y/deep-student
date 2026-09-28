@@ -24,5 +24,6 @@
       "old": "    // 宽松读取仅供展示路径：Tauri 运行时的 IPC 失败回退 localStorage（通常\n    // 为 null）。注意：写路径/回滚基线必须使用 getSettingStrict——把\"读失败\"\n    // 当\"键不存在\"会让 saveSettings 用错误基线回滚（2026-09-07 审阅 N06）。\n",
       "new": "    // Read fallback for unavailable native storage.\n"
     }
-  ]
+  ],
+  "family": "settings/transaction-compensation"
 }

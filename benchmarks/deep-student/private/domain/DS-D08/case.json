@@ -22,5 +22,6 @@
       "old": "/**\n * 有预算的正则替换（2026-09-07 审阅 N03）。\n *\n * 背景：AI 编辑的正则分支曾直接 `content.replace(new RegExp(pattern, 'g'), …)`，\n * 绕过普通替换路径的结果大小预算——多次匹配 + 放大的 replacement 可构造出\n * 远超 1 MiB 持久化上限的结果。本实现逐次匹配累加实际 UTF-8 输出字节，\n * 超限提前停止（不先构造大字符串再检查长度），并处理零宽匹配的推进语义\n * （与 String.replace 一致：零宽匹配后前进一个 UTF-16 码元）。\n *\n * 已知边界：单个匹配内部的灾难性回溯无法在同步代码中中断（JS RegExp 无\n * 超时语义）；彻底隔离需要把匹配移入可 terminate 的 Worker，属于后续项。\n * 匹配次数上限用于约束「海量小匹配」形态的 CPU 放大。\n */\n\n",
       "new": "/** Result-bounded regular-expression replacement. */\n\n"
     }
-  ]
+  ],
+  "family": "notes/bounded-transformation"
 }

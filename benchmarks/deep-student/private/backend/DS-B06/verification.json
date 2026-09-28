@@ -1,0 +1,23 @@
+{
+  "id": "DS-B06",
+  "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+  "runs": [
+    {
+      "state": "baseline",
+      "returncode": 0,
+      "elapsed_seconds": 0.04
+    },
+    {
+      "state": "bug",
+      "returncode": 1,
+      "elapsed_seconds": 0.033
+    },
+    {
+      "state": "reference",
+      "returncode": 0,
+      "elapsed_seconds": 0.035
+    }
+  ],
+  "triad_passed": true,
+  "bug_failure_is_behavioral": true
+}

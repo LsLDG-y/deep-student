@@ -1,0 +1,38 @@
+{
+  "task_id": "DS-D08",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "AI edit output budget F2P regex amplification is rejected without returning an oversized candidate",
+    "AI edit output budget F2P untouched suffix and multibyte replacement count toward one output budget"
+  ],
+  "PASS_TO_PASS": [
+    "AI edit output budget P2P valid regex, zero-width and literal substitutions retain semantics"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "AI edit output budget F2P regex amplification is rejected without returning an oversized candidate": "failed",
+      "AI edit output budget F2P untouched suffix and multibyte replacement count toward one output budget": "failed",
+      "AI edit output budget P2P valid regex, zero-width and literal substitutions retain semantics": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.88,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "AI edit output budget F2P regex amplification is rejected without returning an oversized candidate": "passed",
+      "AI edit output budget F2P untouched suffix and multibyte replacement count toward one output budget": "passed",
+      "AI edit output budget P2P valid regex, zero-width and literal substitutions retain semantics": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.871,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-D08"
+}

@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F05",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "restoration graph integrity F2P keeps healthy messages while isolating missing parents and missing children"
+  ],
+  "PASS_TO_PASS": [
+    "restoration graph integrity P2P restores a healthy history without losing its contents"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "restoration graph integrity F2P keeps healthy messages while isolating missing parents and missing children": "failed",
+      "restoration graph integrity P2P restores a healthy history without losing its contents": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.918,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "restoration graph integrity F2P keeps healthy messages while isolating missing parents and missing children": "passed",
+      "restoration graph integrity P2P restores a healthy history without losing its contents": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.878,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F05"
+}

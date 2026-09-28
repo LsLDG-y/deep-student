@@ -1,0 +1,33 @@
+{
+  "task_id": "DS-B02",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression_optional_params_do_not_send_null"
+  ],
+  "PASS_TO_PASS": [
+    "pass_to_pass_explicit_params_preserved"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_explicit_params_preserved": "passed",
+      "regression_optional_params_do_not_send_null": "failed"
+    },
+    "exit_code": 101,
+    "seconds": 2.48,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_explicit_params_preserved": "passed",
+      "regression_optional_params_do_not_send_null": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 2.362,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-B02"
+}

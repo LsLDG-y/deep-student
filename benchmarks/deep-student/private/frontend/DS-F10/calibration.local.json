@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F10",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "card approval protocol identity F2P exposes the same field diff for supported MCP names"
+  ],
+  "PASS_TO_PASS": [
+    "card approval protocol identity P2P keeps builtin approvals and ignores unrelated or incomplete payloads"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "card approval protocol identity F2P exposes the same field diff for supported MCP names": "failed",
+      "card approval protocol identity P2P keeps builtin approvals and ignores unrelated or incomplete payloads": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 1.366,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "card approval protocol identity F2P exposes the same field diff for supported MCP names": "passed",
+      "card approval protocol identity P2P keeps builtin approvals and ignores unrelated or incomplete payloads": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 1.571,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F10"
+}

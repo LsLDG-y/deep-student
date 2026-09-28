@@ -15,5 +15,6 @@
   "test_file": "hidden.test.tsx",
   "problem_zh": "普通卡面可渲染数学公式，但使用自定义模板后，预览中的公式只显示原始 LaTeX 定界符。请让隔离预览中的模板正文也渲染公式，保留代码示例、属性文本和 HTML 净化行为。",
   "estimated_minutes": 35,
-  "reference_changed_lines": 2
+  "reference_changed_lines": 2,
+  "family": "flashcard_rendering"
 }

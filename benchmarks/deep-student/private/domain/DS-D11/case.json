@@ -22,5 +22,6 @@
       "old": "    // 卡面提供从题目展示到评分的有效用时；没有测量值时不猜测。\n",
       "new": "    // Persist the duration reported for this answer.\n"
     }
-  ]
+  ],
+  "family": "flashcards/measurement-contract"
 }

@@ -19,7 +19,7 @@
     },
     "exit_code": 1,
     "runtime_errors": 0,
-    "seconds": 0.87,
+    "seconds": 0.923,
     "engine": "local"
   },
   "reference": {
@@ -31,8 +31,8 @@
     },
     "exit_code": 0,
     "runtime_errors": 0,
-    "seconds": 0.839,
+    "seconds": 0.917,
     "engine": "local"
   },
-  "artifact_dir": "/private/tmp/ds-bench-core-smoke-1/DS-D01"
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-D01"
 }

@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F11",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "sidebar merged session identity F2P gives one row to a session present in both response windows"
+  ],
+  "PASS_TO_PASS": [
+    "sidebar merged session identity P2P preserves unique grouped and ungrouped rows in recency order"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "sidebar merged session identity F2P gives one row to a session present in both response windows": "failed",
+      "sidebar merged session identity P2P preserves unique grouped and ungrouped rows in recency order": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.995,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "sidebar merged session identity F2P gives one row to a session present in both response windows": "passed",
+      "sidebar merged session identity P2P preserves unique grouped and ungrouped rows in recency order": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 1.047,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F11"
+}

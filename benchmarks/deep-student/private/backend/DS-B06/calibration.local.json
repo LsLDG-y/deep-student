@@ -1,0 +1,33 @@
+{
+  "task_id": "DS-B06",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "behavior_tests.Migration.test_regression_null_source_duplicates_upgrade"
+  ],
+  "PASS_TO_PASS": [
+    "behavior_tests.Migration.test_pass_to_pass_distinct_imports_and_preserved_metadata"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "behavior_tests.Migration.test_pass_to_pass_distinct_imports_and_preserved_metadata": "passed",
+      "behavior_tests.Migration.test_regression_null_source_duplicates_upgrade": "failed"
+    },
+    "exit_code": 1,
+    "seconds": 0.092,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "behavior_tests.Migration.test_pass_to_pass_distinct_imports_and_preserved_metadata": "passed",
+      "behavior_tests.Migration.test_regression_null_source_duplicates_upgrade": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 0.081,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-B06"
+}

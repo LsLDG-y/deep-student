@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F03",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "stream chronological insertion F2P inserts a delayed tool between earlier reasoning and answer"
+  ],
+  "PASS_TO_PASS": [
+    "stream chronological insertion P2P appends ordinary events and keeps equal timestamp order stable"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "stream chronological insertion F2P inserts a delayed tool between earlier reasoning and answer": "failed",
+      "stream chronological insertion P2P appends ordinary events and keeps equal timestamp order stable": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 2.016,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "stream chronological insertion F2P inserts a delayed tool between earlier reasoning and answer": "passed",
+      "stream chronological insertion P2P appends ordinary events and keeps equal timestamp order stable": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 2.008,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F03"
+}

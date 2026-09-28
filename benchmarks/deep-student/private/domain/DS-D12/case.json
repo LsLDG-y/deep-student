@@ -22,5 +22,6 @@
       "old": "  /**\n   * C14：候选来源超过有界扫描预算被截断时为 true。宿主不能把本批成功\n   * 表达为“全库引用均已同步”，应提示仍可能有未处理来源。\n   */\n",
       "new": "  /** Whether source discovery was truncated. */\n"
     }
-  ]
+  ],
+  "family": "notes/bounded-scan-reporting"
 }

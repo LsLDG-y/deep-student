@@ -1,0 +1,38 @@
+{
+  "task_id": "DS-F12",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "manual history window ownership F2P coalesces overlapping manual page requests instead of consuming two offsets",
+    "manual history window ownership F2P discards a page whose window ownership was superseded"
+  ],
+  "PASS_TO_PASS": [
+    "manual history window ownership P2P loads a contiguous page and stops at the oldest boundary"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "manual history window ownership F2P coalesces overlapping manual page requests instead of consuming two offsets": "failed",
+      "manual history window ownership F2P discards a page whose window ownership was superseded": "failed",
+      "manual history window ownership P2P loads a contiguous page and stops at the oldest boundary": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 2.273,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "manual history window ownership F2P coalesces overlapping manual page requests instead of consuming two offsets": "passed",
+      "manual history window ownership F2P discards a page whose window ownership was superseded": "passed",
+      "manual history window ownership P2P loads a contiguous page and stops at the oldest boundary": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 2.384,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F12"
+}

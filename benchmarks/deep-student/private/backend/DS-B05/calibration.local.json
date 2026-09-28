@@ -1,0 +1,33 @@
+{
+  "task_id": "DS-B05",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression_fragmented_long_event_finishes_with_budget"
+  ],
+  "PASS_TO_PASS": [
+    "pass_to_pass_unicode_metadata_clear_and_flush"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_unicode_metadata_clear_and_flush": "passed",
+      "regression_fragmented_long_event_finishes_with_budget": "failed"
+    },
+    "exit_code": 101,
+    "seconds": 55.684,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_unicode_metadata_clear_and_flush": "passed",
+      "regression_fragmented_long_event_finishes_with_budget": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 2.728,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-B05"
+}

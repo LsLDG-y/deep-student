@@ -1,0 +1,30 @@
+{
+  "title": "历史卡片归一化升级触发唯一键冲突",
+  "category": "database_migration",
+  "difficulty": 4,
+  "history": {
+    "fix_commit": "6aec93509e7c41ba9eeec78180abbb9741dbd430",
+    "evidence": "Squashed commit explicitly records fix(migration): dedup NULL-source anki cards before normalization to avoid UNIQUE abort. SQL contains a pre-normalization collision sweep; backport removes that sweep only.",
+    "mode": "historical_backport",
+    "related_commits": []
+  },
+  "problem_zh": "从旧版本导入的闪卡库升级时可能因唯一约束失败而中止。问题只出现在一些带缺省来源字段的历史卡片；新建库通常正常。请让升级能保留每组有效卡片中的最新版本，并保留原有软删除、错误卡和 APKG 导入身份语义；已有额外字段内容及更新时间不可被无关改写。",
+  "estimated_minutes": 70,
+  "id": "DS-B06",
+  "patch_files": [
+    "src-tauri/migrations/mistakes/V20260824__normalize_anki_card_optional_json.sql"
+  ],
+  "test_file": "DS-B06/test.py",
+  "test_command": [
+    "python3",
+    "DS-B06/test.py"
+  ],
+  "runner": "python",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 44,
+  "test_scope": "Python sqlite3 executes the production migration SQL against actual SQLite tables, unique index, and legacy fixtures.",
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 1,
+  "redactions_file": null,
+  "family": "database_migration"
+}

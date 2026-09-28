@@ -15,5 +15,6 @@
   "test_file": "hidden.test.tsx",
   "problem_zh": "加载导图过程中关闭面板、重置工作区或新建导图，旧请求返回后仍会把旧导图重新显示；慢速新建也会覆盖用户后来选择的导图。请让加载与新建操作遵循当前用户导航意图。",
   "estimated_minutes": 50,
-  "reference_changed_lines": 5
+  "reference_changed_lines": 5,
+  "family": "mindmap_lifecycle"
 }

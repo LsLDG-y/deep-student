@@ -1,0 +1,214 @@
+--- a/src-tauri/src/mcp/client.rs
++++ b/src-tauri/src/mcp/client.rs
+@@ -1037,141 +1037,80 @@
+         event_emitter: Arc<EventEmitter>,
+         stream_manager: Arc<StreamManager>,
+     ) -> McpResult<()> {
+-        // N01（2026-09-07 审阅）：先按 JSON-RPC envelope 做互斥判别——
+-        // 有 method 有 id = 服务器请求；有 method 无 id = 通知；无 method = 响应。
+-        // 不能先尝试全 Optional 字段的 JsonRpcResponse：Serde 默认忽略未知字段，
+-        // 合法通知会被吞成 id=None 的"响应"，永远进不了通知分支。
+-        let envelope: Value = match serde_json::from_str(message) {
+-            Ok(value) => value,
+-            Err(error) => {
+-                log::warn!(
+-                    "MCP message is not valid JSON ({} bytes): {}",
+-                    message.len(),
+-                    error
+-                );
+-                return Ok(());
+-            }
+-        };
+-        let has_method = envelope
+-            .get("method")
+-            .and_then(|method| method.as_str())
+-            .is_some();
+-        let has_id = envelope.get("id").map(|id| !id.is_null()).unwrap_or(false);
+-
+-        if has_method {
+-            if has_id {
+-                // 服务器请求（如 roots/list、sampling/createMessage）：本客户端
+-                // 尚不支持，记录元数据后忽略（不再误当响应去 complete_request）。
+-                log::debug!(
+-                    "[McpClient] ignoring unsupported server request: method={:?} id={:?}",
+-                    envelope.get("method"),
+-                    envelope.get("id")
+-                );
+-                return Ok(());
+-            }
+-            let notification: JsonRpcNotification = match serde_json::from_value(envelope) {
+-                Ok(notification) => notification,
+-                Err(error) => {
+-                    log::warn!("MCP malformed notification envelope: {}", error);
+-                    return Ok(());
+-                }
+-            };
+-            return Self::handle_notification_message(
+-                notification,
+-                notification_handler,
+-                event_emitter,
+-                stream_manager,
+-            )
+-            .await;
+-        }
+-
+-        // 响应分支（无 method）
+-        match serde_json::from_value::<JsonRpcResponse>(envelope) {
+-            Ok(response) => {
+-                log::debug!(
+-                    "[McpClient] handle_message response: id={:?} has_result={} has_error={}",
+-                    response.id,
+-                    response.result.is_some(),
+-                    response.error.is_some()
+-                );
+-                if let Some(id) = response.id.as_ref() {
+-                    let id_str = match id {
+-                        Value::String(s) => s.clone(),
+-                        Value::Number(n) => n.to_string(),
+-                        _ => return Ok(()),
+-                    };
+-                    request_manager.complete_request(id_str, Ok(response)).await;
+-                }
+-            }
+-            Err(error) => {
+-                log::warn!("MCP malformed response envelope: {}", error);
+-            }
+-        }
+-
+-        Ok(())
+-    }
+-
+-    async fn handle_notification_message(
+-        notification: JsonRpcNotification,
+-        notification_handler: Arc<Box<dyn NotificationHandler>>,
+-        event_emitter: Arc<EventEmitter>,
+-        stream_manager: Arc<StreamManager>,
+-    ) -> McpResult<()> {
+-        let params_for_handler = notification.params.clone();
+-        notification_handler
+-            .handle_notification(&notification.method, params_for_handler)
+-            .await;
+-
+-        // 处理特定通知。标准 MCP 通知名为 notifications/*（2025-11-25 schema）；
+-        // 兼容本客户端历史上使用的私有名（tools/list_changed 等）。
+-        match notification.method.as_str() {
+-            "notifications/tools/list_changed" | "tools/list_changed" => {
+-                event_emitter.emit(McpEvent::ToolsChanged).await;
+-            }
+-            "tools/call_output" | "tools/call_progress" | "tools/call_chunk" => {
+-                if let Some(params) = notification.params {
+-                    let id_opt = params
+-                        .get("id")
+-                        .and_then(|v| v.as_str())
+-                        .map(|s| s.to_string())
+-                        .or_else(|| {
+-                            params
+-                                .get("requestId")
+-                                .and_then(|v| v.as_str())
+-                                .map(|s| s.to_string())
+-                        });
+-                    if let Some(id) = id_opt {
+-                        if let Some(content_val) = params.get("content") {
+-                            if let Ok(content) =
+-                                serde_json::from_value::<Content>(content_val.clone())
+-                            {
+-                                stream_manager.push(&id, Ok(content)).await;
+-                            } else if let Some(text) =
+-                                content_val.get("text").and_then(|x| x.as_str())
+-                            {
+-                                stream_manager
+-                                    .push(
+-                                        &id,
+-                                        Ok(Content::Text {
+-                                            text: text.to_string(),
+-                                        }),
+-                                    )
+-                                    .await;
++        // 尝试解析为响应
++        if let Ok(response) = serde_json::from_str::<JsonRpcResponse>(message) {
++            log::debug!(
++                "[McpClient] handle_message response: id={:?} has_result={} has_error={}",
++                response.id,
++                response.result.is_some(),
++                response.error.is_some()
++            );
++            if let Some(id) = response.id.as_ref() {
++                let id_str = match id {
++                    Value::String(s) => s.clone(),
++                    Value::Number(n) => n.to_string(),
++                    _ => return Ok(()),
++                };
++                request_manager.complete_request(id_str, Ok(response)).await;
++            }
++        }
++        // 尝试解析为通知
++        else if let Ok(notification) = serde_json::from_str::<JsonRpcNotification>(message) {
++            let params_for_handler = notification.params.clone();
++            notification_handler
++                .handle_notification(&notification.method, params_for_handler)
++                .await;
++
++            // 处理特定通知
++            match notification.method.as_str() {
++                "tools/list_changed" => {
++                    event_emitter.emit(McpEvent::ToolsChanged).await;
++                }
++                "tools/call_output" | "tools/call_progress" | "tools/call_chunk" => {
++                    if let Some(params) = notification.params {
++                        let id_opt = params
++                            .get("id")
++                            .and_then(|v| v.as_str())
++                            .map(|s| s.to_string())
++                            .or_else(|| {
++                                params
++                                    .get("requestId")
++                                    .and_then(|v| v.as_str())
++                                    .map(|s| s.to_string())
++                            });
++                        if let Some(id) = id_opt {
++                            if let Some(content_val) = params.get("content") {
++                                if let Ok(content) =
++                                    serde_json::from_value::<Content>(content_val.clone())
++                                {
++                                    stream_manager.push(&id, Ok(content)).await;
++                                } else if let Some(text) =
++                                    content_val.get("text").and_then(|x| x.as_str())
++                                {
++                                    stream_manager
++                                        .push(
++                                            &id,
++                                            Ok(Content::Text {
++                                                text: text.to_string(),
++                                            }),
++                                        )
++                                        .await;
++                                }
+                             }
+                         }
+                     }
+                 }
+-            }
+-            "notifications/resources/list_changed" | "resources/list_changed" => {
+-                event_emitter.emit(McpEvent::ResourcesChanged).await;
+-            }
+-            "notifications/prompts/list_changed" | "prompts/list_changed" => {
+-                event_emitter.emit(McpEvent::PromptsChanged).await;
+-            }
+-            "notifications/roots/list_changed" | "roots/list_changed" => {
+-                event_emitter.emit(McpEvent::RootsChanged).await;
+-            }
+-            _ => {}
++                "resources/list_changed" => {
++                    event_emitter.emit(McpEvent::ResourcesChanged).await;
++                }
++                "prompts/list_changed" => {
++                    event_emitter.emit(McpEvent::PromptsChanged).await;
++                }
++                "roots/list_changed" => {
++                    event_emitter.emit(McpEvent::RootsChanged).await;
++                }
++                _ => {}
++            }
+         }
+ 
+         Ok(())

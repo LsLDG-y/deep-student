@@ -1,0 +1,43 @@
+{
+  "title": "跨平台同步把不同资产文件名折叠成同一键",
+  "category": "filesystem_encoding",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "6aec93509e7c41ba9eeec78180abbb9741dbd430",
+    "evidence": "Squashed commit introduces reversible filename codec and retains legacy_sanitize_segment for dual-key lookup. Backport restores the documented historical lossy sanitizer as the encoder. Original individual subcommit is not retained; this is a behavior backport, not byte-identical revert.",
+    "mode": "historical_backport",
+    "related_commits": []
+  },
+  "problem_zh": "同步某些文件名包含特殊字符、尾部标点、保留名称或不同 Unicode 组合形式的资产后，会出现名称碰撞或无法还原原名。请保证跨平台云端键能区分合法的不同用户原名并能无损还原，兼容旧键查找，拒绝路径穿越和过长名称。",
+  "estimated_minutes": 65,
+  "id": "DS-B09",
+  "patch_files": [
+    "src-tauri/src/data_governance/sync/asset_filenames.rs"
+  ],
+  "test_file": "harness/tests/b09.rs",
+  "test_command": [
+    "cargo",
+    "test",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "harness/Cargo.toml",
+    "--test",
+    "b09"
+  ],
+  "runner": "cargo",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 19,
+  "test_scope": "Direct compilation of complete production Rust modules through #[path]; unrelated learner-profile dependency panics if invoked. No production function is copied.",
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 2,
+  "redactions_file": "redactions.json",
+  "redactions": [
+    {
+      "path": "src-tauri/src/data_governance/sync/asset_filenames.rs",
+      "old": "//! 新 key 采用与 rclone 相同的基本思路：Windows 非法字符映射到全角字符，\n//! 控制字符映射到 Control Pictures，并用 `‛` 引用原本就存在的替代字符。\n//! 发生映射的段带 `‛er` 标记；非 NFC 输入使用 `‛eh<utf8-hex>`，因此编码结果\n//! 始终是 NFC，同时仍能逐字节恢复 NFD 原名。\n",
+      "new": ""
+    }
+  ],
+  "family": "filesystem_encoding"
+}

@@ -1,0 +1,38 @@
+{
+  "task_id": "DS-D06",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "save operation ownership F2P obsolete save reject cannot mutate a later load of the same ID",
+    "save operation ownership F2P obsolete save resolve cannot mutate a later load of the same ID"
+  ],
+  "PASS_TO_PASS": [
+    "save operation ownership P2P a current save still commits clean state and metadata"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "save operation ownership F2P obsolete save resolve cannot mutate a later load of the same ID": "failed",
+      "save operation ownership F2P obsolete save reject cannot mutate a later load of the same ID": "failed",
+      "save operation ownership P2P a current save still commits clean state and metadata": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.78,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "save operation ownership F2P obsolete save resolve cannot mutate a later load of the same ID": "passed",
+      "save operation ownership F2P obsolete save reject cannot mutate a later load of the same ID": "passed",
+      "save operation ownership P2P a current save still commits clean state and metadata": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.776,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-D06"
+}

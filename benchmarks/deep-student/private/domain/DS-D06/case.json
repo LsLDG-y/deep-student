@@ -15,5 +15,6 @@
   "test_file": "hidden.test.tsx",
   "problem_zh": "导图保存尚未返回时重新加载同一份导图，之后继续编辑；旧保存成功会把新编辑标成已保存，旧保存冲突有时又触发意外重载。请确保异步保存结果只影响其所属的文档实例，不能仅靠相同 ID 或版本值判断。",
   "estimated_minutes": 65,
-  "reference_changed_lines": 2
+  "reference_changed_lines": 2,
+  "family": "mindmap_lifecycle"
 }

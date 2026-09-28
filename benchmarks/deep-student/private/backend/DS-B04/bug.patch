@@ -1,0 +1,24 @@
+--- a/src-tauri/src/mastery/bias.rs
++++ b/src-tauri/src/mastery/bias.rs
+@@ -109,19 +109,6 @@
+     due_ms.saturating_sub(boost)
+ }
+ 
+-/// 到期队列合成排序键：`(state_rank, priority)`，越小越优先。
+-///
+-/// F02：`state_rank` 先保证**分钟级已到期的学习 / 重学卡**（state 1/3）排在
+-/// Review 与 New 之前——它们的到期时间由短学习步骤决定，被低掌握度的 New 卡
+-/// 插队会直接打乱学习节奏。仅在非学习卡之间才应用掌握度薄弱优先。
+-///
+-/// 学习卡内部按真实 `due_ms` 排序（不叠加 mastery 提升），避免同一学习步队列
+-/// 被掌握度权重再次打乱。
+-pub fn queue_sort_key(state: i32, score: Option<f64>, due_ms: i64) -> (i64, i64) {
+-    let is_time_sensitive_learning = state == 1 || state == 3;
+-    if is_time_sensitive_learning {
+-        (0, due_ms)
+-    } else {
+-        (1, mastery_queue_priority_key(score, due_ms))
+-    }
++pub fn queue_sort_key(_state: i32, score: Option<f64>, due_ms: i64) -> (i64, i64) {
++    (0, mastery_queue_priority_key(score, due_ms))
+ }

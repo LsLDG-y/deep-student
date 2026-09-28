@@ -1,0 +1,36 @@
+{
+  "title": "薄弱卡片排序打断到期学习步骤",
+  "category": "scheduling_priority",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "1a66bd1456454bd82c329466c40bccfb7b538407",
+    "evidence": "Historical caller changed from a single mastery_queue_priority_key to a state-rank composite key. Backport expresses the exact old ordering in the current helper interface.",
+    "mode": "historical_backport",
+    "related_commits": []
+  },
+  "problem_zh": "启用掌握度优先排序后，已经到期的学习或重学卡会被低掌握度的新卡或普通复习卡插队，分钟级学习步骤被拖延。请修复队列优先级，并保证普通复习卡之间的薄弱优先及到期偏置边界仍然有效。",
+  "estimated_minutes": 35,
+  "id": "DS-B04",
+  "patch_files": [
+    "src-tauri/src/mastery/bias.rs"
+  ],
+  "test_file": "harness/tests/b04.rs",
+  "test_command": [
+    "cargo",
+    "test",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "harness/Cargo.toml",
+    "--test",
+    "b04"
+  ],
+  "runner": "cargo",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 17,
+  "test_scope": "Direct compilation of complete production Rust modules through #[path]; unrelated learner-profile dependency panics if invoked. No production function is copied.",
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 1,
+  "redactions_file": null,
+  "family": "scheduling_priority"
+}

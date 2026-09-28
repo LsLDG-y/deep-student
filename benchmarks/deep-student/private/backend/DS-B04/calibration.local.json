@@ -1,0 +1,33 @@
+{
+  "task_id": "DS-B04",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression_learning_steps_stay_ahead_of_mastery_boost"
+  ],
+  "PASS_TO_PASS": [
+    "pass_to_pass_bias_is_bounded"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_bias_is_bounded": "passed",
+      "regression_learning_steps_stay_ahead_of_mastery_boost": "failed"
+    },
+    "exit_code": 101,
+    "seconds": 2.157,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_bias_is_bounded": "passed",
+      "regression_learning_steps_stay_ahead_of_mastery_boost": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 2.144,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-B04"
+}

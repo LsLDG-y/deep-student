@@ -1,0 +1,28 @@
+--- a/src-tauri/src/data_governance/sync/asset_filenames.rs
++++ b/src-tauri/src/data_governance/sync/asset_filenames.rs
+@@ -62,24 +62,7 @@
+ /// 把一个原始文件名段编码为跨平台安全的云 key 段。
+ pub fn encode_segment(raw: &str) -> Result<String, FilenameCodecError> {
+     validate_decoded_segment_length(raw)?;
+-
+-    let normalized: String = raw.nfc().collect();
+-    let requires_hex = normalized != raw
+-        || raw
+-            .chars()
+-            .any(|character| character.is_control() && character as u32 > 0x7f);
+-
+-    let encoded = if requires_hex {
+-        format!("{ENCODED_PREFIX}{HEX_MODE}{}", hex::encode(raw.as_bytes()))
+-    } else {
+-        let (body, body_changed) = encode_rclone_body(raw);
+-        if body_changed || is_windows_reserved_name(raw) {
+-            format!("{ENCODED_PREFIX}{RCLONE_MODE}{body}")
+-        } else {
+-            raw.to_string()
+-        }
+-    };
+-
++    let encoded = legacy_sanitize_segment(raw);
+     validate_encoded_segment(&encoded)?;
+     Ok(encoded)
+ }

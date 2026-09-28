@@ -1,0 +1,39 @@
+{
+  "title": "MCP 服务变更通知被静默吞掉",
+  "category": "protocol_dispatch",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "3e5d8394a57c9c7c10e4ad9bcd7177e95efc4a04",
+    "related_commits": [
+      "3185361c3",
+      "16efa1037"
+    ],
+    "evidence": "Diff replaces response-first deserialization with mutually exclusive envelope dispatch; JsonRpcResponse optional fields previously accepted notification JSON. Standard and legacy method aliases were fixed together.",
+    "mode": "historical_backport"
+  },
+  "problem_zh": "连接中的 MCP 服务发出工具、资源或提示列表变更通知后，客户端始终没有更新；普通请求却仍能得到响应。请沿消息接收、解析和事件分发链定位问题，兼容标准通知及已有历史通知格式，同时保证普通响应仍能完成等待中的请求。",
+  "estimated_minutes": 55,
+  "id": "DS-B03",
+  "patch_files": [
+    "src-tauri/src/mcp/client.rs"
+  ],
+  "test_file": "harness/tests/b03.rs",
+  "test_command": [
+    "cargo",
+    "test",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "harness/Cargo.toml",
+    "--test",
+    "b03"
+  ],
+  "runner": "cargo",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 201,
+  "test_scope": "Direct compilation of complete production Rust modules through #[path]; unrelated learner-profile dependency panics if invoked. No production function is copied.",
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 1,
+  "redactions_file": null,
+  "family": "mcp_protocol"
+}

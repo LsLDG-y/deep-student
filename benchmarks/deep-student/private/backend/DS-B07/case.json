@@ -1,0 +1,38 @@
+{
+  "title": "同步前检遗漏设备状态与派生表",
+  "category": "schema_evolution",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "23abd4b26df792e1f9f9ce52a5b1a2bb5de19856",
+    "related_commits": [
+      "977f2c979"
+    ],
+    "evidence": "23abd4b26 adds classifications for local runtime and derived tables; 977f2c979 adds later note tables. Both diffs evidence sequential schema coverage fixes, not claims that the first patch failed identical tests.",
+    "mode": "historical_backport"
+  },
+  "problem_zh": "数据库逐步增加新功能后，同步分类检查无法覆盖已有表。部分内容仅属于本机的任务、续跑状态或可重建索引，不应作为跨设备业务记录同步。请审查实际表用途并补齐同步边界；已有笔记、题目、文件与文件夹仍须正常同步，分类不能重复。",
+  "estimated_minutes": 55,
+  "id": "DS-B07",
+  "patch_files": [
+    "src-tauri/src/data_governance/sync/classification.rs"
+  ],
+  "test_file": "harness/tests/b07.rs",
+  "test_command": [
+    "cargo",
+    "test",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "harness/Cargo.toml",
+    "--test",
+    "b07"
+  ],
+  "runner": "cargo",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 120,
+  "test_scope": "Direct compilation of complete production Rust modules through #[path]; unrelated learner-profile dependency panics if invoked. No production function is copied.",
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 1,
+  "redactions_file": null,
+  "family": "schema_evolution"
+}

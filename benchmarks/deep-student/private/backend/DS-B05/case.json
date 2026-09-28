@@ -1,0 +1,44 @@
+{
+  "title": "长事件的细粒度流式分片导致解析停顿",
+  "category": "algorithmic_performance",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "b1397c5d615683539d0e7e492678901326aeaed8",
+    "evidence": "Diff changes rescanning/draining the entire accumulated line to a persistent scan cursor. The production method is backported exactly; existing current structure remains.",
+    "mode": "historical_backport",
+    "related_commits": []
+  },
+  "problem_zh": "题库生成遇到很长的单条流式事件时，网络分片越细，客户端 CPU 消耗越明显，界面长时间停顿，弱设备上甚至中断。请优化解析路径，在固定大小事件被大量小分片送达时保持近线性处理；不要丢失 Unicode、事件元数据、结束标记或清空后的新数据。",
+  "estimated_minutes": 65,
+  "test_scope": "Complete production SSE buffer and UTF-8 decoder. Fixed 2 MB / 2 million chunk workload, 3 s runtime budget; release mode required. Anchor measured 0.06 s locally. Candidate status until Linux reference calibration succeeds.",
+  "status": "candidate_performance_requires_linux_calibration",
+  "id": "DS-B05",
+  "patch_files": [
+    "src-tauri/src/utils/sse_buffer.rs"
+  ],
+  "test_file": "harness/tests/b05.rs",
+  "test_command": [
+    "cargo",
+    "test",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "harness/Cargo.toml",
+    "--test",
+    "b05"
+  ],
+  "runner": "cargo",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 34,
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 1,
+  "redactions_file": "redactions.json",
+  "redactions": [
+    {
+      "path": "src-tauri/src/utils/sse_buffer.rs",
+      "old": "    /// 从 `text_buffer` 末尾起上次已扫描到「无未处理换行」的位置。\n    /// 下一次 `process_bytes` 追加字节后只从它续扫，避免对一条跨多个 chunk\n    /// 累积的未完成巨行反复从 0 全扫——大输出流曾因此退化为 O(n²)，\n    /// 在弱 CPU（安卓）上饿死 tokio 并触发 connection aborted。\n",
+      "new": ""
+    }
+  ],
+  "family": "algorithmic_performance"
+}

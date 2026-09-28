@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F06",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "cache capacity after temporary leases F2P reclaims all newly eligible excess on the next creation"
+  ],
+  "PASS_TO_PASS": [
+    "cache capacity after temporary leases P2P leaves active leases and the current session alive"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "cache capacity after temporary leases F2P reclaims all newly eligible excess on the next creation": "failed",
+      "cache capacity after temporary leases P2P leaves active leases and the current session alive": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 1.739,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "cache capacity after temporary leases F2P reclaims all newly eligible excess on the next creation": "passed",
+      "cache capacity after temporary leases P2P leaves active leases and the current session alive": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.789,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F06"
+}

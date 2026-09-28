@@ -1,0 +1,40 @@
+{
+  "title": "无参数 MCP 请求在严格服务端挂起",
+  "category": "protocol_serialization",
+  "difficulty": 1,
+  "history": {
+    "fix_commit": "71d22c6f9a927458112e3e119e02c492bc176338",
+    "related_commits": [
+      "3185361c3",
+      "e0e8b58f8",
+      "16efa1037"
+    ],
+    "evidence": "Commit and diff demonstrate None params serializing as null; recorded strict Playwright server trace receives no tools/list response until the field is omitted. Both request and notification paths were fixed.",
+    "mode": "historical_backport"
+  },
+  "problem_zh": "某些严格的 MCP 服务对客户端发出的无参数操作始终不返回结果，最终表现为连接或工具发现超时；带参数调用通常正常。请修复请求与通知的兼容性，保留显式传入的参数内容和缺省参数的读取能力。",
+  "estimated_minutes": 25,
+  "id": "DS-B02",
+  "patch_files": [
+    "src-tauri/src/mcp/client.rs"
+  ],
+  "test_file": "harness/tests/b02.rs",
+  "test_command": [
+    "cargo",
+    "test",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "harness/Cargo.toml",
+    "--test",
+    "b02"
+  ],
+  "runner": "cargo",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 6,
+  "test_scope": "Direct compilation of complete production Rust modules through #[path]; unrelated learner-profile dependency panics if invoked. No production function is copied.",
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 1,
+  "redactions_file": null,
+  "family": "mcp_protocol"
+}

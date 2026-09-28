@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F08",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "model identity in composer F2P uses the configured vendor when display names collide"
+  ],
+  "PASS_TO_PASS": [
+    "model identity in composer P2P keeps an explicitly pinned first vendor selected"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "model identity in composer F2P uses the configured vendor when display names collide": "failed",
+      "model identity in composer P2P keeps an explicitly pinned first vendor selected": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 3.162,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "model identity in composer F2P uses the configured vendor when display names collide": "passed",
+      "model identity in composer P2P keeps an explicitly pinned first vendor selected": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 2.32,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F08"
+}

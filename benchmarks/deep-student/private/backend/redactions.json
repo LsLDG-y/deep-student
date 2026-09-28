@@ -1,0 +1,12 @@
+{
+  "DS-B05": {
+    "src-tauri/src/utils/sse_buffer.rs": [
+      "    /// 从 `text_buffer` 末尾起上次已扫描到「无未处理换行」的位置。\n    /// 下一次 `process_bytes` 追加字节后只从它续扫，避免对一条跨多个 chunk\n    /// 累积的未完成巨行反复从 0 全扫——大输出流曾因此退化为 O(n²)，\n    /// 在弱 CPU（安卓）上饿死 tokio 并触发 connection aborted。\n"
+    ]
+  },
+  "DS-B09": {
+    "src-tauri/src/data_governance/sync/asset_filenames.rs": [
+      "//! 新 key 采用与 rclone 相同的基本思路：Windows 非法字符映射到全角字符，\n//! 控制字符映射到 Control Pictures，并用 `‛` 引用原本就存在的替代字符。\n//! 发生映射的段带 `‛er` 标记；非 NFC 输入使用 `‛eh<utf8-hex>`，因此编码结果\n//! 始终是 NFC，同时仍能逐字节恢复 NFD 原名。\n"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "task_id": "DS-B10",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression: a timed-out operation can be retried after cooldown"
+  ],
+  "PASS_TO_PASS": [
+    "pass-to-pass: cooldown and successful handlers retain their behavior",
+    "pass-to-pass: late rejection remains handled and a new action works"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "regression: a timed-out operation can be retried after cooldown": "failed",
+      "pass-to-pass: cooldown and successful handlers retain their behavior": "passed",
+      "pass-to-pass: late rejection remains handled and a new action works": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.791,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "regression: a timed-out operation can be retried after cooldown": "passed",
+      "pass-to-pass: cooldown and successful handlers retain their behavior": "passed",
+      "pass-to-pass: late rejection remains handled and a new action works": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.673,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-B10-fixed-import/DS-B10"
+}

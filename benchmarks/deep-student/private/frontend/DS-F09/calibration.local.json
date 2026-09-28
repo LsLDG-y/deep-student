@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F09",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "artifact template activation scope F2P ignores a referenced template absent from this session activation"
+  ],
+  "PASS_TO_PASS": [
+    "artifact template activation scope P2P resolves active explicit and unique templates and still validates their layout"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "artifact template activation scope F2P ignores a referenced template absent from this session activation": "failed",
+      "artifact template activation scope P2P resolves active explicit and unique templates and still validates their layout": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.736,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "artifact template activation scope F2P ignores a referenced template absent from this session activation": "passed",
+      "artifact template activation scope P2P resolves active explicit and unique templates and still validates their layout": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.726,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F09"
+}

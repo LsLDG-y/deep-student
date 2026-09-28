@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F02",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "last owner releases attachment resources F2P keeps another attachment and a foreign session processing owner usable"
+  ],
+  "PASS_TO_PASS": [
+    "last owner releases attachment resources P2P releases the last unshared owner"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "last owner releases attachment resources F2P keeps another attachment and a foreign session processing owner usable": "failed",
+      "last owner releases attachment resources P2P releases the last unshared owner": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 1.959,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "last owner releases attachment resources F2P keeps another attachment and a foreign session processing owner usable": "passed",
+      "last owner releases attachment resources P2P releases the last unshared owner": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 1.948,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F02"
+}

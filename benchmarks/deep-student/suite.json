@@ -1,0 +1,13 @@
+{
+  "name": "DeepStudent Debug Bench",
+  "version": "1.0.0",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "history_start": "2026-06-28T00:00:00+08:00",
+  "history_end": "2026-09-28T23:59:59+08:00",
+  "history_commits": 872,
+  "task_mode": "historical_backport",
+  "image": "deep-student-bench:1.0",
+  "test_timeout_seconds": 180,
+  "agent_budget_minutes": 60,
+  "scoring": "strict_resolution_rate"
+}

@@ -1,0 +1,41 @@
+{
+  "title": "标准 MCP 服务的工具和能力无法加载",
+  "category": "protocol_serialization",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "3185361c3848153441fe5f69b8283fa291754e54",
+    "related_commits": [
+      "54e2cdede",
+      "16efa1037",
+      "e0e8b58f8",
+      "71d22c6f9"
+    ],
+    "evidence": "The fix diff adds wire-name annotations throughout client protocol structures; commit records a standard tools/list response failing with missing input_schema. Related commits show sequential distinct interoperability failures, not repeated attempts at this exact root cause.",
+    "mode": "historical_backport"
+  },
+  "problem_zh": "连接符合 MCP 协议的服务后，握手可能成功，但获取工具列表失败；部分能力开关和图像结果也不能正确读取。请查明跨协议边界的原因并修复，使标准服务的响应能够正确读取和回传，同时保留纯文本工具与普通 JSON-RPC 响应行为。",
+  "estimated_minutes": 40,
+  "id": "DS-B01",
+  "patch_files": [
+    "src-tauri/src/mcp/client.rs"
+  ],
+  "test_file": "harness/tests/b01.rs",
+  "test_command": [
+    "cargo",
+    "test",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "harness/Cargo.toml",
+    "--test",
+    "b01"
+  ],
+  "runner": "cargo",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 25,
+  "test_scope": "Direct compilation of complete production Rust modules through #[path]; unrelated learner-profile dependency panics if invoked. No production function is copied.",
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 1,
+  "redactions_file": null,
+  "family": "mcp_protocol"
+}

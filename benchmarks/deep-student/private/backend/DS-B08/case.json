@@ -1,0 +1,36 @@
+{
+  "title": "合法下调的统计值在同步后反弹",
+  "category": "distributed_merge_semantics",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "6aec93509e7c41ba9eeec78180abbb9741dbd430",
+    "evidence": "Diff removes independently max-merged question counters and non-monotonic review/todo fields from registry and strategy. The old registry and strategy are restored exactly, preserving newer unrelated implementation.",
+    "mode": "historical_backport",
+    "related_commits": []
+  },
+  "problem_zh": "用户重置答题统计、缩短复习间隔或调低预计番茄数后，与另一设备同步会把旧的大值恢复；两端答题统计还可能组合成任何一端都没出现过的正确率。请修复冲突合并语义，同时保留真正单调计数、标签并集及布尔偏好的现有行为。",
+  "estimated_minutes": 55,
+  "id": "DS-B08",
+  "patch_files": [
+    "src-tauri/src/data_governance/sync/field_merge.rs"
+  ],
+  "test_file": "harness/tests/b08.rs",
+  "test_command": [
+    "cargo",
+    "test",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "harness/Cargo.toml",
+    "--test",
+    "b08"
+  ],
+  "runner": "cargo",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 51,
+  "test_scope": "Direct compilation of complete production Rust modules through #[path]; unrelated learner-profile dependency panics if invoked. No production function is copied.",
+  "pass_to_pass_tests": 1,
+  "fail_to_pass_tests": 1,
+  "redactions_file": null,
+  "family": "distributed_merge_semantics"
+}

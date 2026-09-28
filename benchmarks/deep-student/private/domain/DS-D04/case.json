@@ -27,5 +27,6 @@
       "old": "    // Search/replace semantics use non-overlapping matches. Advancing one\n    // character after an accepted match makes replace-all ranges overlap\n    // (for example, \"aaaa\" / \"aa\") and corrupts the transaction.\n",
       "new": "    // Advance to the next match.\n"
     }
-  ]
+  ],
+  "family": "editor/text-projection"
 }

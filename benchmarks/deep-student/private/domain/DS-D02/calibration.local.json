@@ -1,0 +1,41 @@
+{
+  "task_id": "DS-D02",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "authoritative settings transaction F2P an unreadable native baseline aborts before the first write",
+    "authoritative settings transaction F2P failed compensation must not abandon remaining compensation or replace the original error"
+  ],
+  "PASS_TO_PASS": [
+    "authoritative settings transaction P2P display-only reads retain cache fallback",
+    "authoritative settings transaction P2P successful native batch writes persist all settings"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "authoritative settings transaction F2P an unreadable native baseline aborts before the first write": "failed",
+      "authoritative settings transaction F2P failed compensation must not abandon remaining compensation or replace the original error": "failed",
+      "authoritative settings transaction P2P successful native batch writes persist all settings": "passed",
+      "authoritative settings transaction P2P display-only reads retain cache fallback": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.975,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "authoritative settings transaction F2P an unreadable native baseline aborts before the first write": "passed",
+      "authoritative settings transaction F2P failed compensation must not abandon remaining compensation or replace the original error": "passed",
+      "authoritative settings transaction P2P successful native batch writes persist all settings": "passed",
+      "authoritative settings transaction P2P display-only reads retain cache fallback": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.877,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-D02"
+}

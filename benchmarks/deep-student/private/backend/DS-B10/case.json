@@ -1,0 +1,33 @@
+{
+  "title": "一次操作超时后同一按钮永远无法重试",
+  "category": "async_lifecycle",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "7e6d89c25b2c6309ad713bd93d713f6bced12855",
+    "evidence": "Diff swaps timeout and rate-limit composition so a timeout rejection unwinds the in-flight finally. Historical order restored; production wrappers unchanged.",
+    "mode": "historical_backport",
+    "related_commits": []
+  },
+  "problem_zh": "生成界面的一项操作超时后，用户等过冷却时间再重试仍一直被限流。只有重建该界面才恢复。请修复操作包装链的生命周期，确保超时后能恢复重试、冷却窗口仍有效，正常完成与迟到失败不会破坏后续操作。",
+  "estimated_minutes": 45,
+  "id": "DS-B10",
+  "patch_files": [
+    "src/features/generative-ui/actions.ts"
+  ],
+  "test_file": "DS-B10/test.test.ts",
+  "test_command": [
+    "npx",
+    "vitest",
+    "run",
+    "--config",
+    "benchmarks/deep-student/private/backend/vitest.config.ts"
+  ],
+  "runner": "vitest",
+  "base_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "reference_changed_lines": 15,
+  "test_scope": "Imports production action composition, timeout, cooldown and telemetry modules; fake timers control completion order.",
+  "pass_to_pass_tests": 2,
+  "fail_to_pass_tests": 1,
+  "redactions_file": null,
+  "family": "async_lifecycle"
+}

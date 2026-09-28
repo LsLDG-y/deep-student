@@ -1,0 +1,36 @@
+{
+  "task_id": "DS-B09",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression_distinct_user_names_never_alias",
+    "regression_existing_encoded_name_retains_legacy_lookup"
+  ],
+  "PASS_TO_PASS": [
+    "pass_to_pass_ordinary_paths_and_limits"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_ordinary_paths_and_limits": "passed",
+      "regression_distinct_user_names_never_alias": "failed",
+      "regression_existing_encoded_name_retains_legacy_lookup": "failed"
+    },
+    "exit_code": 101,
+    "seconds": 2.493,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_ordinary_paths_and_limits": "passed",
+      "regression_distinct_user_names_never_alias": "passed",
+      "regression_existing_encoded_name_retains_legacy_lookup": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 2.956,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-B09"
+}

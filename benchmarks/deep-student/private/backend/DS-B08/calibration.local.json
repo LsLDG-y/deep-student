@@ -1,0 +1,33 @@
+{
+  "task_id": "DS-B08",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression_lowered_values_and_coupled_counters_survive"
+  ],
+  "PASS_TO_PASS": [
+    "pass_to_pass_convergent_merges_remain"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_convergent_merges_remain": "passed",
+      "regression_lowered_values_and_coupled_counters_survive": "failed"
+    },
+    "exit_code": 101,
+    "seconds": 2.192,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_convergent_merges_remain": "passed",
+      "regression_lowered_values_and_coupled_counters_survive": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 2.184,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-B08"
+}

@@ -1,0 +1,232 @@
+[
+  {
+    "id": "DS-B01",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 2.35
+      },
+      {
+        "state": "bug",
+        "returncode": 101,
+        "elapsed_seconds": 3.068
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 2.169
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B02",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 1.825
+      },
+      {
+        "state": "bug",
+        "returncode": 101,
+        "elapsed_seconds": 2.014
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 1.864
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B03",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 2.32
+      },
+      {
+        "state": "bug",
+        "returncode": 101,
+        "elapsed_seconds": 2.777
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 2.223
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B04",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 1.743
+      },
+      {
+        "state": "bug",
+        "returncode": 101,
+        "elapsed_seconds": 1.905
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 1.752
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B05",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 1.987
+      },
+      {
+        "state": "bug",
+        "returncode": 101,
+        "elapsed_seconds": 53.046
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 2.346
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B06",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 0.04
+      },
+      {
+        "state": "bug",
+        "returncode": 1,
+        "elapsed_seconds": 0.033
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 0.035
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B07",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 1.749
+      },
+      {
+        "state": "bug",
+        "returncode": 101,
+        "elapsed_seconds": 2.085
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 1.735
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B08",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 8.693
+      },
+      {
+        "state": "bug",
+        "returncode": 101,
+        "elapsed_seconds": 1.876
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 1.756
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B09",
+    "environment": "macOS arm64; cargo 1.98.1; production modules from fixed anchor",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 2.287
+      },
+      {
+        "state": "bug",
+        "returncode": 101,
+        "elapsed_seconds": 1.952
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 1.905
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  },
+  {
+    "id": "DS-B10",
+    "environment": "macOS arm64; Node 22; Vitest 3.2.7; fixed anchor source",
+    "runs": [
+      {
+        "state": "baseline",
+        "returncode": 0,
+        "elapsed_seconds": 0.477
+      },
+      {
+        "state": "bug",
+        "returncode": 1,
+        "elapsed_seconds": 0.403
+      },
+      {
+        "state": "reference",
+        "returncode": 0,
+        "elapsed_seconds": 0.407
+      }
+    ],
+    "triad_passed": true,
+    "bug_failure_is_behavioral": true
+  }
+]

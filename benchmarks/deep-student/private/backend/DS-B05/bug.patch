@@ -1,0 +1,46 @@
+--- a/src-tauri/src/utils/sse_buffer.rs
++++ b/src-tauri/src/utils/sse_buffer.rs
+@@ -191,36 +191,16 @@
+ 
+         // 增量解码：跨 chunk 被切断的多字节字符保留在 decoder 内部，
+         // 待下一个 chunk 补齐后再输出，保证行内容永远是完整字符。
+-        let old_len = self.text_buffer.len();
+         self.text_buffer.push_str(&self.decoder.decode(chunk));
+-        // 追加前的字节已扫描过无未处理换行；scan_from 不得越过旧缓冲末尾。
+-        self.scan_from = self.scan_from.min(old_len);
+-
+         let mut events = Vec::new();
+-        let mut handled = 0usize;
+-        loop {
+-            match self.text_buffer[self.scan_from..].find('\n') {
+-                Some(rel) => {
+-                    let abs = self.scan_from + rel;
+-                    let mut line: String = self.text_buffer[handled..abs].to_string();
+-                    if line.ends_with('\r') {
+-                        line.pop();
+-                    }
+-                    self.push_line(line, &mut events);
+-                    self.scan_from = abs + 1;
+-                    handled = abs + 1;
+-                }
+-                None => {
+-                    self.scan_from = self.text_buffer.len();
+-                    break;
+-                }
++
++        while let Some(newline) = self.text_buffer.find('\n') {
++            let mut line: String = self.text_buffer.drain(..=newline).collect();
++            line.pop();
++            if line.ends_with('\r') {
++                line.pop();
+             }
+-        }
+-
+-        if handled > 0 {
+-            // 移除已处理行前缀，仅保留未完成的尾部行；scan_from 对齐到新缓冲。
+-            self.text_buffer.drain(..handled);
+-            self.scan_from = self.scan_from.saturating_sub(handled);
++            self.push_line(line, &mut events);
+         }
+ 
+         events

@@ -1,0 +1,33 @@
+{
+  "task_id": "DS-B01",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression_wire_roundtrip"
+  ],
+  "PASS_TO_PASS": [
+    "pass_to_pass_text_and_plain_fields"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_text_and_plain_fields": "passed",
+      "regression_wire_roundtrip": "failed"
+    },
+    "exit_code": 101,
+    "seconds": 2.78,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_text_and_plain_fields": "passed",
+      "regression_wire_roundtrip": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 2.257,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-B01"
+}

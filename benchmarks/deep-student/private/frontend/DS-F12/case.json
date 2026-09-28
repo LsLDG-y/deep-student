@@ -28,5 +28,6 @@
     "patch_apply_check": true,
     "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
     "runtime_boundary": "Not a native Tauri desktop end-to-end run."
-  }
+  },
+  "family": "async_history_pagination"
 }

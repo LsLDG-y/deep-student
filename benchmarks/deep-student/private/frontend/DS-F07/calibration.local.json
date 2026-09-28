@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F07",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "effective chat model configuration F2P follows the current default when historical model state was not pinned"
+  ],
+  "PASS_TO_PASS": [
+    "effective chat model configuration P2P preserves explicit user choices and valid runtime overrides"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "effective chat model configuration F2P follows the current default when historical model state was not pinned": "failed",
+      "effective chat model configuration P2P preserves explicit user choices and valid runtime overrides": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 2.36,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "effective chat model configuration F2P follows the current default when historical model state was not pinned": "passed",
+      "effective chat model configuration P2P preserves explicit user choices and valid runtime overrides": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 2.306,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F07"
+}

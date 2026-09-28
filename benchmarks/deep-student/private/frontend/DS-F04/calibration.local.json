@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F04",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "session event ownership F2P rejects a late event explicitly owned by the previous session"
+  ],
+  "PASS_TO_PASS": [
+    "session event ownership P2P accepts own events and legacy untagged events"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "session event ownership F2P rejects a late event explicitly owned by the previous session": "failed",
+      "session event ownership P2P accepts own events and legacy untagged events": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 1.554,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "session event ownership F2P rejects a late event explicitly owned by the previous session": "passed",
+      "session event ownership P2P accepts own events and legacy untagged events": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 1.503,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F04"
+}

@@ -15,5 +15,6 @@
   "test_file": "hidden.test.tsx",
   "problem_zh": "使用富文本编辑器或输入法时，导航快捷键偶发使整个页面后退；多个宿主并存时一次按键还会跳过两页。请明确全局导航事件的消费边界，保留普通页面上的后退/前进能力。",
   "estimated_minutes": 35,
-  "reference_changed_lines": 13
+  "reference_changed_lines": 13,
+  "family": "input/event-ownership"
 }

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:deep-student-bench:review-response:1",
+  "title": "Deep Student Debug Bench external review response",
+  "description": "Independent second-pass review. This response never changes or replaces the machine score. Evidence refers to supplied artifacts, not assertions inferred from task-specific keywords.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reviewer_id",
+    "task_id",
+    "root_cause_valid",
+    "non_hardcoded_fix",
+    "scope_appropriate",
+    "verdict",
+    "reasoning",
+    "evidence"
+  ],
+  "properties": {
+    "reviewer_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reviewer or externally assigned review-run identifier. Informational identity, not an authorization credential."
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^DS-[BDF][0-9]{2}$",
+      "description": "Task identifier from the benchmark manifest. The caller must also verify it exists in the evaluated release."
+    },
+    "root_cause_valid": {
+      "type": ["boolean", "null"],
+      "description": "True when the proposed causal explanation is supported by code and observed behavior; false when contradicted; null when evidence is insufficient."
+    },
+    "non_hardcoded_fix": {
+      "type": ["boolean", "null"],
+      "description": "True when the patch implements the task's general business contract rather than recognizing hidden-test conditions or fixture values; false for a demonstrated test-specific workaround; null when uncertain."
+    },
+    "scope_appropriate": {
+      "type": ["boolean", "null"],
+      "description": "True when changes are proportionate to the problem and preserve relevant project contracts; false when concrete unrelated or harmful changes are established; null when uncertain."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["accept", "reject", "needs_review"],
+      "description": "Reviewer conclusion, recorded separately from the unchanged machine score."
+    },
+    "reasoning": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Evidence-based explanation connecting the observed behavior, root cause and patch. No word-count, keyword or stylistic score is derived from this text."
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Artifact references and observations supporting the review. May be empty for needs_review when the required materials are missing; do not invent evidence.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "reference", "observation"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "machine_result",
+              "test_log",
+              "candidate_patch",
+              "diagnosis",
+              "reproduction",
+              "reference_behavior",
+              "other"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Resolvable artifact identifier or relative path, optionally with a test name, line, or section. Do not include credentials or unrelated private paths."
+          },
+          "observation": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What this artifact actually demonstrates, including any relevant limit or counterexample."
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"verdict": {"const": "accept"}},
+        "required": ["verdict"]
+      },
+      "then": {
+        "properties": {
+          "root_cause_valid": {"const": true},
+          "non_hardcoded_fix": {"const": true},
+          "scope_appropriate": {"const": true},
+          "evidence": {"minItems": 1}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"verdict": {"const": "reject"}},
+        "required": ["verdict"]
+      },
+      "then": {
+        "properties": {"evidence": {"minItems": 1}}
+      }
+    }
+  ]
+}

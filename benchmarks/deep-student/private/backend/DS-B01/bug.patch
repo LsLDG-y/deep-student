@@ -1,0 +1,124 @@
+--- a/src-tauri/src/mcp/client.rs
++++ b/src-tauri/src/mcp/client.rs
+@@ -130,20 +130,17 @@
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct ToolsCapability {
+-    #[serde(rename = "listChanged")]
+     pub list_changed: Option<bool>,
+ }
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct ResourcesCapability {
+-    #[serde(rename = "listChanged")]
+     pub list_changed: Option<bool>,
+     pub subscribe: Option<bool>,
+ }
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct PromptsCapability {
+-    #[serde(rename = "listChanged")]
+     pub list_changed: Option<bool>,
+ }
+ 
+@@ -172,7 +169,6 @@
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct RootsCapability {
+-    #[serde(rename = "listChanged")]
+     pub list_changed: Option<bool>,
+ }
+ 
+@@ -187,10 +183,6 @@
+ pub struct Tool {
+     pub name: String,
+     pub description: Option<String>,
+-    // MCP 规范的 wire 字段名是 inputSchema（camelCase）；此前缺失 rename 导致
+-    // 所有标准 server 的 tools/list 反序列化失败（"missing field `input_schema`"），
+-    // propose 连测必然回滚——对话式添加任何真实 MCP server 都会被静默掐死。
+-    #[serde(rename = "inputSchema")]
+     pub input_schema: Value,
+ }
+ 
+@@ -203,7 +195,6 @@
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct ToolResult {
+     pub content: Vec<Content>,
+-    #[serde(rename = "isError")]
+     pub is_error: Option<bool>,
+ }
+ 
+@@ -214,14 +205,12 @@
+     pub uri: String,
+     pub name: String,
+     pub description: Option<String>,
+-    #[serde(rename = "mimeType")]
+     pub mime_type: Option<String>,
+ }
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct ResourceContent {
+     pub uri: String,
+-    #[serde(rename = "mimeType")]
+     pub mime_type: Option<String>,
+     pub text: Option<String>,
+     pub blob: Option<String>,
+@@ -229,11 +218,9 @@
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct ResourceTemplate {
+-    #[serde(rename = "uriTemplate")]
+     pub uri_template: String,
+     pub name: String,
+     pub description: Option<String>,
+-    #[serde(rename = "mimeType")]
+     pub mime_type: Option<String>,
+ }
+ 
+@@ -270,8 +257,7 @@
+     #[serde(rename = "image")]
+     Image {
+         data: String,
+-        #[serde(rename = "mimeType")]
+-        mime_type: String,
++    mime_type: String,
+     },
+ 
+     #[serde(rename = "resource")]
+@@ -289,16 +275,11 @@
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct CreateMessageRequest {
+     pub messages: Vec<SamplingMessage>,
+-    #[serde(rename = "modelPreferences")]
+     pub model_preferences: Option<ModelPreferences>,
+-    #[serde(rename = "systemPrompt")]
+     pub system_prompt: Option<String>,
+-    #[serde(rename = "includeContext")]
+     pub include_context: Option<String>,
+     pub temperature: Option<f64>,
+-    #[serde(rename = "maxTokens")]
+     pub max_tokens: Option<i32>,
+-    #[serde(rename = "stopSequences")]
+     pub stop_sequences: Option<Vec<String>>,
+     pub metadata: Option<Value>,
+ }
+@@ -306,11 +287,8 @@
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct ModelPreferences {
+     pub hints: Option<Vec<ModelHint>>,
+-    #[serde(rename = "costPriority")]
+     pub cost_priority: Option<f64>,
+-    #[serde(rename = "speedPriority")]
+     pub speed_priority: Option<f64>,
+-    #[serde(rename = "intelligencePriority")]
+     pub intelligence_priority: Option<f64>,
+ }
+ 
+@@ -324,7 +302,6 @@
+     pub content: Content,
+     pub model: String,
+     pub role: String,
+-    #[serde(rename = "stopReason")]
+     pub stop_reason: Option<String>,
+ }
+ 

@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-D03",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "persistent note images F2P upload and later rendering share portable asset references"
+  ],
+  "PASS_TO_PASS": [
+    "persistent note images P2P URLs and already portable paths retain their normal behavior"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "persistent note images F2P upload and later rendering share portable asset references": "failed",
+      "persistent note images P2P URLs and already portable paths retain their normal behavior": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.998,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "persistent note images F2P upload and later rendering share portable asset references": "passed",
+      "persistent note images P2P URLs and already portable paths retain their normal behavior": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 1.063,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-D03"
+}

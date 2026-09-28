@@ -1,0 +1,23 @@
+{
+  "id": "DS-B10",
+  "environment": "macOS arm64; Node 22; Vitest 3.2.7; fixed anchor source",
+  "runs": [
+    {
+      "state": "baseline",
+      "returncode": 0,
+      "elapsed_seconds": 0.477
+    },
+    {
+      "state": "bug",
+      "returncode": 1,
+      "elapsed_seconds": 0.403
+    },
+    {
+      "state": "reference",
+      "returncode": 0,
+      "elapsed_seconds": 0.407
+    }
+  ],
+  "triad_passed": true,
+  "bug_failure_is_behavioral": true
+}

@@ -1,0 +1,22 @@
+--- a/src-tauri/src/mcp/client.rs
++++ b/src-tauri/src/mcp/client.rs
+@@ -77,10 +77,6 @@
+ pub struct JsonRpcRequest {
+     pub jsonrpc: String,
+     pub method: String,
+-    /// JSON-RPC 2.0 规范：params 字段可省略，但不应为 null。
+-    /// 部分严格 MCP server（如 @playwright/mcp）对 "params": null 不返回响应。
+-    /// None 时序列化必须省略整个字段，而不是写 "params": null。
+-    #[serde(skip_serializing_if = "Option::is_none", default)]
+     pub params: Option<Value>,
+     pub id: Option<Value>,
+ }
+@@ -104,8 +100,6 @@
+ pub struct JsonRpcNotification {
+     pub jsonrpc: String,
+     pub method: String,
+-    /// 与 JsonRpcRequest.params 同样的理由：None 时省略字段而不是发 "params": null。
+-    #[serde(skip_serializing_if = "Option::is_none", default)]
+     pub params: Option<Value>,
+ }
+ 

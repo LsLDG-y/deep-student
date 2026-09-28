@@ -1,0 +1,33 @@
+{
+  "task_id": "DS-B03",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression_notifications_reach_subscribers"
+  ],
+  "PASS_TO_PASS": [
+    "pass_to_pass_response_completes_request"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_response_completes_request": "passed",
+      "regression_notifications_reach_subscribers": "failed"
+    },
+    "exit_code": 101,
+    "seconds": 3.271,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_response_completes_request": "passed",
+      "regression_notifications_reach_subscribers": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 2.738,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-B03"
+}
