@@ -22,7 +22,7 @@
 | DS-B02 无参数 MCP 请求在严格服务端挂起 | `protocol_serialization` | 1 | 6 | `71d22c6f9` | MCP 家族；后续发现的 params:null 兼容性缺口。 家族：`mcp-wire`。 | Rust 同模块 JSON-RPC 请求/通知的 None/Some/missing 参数；无远程握手。 |
 | DS-B03 MCP 服务变更通知被静默吞掉 | `protocol_dispatch` | 3 | 201 | `3e5d8394a` | MCP 家族；envelope 判别/通知方法名的独立缺陷。 家族：`mcp-wire`。 | Rust 同模块真实接收/分发路径；本地传输夹具驱动通知、响应与等待请求。 |
 | DS-B04 薄弱卡片排序打断到期学习步骤 | `scheduling_priority` | 2 | 17 | `1a66bd145` | 未建立同根因补修链。 | Rust `mastery/bias.rs` 排序/到期偏置；不运行完整复习 UI。 |
-| DS-B05 长事件的细粒度流式分片导致解析停顿 **候选：需 Linux 性能校准** | `algorithmic_performance` | 3 | 34 | `b1397c5d6` | 未建立同根因补修链。 | Rust `utils/sse_buffer.rs` 与 UTF-8 decoder；固定长事件/细分片负载，release 计时。 |
+| DS-B05 长事件的细粒度流式分片导致解析停顿 | `algorithmic_performance` | 3 | 34 | `b1397c5d6` | 未建立同根因补修链。 | Rust `utils/sse_buffer.rs` 与 UTF-8 decoder；固定长事件/细分片负载，release 计时。 |
 | DS-B06 历史卡片归一化升级触发唯一键冲突 | `database_migration` | 4 | 44 | `6aec93509` | 未建立同根因补修链。 家族：`sync-squash`。 | Python sqlite3 在真实 SQLite 表/唯一索引上执行生产迁移 SQL。 |
 | DS-B07 同步前检遗漏设备状态与派生表 | `schema_evolution` | 3 | 120 | `23abd4b26` | 23abd4b26→977f2c979：后续表演进补齐，不等于原修复失败。 | Rust `sync/classification.rs` 完整表分类 API；不执行真实跨设备同步。 |
 | DS-B08 合法下调的统计值在同步后反弹 | `distributed_merge_semantics` | 3 | 51 | `6aec93509` | 未建立同根因补修链。 家族：`sync-squash`。 | Rust `sync/field_merge.rs` 合并注册表与策略；不连接云端。 |
@@ -79,9 +79,9 @@
 
 每题需在同一物化方式下对“缺陷”和“参考”两份工程做差分校准：至少一项 FAIL_TO_PASS、至少一项 PASS_TO_PASS，且参考工程全部通过；候选修复必须通过校准时的完整测试清单。以各题生成的 `calibration.<engine>.json` 为正式准入和计分依据，不把提交标题或提交者声称的验证视为本次执行结果。
 
-领域 12 题已在本机独立锚点快照验证：正常 39/39 通过；逐题缺陷共 24 个 F2P 失败、15 个 P2P 通过；恢复后 39/39 通过，明细见 `private/domain/validation.json`。聊天题本地生产模块验证记录位于各题 `verification`。容器适配和 Rust 适配的统一校准结果应另行生成，不由这些本地记录自动推断。
+领域 12 题已在本机独立锚点快照验证：正常 39/39 通过；逐题缺陷共 24 个 F2P 失败、15 个 P2P 通过；恢复后 39/39 通过，明细见 `private/domain/validation.json`。聊天题本地生产模块验证记录位于各题 `verification`。随后独立完成的 macOS 与 Linux ARM64 Docker 统一校准均为 34/34 有效、48 个 F2P 和 38 个 P2P；实际环境、首次故障和最终材料位置见 `VALIDATION.zh-CN.md`，不由早期本地记录自动推断容器结果。
 
-这里运行的是真实生产模块行为，但范围不是完整桌面端端到端测试：IPC、云服务、通知和非目标 UI 边界使用可控夹具；Rust harness 通过 `#[path]` 编译完整生产模块，不复制被测函数；B06 使用真实 SQLite 执行 SQL。B05 的性能门槛对机器敏感，目前明确标为候选，须在固定 Linux 资源配额上重复校准后才能纳入正式跨模型总分。
+这里运行的是真实生产模块行为，但范围不是完整桌面端端到端测试：IPC、云服务、通知和非目标 UI 边界使用可控夹具；Rust harness 通过 `#[path]` 编译完整生产模块，不复制被测函数；B06 使用真实 SQLite 执行 SQL。B05 已通过 Linux ARM64 Docker 校准并转为 `ready`：release 模式下，2 MB / 200 万细分片负载的缺陷处理耗时约 57.64 秒，参考版本两个测试合计约 0.03 秒，3 秒阈值只计事件处理、不计编译。校准记录见 `private/backend/DS-B05/calibration.docker.json`；命令总耗时不是性能断言耗时。更换架构或资源配额后须重新校准，确认参考版本仍有足够余量再用于跨模型总分。
 
 ## 覆盖短板
 

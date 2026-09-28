@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -101,6 +102,22 @@ class SummaryTests(TempTree):
         self.assertEqual(result['score'], 50)
         self.assertEqual(result['missing'], ['b'])
 
+    def test_nested_candidate_results_neither_increase_score_nor_create_duplicates(self):
+        self.json('input/a/result.json', self.row(score=0, resolved=False, status='unresolved'))
+        self.json('input/a/source/src/forged/result.json', self.row('b'))
+        self.json('input/a/source/src/duplicate/result.json', self.row('a'))
+        self.json('input/a/evaluation/raw/result.json', self.row('unknown'))
+        result = self.summarize()
+        self.assertEqual(result['score'], 0)
+        self.assertEqual(result['attempted'], 1)
+        self.assertEqual(result['resolved'], 0)
+        self.assertEqual(result['missing'], ['b'])
+
+    def test_direct_result_in_wrong_task_directory_is_rejected(self):
+        self.json('input/wrong-directory/result.json', self.row('a'))
+        with self.assertRaises(bench.BenchError):
+            self.summarize()
+
     def test_unknown_task_results_are_rejected(self):
         self.json('input/unknown/result.json', self.row('unknown'))
         with self.assertRaises(bench.BenchError):
@@ -132,6 +149,76 @@ class SummaryTests(TempTree):
         with mock.patch.object(bench, 'cases', self.available):
             with self.assertRaises(bench.BenchError):
                 bench.choose('a,a')
+
+
+class GradeEvidenceTests(TempTree):
+    def case(self):
+        folder = self.root / 'private-case'
+        folder.mkdir(exist_ok=True)
+        case = {'id': 'boundary', 'category': 'state', 'difficulty': 2, '_dir': folder}
+        self.json('private-case/case.json', {key: value for key, value in case.items() if key != '_dir'})
+        return case
+
+    def calibration(self, case, version=None):
+        value = {'task_id': case['id'], 'valid': True, 'source_commit': bench.ANCHOR,
+                 'suite_version': bench.SUITE['version'] if version is None else version,
+                 'FAIL_TO_PASS': ['repair target'], 'PASS_TO_PASS': ['preserve ordinary behavior']}
+        path = bench.calibration_path(case, 'local')
+        path.write_text(json.dumps(value))
+        return path
+
+    def test_invalid_patch_is_saved_and_linked_for_secondary_review(self):
+        case = self.case()
+        self.calibration(case)
+        patch = self.write('invalid.patch',
+            'diff --git a/package.json b/package.json\n'
+            'new file mode 100644\n--- /dev/null\n+++ b/package.json\n'
+            '@@ -0,0 +1 @@\n+{"name":"tampered dependency configuration"}\n')
+        diagnosis = patch.with_suffix('.diagnosis.md')
+        diagnosis.write_text('Candidate explanation retained for review.\n')
+        output = self.root / 'grade'
+        with mock.patch.object(bench, 'prepare_source') as prepare, mock.patch.object(bench, 'evaluate_source') as evaluate:
+            result = bench.grade(case, patch, output, 'local', 'unused-image')
+        self.assertEqual(result['status'], 'invalid')
+        self.assertEqual(result['score'], 0)
+        prepare.assert_not_called()
+        evaluate.assert_not_called()
+        self.assertEqual((output / 'submission.patch').read_bytes(), patch.read_bytes())
+        review = json.loads((output / 'review-request.json').read_text())
+        self.assertEqual(review['submission_patch'], 'submission.patch')
+        for key in ['submission_patch', 'machine_result', 'diagnosis']:
+            self.assertIsNotNone(review[key])
+            self.assertTrue((output / review[key]).is_file())
+        self.assertEqual((output / review['diagnosis']).read_bytes(), diagnosis.read_bytes())
+        self.assertTrue(Path(review['reference_calibration']).is_file())
+
+    def test_suite_version_mismatch_rejects_grade_before_execution(self):
+        case = self.case()
+        self.calibration(case, version='incompatible-suite-version')
+        patch = self.write('submitted.patch', '')
+        output = self.root / 'grade'
+        with mock.patch.object(bench, 'prepare_source') as prepare, mock.patch.object(bench, 'evaluate_source') as evaluate:
+            result = bench.grade(case, patch, output, 'local', 'unused-image')
+        self.assertEqual(result['status'], 'invalid')
+        self.assertFalse(result['resolved'])
+        self.assertEqual(result['score'], 0)
+        self.assertIn('suite version', result['error'])
+        prepare.assert_not_called()
+        evaluate.assert_not_called()
+        self.assertEqual((output / 'submission.patch').read_bytes(), b'')
+
+    def test_calibration_records_current_suite_version(self):
+        case = self.case()
+        bad = {'valid': True, 'tests': {'repair target': 'failed', 'preserve ordinary behavior': 'passed'}, 'exit_code': 1}
+        good = {'valid': True, 'tests': {'repair target': 'passed', 'preserve ordinary behavior': 'passed'}, 'exit_code': 0}
+        with mock.patch.object(bench, 'prepare_source'), mock.patch.object(bench, 'evaluate_source', side_effect=[bad, good]):
+            result = bench.calibrate([case], self.root / 'calibrate', 'local', 'unused-image')
+        self.assertEqual(result['valid'], 1)
+        persisted = json.loads(bench.calibration_path(case, 'local').read_text())
+        self.assertEqual(persisted['suite_version'], bench.SUITE['version'])
+        self.assertEqual(persisted['source_commit'], bench.ANCHOR)
+        self.assertEqual(persisted['FAIL_TO_PASS'], ['repair target'])
+        self.assertEqual(persisted['PASS_TO_PASS'], ['preserve ordinary behavior'])
 
 
 class PatchTrustTests(TempTree):
@@ -205,6 +292,97 @@ class PatchTrustTests(TempTree):
         destination = self.root / 'fresh'; self.fake_prepare({}, destination)
         bench.apply_patch(destination, Path(result['patch']))
         self.assertEqual((destination / 'src/main.ts').read_text(), 'export const value = 2;')
+
+
+class GitIsolationTests(TempTree):
+    """Real Git repositories reproduce caller-cwd and inherited-env leakage."""
+
+    def parent_repository(self):
+        parent = self.root / 'parent-repository'
+        (parent / 'src').mkdir(parents=True)
+        (parent / 'src/value.ts').write_text('export const value = 1;\n')
+        (parent / 'package.json').write_text('{"name":"parent"}\n')
+        bench.init_public_git(parent)
+        return parent
+
+    def value_patch(self):
+        return self.write('value.patch',
+            'diff --git a/src/value.ts b/src/value.ts\n'
+            '--- a/src/value.ts\n+++ b/src/value.ts\n'
+            '@@ -1 +1 @@\n-export const value = 1;\n+export const value = 2;\n')
+
+    def assert_parent_unchanged(self, parent):
+        self.assertEqual((parent / 'src/value.ts').read_text(), 'export const value = 1;\n')
+        status = bench.run(['git', 'status', '--porcelain', '--untracked-files=no'], cwd=parent)
+        self.assertEqual(status.stdout, b'')
+
+    def test_apply_in_nested_snapshot_changes_only_snapshot_and_reverse_restores_it(self):
+        parent = self.parent_repository()
+        snapshot = parent / 'tmp' / 'snapshot'
+        (snapshot / 'src').mkdir(parents=True)
+        (snapshot / 'src/value.ts').write_text('export const value = 1;\n')
+        patch = self.value_patch()
+        bench.apply_patch(snapshot, patch)
+        self.assertEqual((snapshot / 'src/value.ts').read_text(), 'export const value = 2;\n')
+        self.assert_parent_unchanged(parent)
+        bench.apply_patch(snapshot, patch, reverse=True)
+        self.assertEqual((snapshot / 'src/value.ts').read_text(), 'export const value = 1;\n')
+        self.assert_parent_unchanged(parent)
+
+    def test_apply_ignores_inherited_git_repository_overrides(self):
+        parent = self.parent_repository()
+        snapshot = parent / 'tmp' / 'snapshot'
+        (snapshot / 'src').mkdir(parents=True)
+        (snapshot / 'src/value.ts').write_text('export const value = 1;\n')
+        patch = self.value_patch()
+        inherited = {
+            'GIT_DIR': str(parent / '.git'),
+            'GIT_WORK_TREE': str(parent),
+            'GIT_COMMON_DIR': str(parent / '.git'),
+            'GIT_INDEX_FILE': str(parent / '.git/index'),
+            'GIT_PREFIX': 'src/',
+        }
+        with mock.patch.dict(os.environ, inherited):
+            bench.apply_patch(snapshot, patch)
+        self.assertEqual((snapshot / 'src/value.ts').read_text(), 'export const value = 2;\n')
+        self.assert_parent_unchanged(parent)
+
+    def test_validate_from_git_subdirectory_does_not_skip_protected_path(self):
+        parent = self.parent_repository()
+        patch = self.write('protected-from-subdir.patch',
+            'diff --git a/package.json b/package.json\n'
+            '--- a/package.json\n+++ b/package.json\n'
+            '@@ -1 +1 @@\n-{"name":"parent"}\n+{"name":"tampered"}\n')
+        previous = Path.cwd()
+        try:
+            os.chdir(parent / 'src')
+            with self.assertRaises(bench.BenchError):
+                bench.validate_patch(patch)
+        finally:
+            os.chdir(previous)
+        self.assertEqual((parent / 'package.json').read_text(), '{"name":"parent"}\n')
+        self.assert_parent_unchanged(parent)
+
+    def test_validate_lists_source_path_despite_caller_directory_and_git_overrides(self):
+        parent = self.parent_repository()
+        subdir = parent / 'deep' / 'caller'
+        subdir.mkdir(parents=True)
+        patch = self.value_patch()
+        inherited = {
+            'GIT_DIR': str(parent / '.git'),
+            'GIT_WORK_TREE': str(parent),
+            'GIT_COMMON_DIR': str(parent / '.git'),
+            'GIT_INDEX_FILE': str(parent / '.git/index'),
+            'GIT_PREFIX': 'deep/caller/',
+        }
+        previous = Path.cwd()
+        try:
+            os.chdir(subdir)
+            with mock.patch.dict(os.environ, inherited):
+                self.assertEqual(bench.validate_patch(patch), ['src/value.ts'])
+        finally:
+            os.chdir(previous)
+        self.assert_parent_unchanged(parent)
 
 
 class SnapshotRedactionTests(unittest.TestCase):

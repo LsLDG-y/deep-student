@@ -34,5 +34,6 @@
     "seconds": 0.673,
     "engine": "local"
   },
-  "artifact_dir": "/private/tmp/ds-bench-B10-fixed-import/DS-B10"
+  "artifact_dir": "/private/tmp/ds-bench-B10-fixed-import/DS-B10",
+  "suite_version": "1.0.0"
 }

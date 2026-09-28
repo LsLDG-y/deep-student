@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-B07",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "regression_classify_every_runtime_and_derived_record"
+  ],
+  "PASS_TO_PASS": [
+    "pass_to_pass_business_records_remain_syncable"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_business_records_remain_syncable": "passed",
+      "regression_classify_every_runtime_and_derived_record": "failed"
+    },
+    "exit_code": 101,
+    "seconds": 2.129,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "pass_to_pass_business_records_remain_syncable": "passed",
+      "regression_classify_every_runtime_and_derived_record": "passed"
+    },
+    "exit_code": 0,
+    "seconds": 2.143,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-B07",
+  "suite_version": "1.0.0"
+}

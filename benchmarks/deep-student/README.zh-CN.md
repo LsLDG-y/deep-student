@@ -22,7 +22,7 @@
 
 ## 快速开始
 
-以下命令从项目根目录执行。组织者宿主需 Python 3.12+、Node/npm、Rust/Cargo、可工作的 Docker；依赖准备允许联网，解题与判分均可离线。首次构建需要下载依赖和工具链，后续复用镜像。
+以下命令从项目根目录执行。组织者宿主需 Python 3.12+、Node/npm、Rust/Cargo、可工作的 Docker；依赖准备允许联网，解题与判分均可离线。首次构建需要下载依赖和工具链，后续复用镜像。公开工作区附带不含测试答案的 Rust 模块编译入口 `.benchmark-support/rust/Cargo.toml`，可以自建用例；容器未预置完整桌面图形栈。
 
 ```sh
 # 查看环境和题目
@@ -34,18 +34,18 @@ python3 benchmarks/deep-student/build_image.py --architecture arm64
 
 # 新机器、新架构或调整了任务时，先做空解与参考解校准
 python3 benchmarks/deep-student/bench.py calibrate all \
-  --output /tmp/ds-bench-calibration
+  --output tmp/ds-bench-calibration
 
 # 给一个 Agent 开一题。命令返回独立容器名与 TASK.md 位置。
 python3 benchmarks/deep-student/bench.py sandbox DS-F12 \
-  --output /tmp/ds-trial-F12
+  --output tmp/ds-trial-F12
 ```
 
 将输出中的容器名填入后，外部 Agent 控制器只使用这样的工具入口：
 
 ```sh
 python3 benchmarks/deep-student/bench.py exec CONTAINER_NAME -- sh -lc 'cat TASK.md'
-python3 benchmarks/deep-student/bench.py exec CONTAINER_NAME -- sh -lc 'rg "关键线索" src src-tauri/src'
+python3 benchmarks/deep-student/bench.py exec CONTAINER_NAME -- sh -lc 'grep -R "关键线索" src src-tauri/src'
 ```
 
 Agent 可以读取、修改工作区源码，编写并运行自己的测试，提交 Git commit。无需保持工作区未提交；`collect` 与组织者重建的起始源码比较，不信任 Agent 可修改的 Git 标签或 HEAD。Agent 的最终说明写到 `DIAGNOSIS.md`。
@@ -54,23 +54,23 @@ Agent 可以读取、修改工作区源码，编写并运行自己的测试，�
 # Agent 交卷后，先停止其容器，再从组织者侧采集
 docker stop CONTAINER_NAME
 python3 benchmarks/deep-student/bench.py collect DS-F12 \
-  --workspace /tmp/ds-trial-F12 \
-  --output /tmp/ds-submissions/DS-F12.patch
+  --workspace tmp/ds-trial-F12 \
+  --output tmp/ds-submissions/DS-F12.patch
 
 # 单题在新容器里判分
 python3 benchmarks/deep-student/bench.py grade DS-F12 \
-  --patch /tmp/ds-submissions/DS-F12.patch \
-  --output /tmp/ds-results/DS-F12
+  --patch tmp/ds-submissions/DS-F12.patch \
+  --output tmp/ds-results/DS-F12
 
 # 全套交卷：文件名必须是 DS-B01.patch、DS-D01.patch 等题号
 python3 benchmarks/deep-student/bench.py grade-set \
-  --patch-dir /tmp/ds-submissions \
-  --output /tmp/ds-full-run
+  --patch-dir tmp/ds-submissions \
+  --output tmp/ds-full-run
 ```
 
-`grade-set` 输出 `summary.json`，每题输出 `result.json`、原始测试结果/日志、提交补丁和 `review-request.json`。所有输出路径必须是新路径，已有工作不会被整批覆盖或清理。临时与校准材料保留在 `/tmp`，由组织者另行管理。
+`grade-set` 输出 `summary.json`，每题输出 `result.json`、原始测试结果/日志、提交补丁和 `review-request.json`。所有输出路径必须是新路径，已有工作不会被整批覆盖或清理。临时与校准材料保留在仓库已忽略的 `tmp/` 下，由组织者另行管理。Colima 通常只共享 `/Users`；macOS 的 `/private/tmp` 可能不被 Docker 虚拟机共享，运行器会先实测挂载读写，失败时不开始计分。
 
-仅需要导出文件时可运行 `prepare DS-F12 --output /tmp/ds-task-F12`；导出目录本身不提供宿主隔离。维护者可信本地调试可在 `calibrate`/`grade` 上使用 `--engine local`，结果会标记 `development_not_isolated`。不要用该模式执行不可信补丁。
+仅需要导出文件时可运行 `prepare DS-F12 --output tmp/ds-task-F12`；导出目录本身不提供宿主隔离。维护者可信本地调试可在 `calibrate`/`grade` 上使用 `--engine local`，结果会标记 `development_not_isolated`。不要用该模式执行不可信补丁。
 
 ## 机器分怎么算
 
@@ -96,10 +96,10 @@ python3 benchmarks/deep-student/bench.py grade-set \
 
 ```sh
 python3 benchmarks/deep-student/bench.py reference-patch DS-F10 \
-  --output /tmp/DS-F10-reference.patch
+  --output tmp/DS-F10-reference.patch
 python3 benchmarks/deep-student/bench.py grade DS-F10 \
-  --patch /tmp/DS-F10-reference.patch \
-  --output /tmp/DS-F10-reference-result
+  --patch tmp/DS-F10-reference.patch \
+  --output tmp/DS-F10-reference-result
 ```
 
 `reference-patch` 是组织者工具，不能开放给受测 Agent。空 patch 应为 0，参考 patch 应为 100；其余修复不要求与参考 diff 一致。

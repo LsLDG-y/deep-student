@@ -1,0 +1,37 @@
+{
+  "task_id": "DS-D09",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "template math rendering F2P math text renders inside the actual isolated card preview"
+  ],
+  "PASS_TO_PASS": [
+    "template math rendering P2P code examples, attributes, plain content and HTML sanitization retain behavior"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "template math rendering F2P math text renders inside the actual isolated card preview": "failed",
+      "template math rendering P2P code examples, attributes, plain content and HTML sanitization retain behavior": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 1.05,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "template math rendering F2P math text renders inside the actual isolated card preview": "passed",
+      "template math rendering P2P code examples, attributes, plain content and HTML sanitization retain behavior": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.99,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-D09",
+  "suite_version": "1.0.0"
+}

@@ -1,0 +1,40 @@
+{
+  "task_id": "DS-D01",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "window preservation F2P editing a loaded prefix does not eat the separator before the unloaded tail",
+    "window preservation F2P loading and saving retain blank lines at window boundaries"
+  ],
+  "PASS_TO_PASS": [
+    "window preservation P2P ordinary windows and fully loaded saves keep their existing semantics"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "window preservation F2P loading and saving retain blank lines at window boundaries": "failed",
+      "window preservation F2P editing a loaded prefix does not eat the separator before the unloaded tail": "failed",
+      "window preservation P2P ordinary windows and fully loaded saves keep their existing semantics": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 1.239,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "window preservation F2P loading and saving retain blank lines at window boundaries": "passed",
+      "window preservation F2P editing a loaded prefix does not eat the separator before the unloaded tail": "passed",
+      "window preservation P2P ordinary windows and fully loaded saves keep their existing semantics": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 1.185,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-D01",
+  "suite_version": "1.0.0"
+}

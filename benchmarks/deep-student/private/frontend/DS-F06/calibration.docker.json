@@ -1,0 +1,37 @@
+{
+  "task_id": "DS-F06",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "cache capacity after temporary leases F2P reclaims all newly eligible excess on the next creation"
+  ],
+  "PASS_TO_PASS": [
+    "cache capacity after temporary leases P2P leaves active leases and the current session alive"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "cache capacity after temporary leases F2P reclaims all newly eligible excess on the next creation": "failed",
+      "cache capacity after temporary leases P2P leaves active leases and the current session alive": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 1.826,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "cache capacity after temporary leases F2P reclaims all newly eligible excess on the next creation": "passed",
+      "cache capacity after temporary leases P2P leaves active leases and the current session alive": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.875,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-F06",
+  "suite_version": "1.0.0"
+}

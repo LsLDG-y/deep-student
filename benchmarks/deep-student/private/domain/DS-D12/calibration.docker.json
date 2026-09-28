@@ -1,0 +1,40 @@
+{
+  "task_id": "DS-D12",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "bounded rename completion F2P sources beyond the scan budget are reported as unprocessed rather than full success"
+  ],
+  "PASS_TO_PASS": [
+    "bounded rename completion P2P a complete small scan rewrites links with fresh concurrency baselines",
+    "bounded rename completion P2P total discovery failure is still visible and performs no writes"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "bounded rename completion F2P sources beyond the scan budget are reported as unprocessed rather than full success": "failed",
+      "bounded rename completion P2P a complete small scan rewrites links with fresh concurrency baselines": "passed",
+      "bounded rename completion P2P total discovery failure is still visible and performs no writes": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.932,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "bounded rename completion F2P sources beyond the scan budget are reported as unprocessed rather than full success": "passed",
+      "bounded rename completion P2P a complete small scan rewrites links with fresh concurrency baselines": "passed",
+      "bounded rename completion P2P total discovery failure is still visible and performs no writes": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.819,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-D12",
+  "suite_version": "1.0.0"
+}

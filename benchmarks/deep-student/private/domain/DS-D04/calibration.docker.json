@@ -1,0 +1,43 @@
+{
+  "task_id": "DS-D04",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "visible text search F2P case folding maps expanding Unicode characters back to document positions",
+    "visible text search F2P finds a phrase split across formatting and replaces the real document range",
+    "visible text search F2P repetitive text produces disjoint replacement ranges"
+  ],
+  "PASS_TO_PASS": [
+    "visible text search P2P hard breaks remain barriers while plain search options work"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "visible text search F2P finds a phrase split across formatting and replaces the real document range": "failed",
+      "visible text search F2P case folding maps expanding Unicode characters back to document positions": "failed",
+      "visible text search F2P repetitive text produces disjoint replacement ranges": "failed",
+      "visible text search P2P hard breaks remain barriers while plain search options work": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.938,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "visible text search F2P finds a phrase split across formatting and replaces the real document range": "passed",
+      "visible text search F2P case folding maps expanding Unicode characters back to document positions": "passed",
+      "visible text search F2P repetitive text produces disjoint replacement ranges": "passed",
+      "visible text search P2P hard breaks remain barriers while plain search options work": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.884,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-D04",
+  "suite_version": "1.0.0"
+}

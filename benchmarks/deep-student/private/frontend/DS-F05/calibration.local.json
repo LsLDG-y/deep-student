@@ -31,5 +31,6 @@
     "seconds": 0.878,
     "engine": "local"
   },
-  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F05"
+  "artifact_dir": "/private/tmp/ds-bench-release-local-20260928/DS-F05",
+  "suite_version": "1.0.0"
 }

@@ -26,5 +26,5 @@
   "pass_to_pass_tests": 1,
   "fail_to_pass_tests": 1,
   "redactions_file": null,
-  "family": "database_migration"
+  "family": "sync-squash"
 }

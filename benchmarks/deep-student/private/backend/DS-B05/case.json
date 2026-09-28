@@ -10,8 +10,8 @@
   },
   "problem_zh": "题库生成遇到很长的单条流式事件时，网络分片越细，客户端 CPU 消耗越明显，界面长时间停顿，弱设备上甚至中断。请优化解析路径，在固定大小事件被大量小分片送达时保持近线性处理；不要丢失 Unicode、事件元数据、结束标记或清空后的新数据。",
   "estimated_minutes": 65,
-  "test_scope": "Complete production SSE buffer and UTF-8 decoder. Fixed 2 MB / 2 million chunk workload, 3 s runtime budget; release mode required. Anchor measured 0.06 s locally. Candidate status until Linux reference calibration succeeds.",
-  "status": "candidate_performance_requires_linux_calibration",
+  "test_scope": "Complete production SSE buffer and UTF-8 decoder. Fixed 2 MB / 2 million chunk workload, 3 s runtime budget; release mode required and compile time excluded. Calibrated in the Linux ARM64 Docker evaluator: buggy event processing took 57.644849902 s; the reference test binary completed both tests in approximately 0.03 s. Recalibrate when architecture or resource limits change.",
+  "status": "ready",
   "id": "DS-B05",
   "patch_files": [
     "src-tauri/src/utils/sse_buffer.rs"

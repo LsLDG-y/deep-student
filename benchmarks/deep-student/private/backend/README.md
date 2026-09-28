@@ -21,7 +21,7 @@ For Rust cases, run `DS_SOURCE_ROOT=/absolute/candidate cargo test --release --l
 
 DS-B06 uses `DS_SOURCE_ROOT=/absolute/candidate python3 /private/backend/DS-B06/test.py`. Fixtures include NULL-source collisions, already normalized identities, two independent APKG cards, error cards, existing tombstones, idempotent replay and byte-preserved metadata.
 
-DS-B10 imports from a matching repository-relative location and can use the supplied `vitest.config.ts`, or the unified evaluator can rewrite its static import prefix when staging the private test. Its source imports must resolve to candidate modules. Timer control is confined to the test; production guard implementations remain real.
+DS-B10 imports production modules through the workspace `@/` alias configured by the supplied Vitest runner. The same imports work in local and Docker snapshots and resolve to candidate modules. Timer control is confined to the test; production guard implementations remain real.
 
 ## Preparation and leakage
 
@@ -31,7 +31,7 @@ Some historical fixes were squash commits. DS-B06/08/09 document precisely what 
 
 ## Performance case qualification
 
-DS-B05 remains `candidate_performance_requires_linux_calibration` until the standard Linux evaluator is calibrated. In the author environment, the 2 MB / 2 million tiny-chunk production workload took approximately 0.06 seconds at the reference and 51 seconds with the historical parser; its reference budget is 3 seconds. Compile time is excluded from the assertion. This large observed margin is promising but does not establish a Linux/VM runtime contract. Exclude this case from the scored core if the reference lacks adequate margin there. Do not silently count timeouts, compile errors or infrastructure failures as behavioral bug detections.
+DS-B05 is `ready` following calibration in the Linux ARM64 Docker evaluator using `deep-student-bench:1.0` (image `sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1`). The release-mode production workload is 2 MB delivered in 2 million tiny chunks, with a 3-second event-processing budget that excludes compilation. The buggy parser took 57.644849902 seconds to process the event and failed the performance assertion while retaining the pass-to-pass behavior. The reference passed both tests, whose combined test-binary runtime was approximately 0.03 seconds; this is not a separate timing of the performance test. The command totals recorded in `DS-B05/calibration.docker.json` are 60.077 seconds for the buggy version and 2.321 seconds for the reference and include command/compile overhead, so they must not be used as the performance assertion measurements. Recalibrate under any new architecture or resource limits, and exclude this case from the scored core if the reference lacks adequate margin there. Do not silently count timeouts, compile errors or infrastructure failures as behavioral bug detections.
 
 ## Scope limits
 

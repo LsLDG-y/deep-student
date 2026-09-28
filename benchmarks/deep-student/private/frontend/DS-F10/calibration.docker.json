@@ -1,0 +1,37 @@
+{
+  "task_id": "DS-F10",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "card approval protocol identity F2P exposes the same field diff for supported MCP names"
+  ],
+  "PASS_TO_PASS": [
+    "card approval protocol identity P2P keeps builtin approvals and ignores unrelated or incomplete payloads"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "card approval protocol identity F2P exposes the same field diff for supported MCP names": "failed",
+      "card approval protocol identity P2P keeps builtin approvals and ignores unrelated or incomplete payloads": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 1.354,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "card approval protocol identity F2P exposes the same field diff for supported MCP names": "passed",
+      "card approval protocol identity P2P keeps builtin approvals and ignores unrelated or incomplete payloads": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 1.508,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-F10",
+  "suite_version": "1.0.0"
+}

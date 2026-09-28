@@ -252,12 +252,22 @@ def snapshot(dest):
             target.chmod(member.mode & 0o777)
 
 
+def patch_environment(source):
+    # Exported snapshots may live below another repository (e.g. <repo>/tmp).
+    # Git otherwise discovers that parent and silently skips unrelated paths.
+    inherited_context = {'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE', 'GIT_PREFIX'}
+    env = {key: value for key, value in os.environ.items() if key not in inherited_context}
+    env['GIT_CEILING_DIRECTORIES'] = str(source.resolve().parent)
+    return env
+
+
 def apply_patch(source, patch, *, reverse=False):
     cmd = ['git', '-c', 'core.hooksPath=/dev/null', 'apply', '--whitespace=nowarn']
     if reverse:
         cmd.append('--reverse')
-    run(cmd + ['--check', str(patch.resolve())], cwd=source)
-    run(cmd + [str(patch.resolve())], cwd=source)
+    env = patch_environment(source)
+    run(cmd + ['--check', str(patch.resolve())], cwd=source, env=env)
+    run(cmd + [str(patch.resolve())], cwd=source, env=env)
 
 
 def sanitize(source, case):
@@ -299,7 +309,12 @@ def task_text(case):
 可提交的生产代码范围：src/、src-tauri/src/、src-tauri/migrations/。
 依赖、测试配置、评测器不是本题修复对象；可以自建本地测试，但它们不替代隐藏判分。
 建议时间预算：{SUITE['agent_budget_minutes']} 分钟。时间与 token 消耗由外部 Agent 驱动器记录。
-需要界面验证时，遵循项目要求运行 `npm run tauri dev`，不要使用 demo 页面。
+前端可自建 tests/*.test.ts(x) 后运行 `npm test -- --configLoader runner`。
+Rust 的公开模块编译入口为 `.benchmark-support/rust/Cargo.toml`，没有隐藏测试；
+可在该目录 tests/ 下添加自己的用例，再运行
+`DS_SOURCE_ROOT=$PWD cargo test --release --offline --manifest-path .benchmark-support/rust/Cargo.toml`。
+本镜像未预置完整原生桌面的图形/编译栈；本轮没有视觉验收题。
+若另行进行界面验证，按项目要求使用 `npm run tauri dev`，不要使用 demo 页面。
 本套机器判分覆盖生产模块与协议行为，不声称验证了完整桌面 UI 或真实云服务。
 '''
 
@@ -319,6 +334,11 @@ def init_public_git(source):
 def prepare(case, output):
     prepare_source(case, output)
     install_support(output)
+    support = output / '.benchmark-support' / 'rust'
+    for name in ['Cargo.toml', 'Cargo.lock', 'build.rs', 'src/lib.rs']:
+        target = support / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(HERE / 'private/backend/harness' / name, target)
     public_config = (HERE / 'runtime/vitest.config.mts').read_text().replace(
         "['.benchmark-tests/**/*.{test,spec}.{ts,tsx}']",
         "['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}']")
@@ -330,16 +350,22 @@ def prepare(case, output):
 
 def sandbox(case, output, image):
     result = prepare(case, output)
+    # Some VM file shares map host ownership to root. This is an isolated,
+    # newly exported task tree, never the original repository.
+    for p in [output, *output.rglob('*')]:
+        if not p.is_symlink():
+            p.chmod(p.stat().st_mode | (0o777 if p.is_dir() else 0o666))
+    check_docker_mount(output, image)
     (output / 'node_modules').symlink_to('/opt/deps/node_modules', target_is_directory=True)
     name = 'ds-bench-' + uuid.uuid4().hex[:12]
     command = ['docker', 'run', '-d', '--name', name, '--network', 'none', '--read-only',
                '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--pids-limit', '256',
                '--memory', '4g', '--cpus', '2', '--user', f'{os.getuid()}:{os.getgid()}',
-               '--tmpfs', '/tmp:rw,nosuid,nodev,size=2g', '-e', 'HOME=/tmp/home',
+               '--tmpfs', '/tmp:rw,exec,nosuid,nodev,size=2g', '-e', 'HOME=/tmp/home',
                '-e', 'CARGO_TARGET_DIR=/tmp/cargo-target', '-e', 'CARGO_HOME=/tmp/cargo-home', '-e', 'DS_SOURCE_ROOT=/workspace',
                '--label', f'ds.bench.suite={SUITE["version"]}', '--label', f'ds.bench.task={case["id"]}',
                '-v', f'{output}:/workspace:rw', '-w', '/workspace', image,
-               'sh', '-c', 'mkdir -p /tmp/home /tmp/cargo-home && cp /usr/local/cargo/config.toml /tmp/cargo-home/config.toml && exec sleep infinity']
+               'sh', '-c', 'mkdir -p /tmp/home /tmp/cargo-home && git config --global --add safe.directory /workspace && cp /usr/local/cargo/config.toml /tmp/cargo-home/config.toml && cp -a /opt/cargo-target /tmp/cargo-target && exec sleep infinity']
     run(command)
     result.update({'container': name, 'network': 'none', 'image': image,
                    'tool_example': f'python3 {HERE / "bench.py"} exec {name} -- sh -lc "cat TASK.md"',
@@ -385,7 +411,8 @@ def validate_patch(patch):
     if not text.strip():
         return []
     # Git's parser, rather than diff header string splitting, resolves changed paths.
-    p = run(['git', 'apply', '--numstat', '-z', str(patch.resolve())])
+    p = run(['git', 'apply', '--numstat', '-z', str(patch.resolve())],
+            cwd=patch.resolve().parent, env=patch_environment(patch.resolve().parent))
     paths = []
     for record in p.stdout.split(b'\0'):
         if not record:
@@ -495,6 +522,8 @@ def parse_vitest(report, exit_code):
 
 def evaluate_source(case, source, out, engine, image):
     out.mkdir(parents=True, exist_ok=False)
+    if engine == 'docker':
+        out.chmod(0o777)
     runner = case.get('runner', 'vitest')
     if isinstance(runner, dict):
         runner = runner.get('kind', 'vitest')
@@ -565,7 +594,7 @@ def evaluate_native(case, source, out, engine, image):
         container = 'ds-eval-' + uuid.uuid4().hex[:12]
         cmd = ['docker', 'run', '--rm', '--name', container, '--network', 'none', '--read-only', '--cap-drop', 'ALL',
                '--security-opt', 'no-new-privileges', '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
-               '--user', f'{os.getuid()}:{os.getgid()}', '--tmpfs', '/tmp:rw,nosuid,nodev,size=2g',
+               '--user', f'{os.getuid()}:{os.getgid()}', '--tmpfs', '/tmp:rw,exec,nosuid,nodev,size=2g',
                '-e', 'DS_SOURCE_ROOT=/workspace', '-e', 'CARGO_TARGET_DIR=/tmp/cargo-target', '-e', 'CARGO_HOME=/tmp/cargo-home',
                '-v', f'{source}:/workspace:ro', '-v', f'{out}:/results:rw', '-w', '/workspace', image]
         if runner == 'cargo':
@@ -602,15 +631,31 @@ def image_identity(image):
     return run(['docker', 'image', 'inspect', '--format', '{{.Id}}', image]).stdout.decode().strip()
 
 
+def check_docker_mount(folder, image):
+    """Verify the actual daemon sees this path before grading any submission."""
+    folder.chmod(0o777)
+    (folder / '.mount-read').write_text('DeepStudent benchmark mount probe\n')
+    command = ['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
+               '--user', f'{os.getuid()}:{os.getgid()}', '--mount', f'type=bind,source={folder},target=/probe',
+               image, 'python3', '-c',
+               "from pathlib import Path; assert Path('/probe/.mount-read').read_text() == 'DeepStudent benchmark mount probe\\n'; Path('/probe/.mount-write').write_text('ok')"]
+    p = run(command, check=False)
+    if p.returncode or not (folder / '.mount-write').is_file():
+        raise BenchError('Docker cannot read/write this host path. Use a Docker-shared path (on Colima, use <repo>/tmp rather than macOS /private/tmp). Details: ' + p.stderr.decode(errors='replace')[-2000:])
+
+
 def calibrate(selected, output, engine, image):
     output.mkdir(parents=True, exist_ok=False)
     results = []
     image_id = image_identity(image) if engine == 'docker' else None
+    if engine == 'docker':
+        check_docker_mount(output, image)
     for case in selected:
         task = output / case['id']
         task.mkdir()
         print(f"calibrate {case['id']}", file=sys.stderr, flush=True)
-        row = {'task_id': case['id'], 'source_commit': ANCHOR, 'engine': engine, 'image_id': image_id}
+        row = {'task_id': case['id'], 'suite_version': SUITE['version'], 'source_commit': ANCHOR,
+               'engine': engine, 'image_id': image_id}
         try:
             bad, good = task / 'buggy', task / 'reference'
             prepare_source(case, bad)
@@ -656,22 +701,25 @@ def grade(case, patch, output, engine, image):
               'protocol': 'isolated_grading_only' if engine == 'docker' else 'development_not_isolated',
               'status': 'invalid', 'resolved': False, 'score': 0}
     try:
+        submission = output / 'submission.patch'
+        shutil.copyfile(patch, submission)
+        if engine == 'docker':
+            check_docker_mount(output, image)
         cal_path = calibration_path(case, engine)
         if not cal_path.is_file():
             raise BenchError(f'run calibration for {case["id"]} on {engine} first')
         cal = json.loads(cal_path.read_text())
-        if not cal['valid'] or cal['source_commit'] != ANCHOR:
-            raise BenchError('task is not calibrated at the pinned anchor')
+        if not cal['valid'] or cal['source_commit'] != ANCHOR or cal.get('suite_version') != SUITE['version']:
+            raise BenchError('task is not calibrated for this suite version and pinned anchor')
         if engine == 'docker':
             result['image_id'] = image_identity(image)
             if result['image_id'] != cal.get('image_id'):
                 raise BenchError('container image changed since calibration; calibrate this image first')
-        result['changed_files'] = validate_patch(patch)
+        result['changed_files'] = validate_patch(submission)
         source = output / 'source'
         prepare_source(case, source)
-        if patch.read_text().strip():
-            apply_patch(source, patch)
-        shutil.copyfile(patch, output / 'submission.patch')
+        if submission.read_text().strip():
+            apply_patch(source, submission)
         measured = evaluate_source(case, source, output / 'evaluation', engine, image)
         result.update(score_tests(cal, measured))
         result['status'] = 'resolved' if result['resolved'] else ('unresolved' if measured['valid'] else 'execution_error')
@@ -684,7 +732,8 @@ def grade(case, patch, output, engine, image):
         shutil.copyfile(diagnosis, output / 'DIAGNOSIS.md')
     dump(output / 'review-request.json', {
         'schema_version': 1, 'task_id': case['id'], 'machine_result': 'result.json',
-        'submission_patch': 'submission.patch', 'diagnosis': 'DIAGNOSIS.md' if diagnosis.is_file() else None,
+        'submission_patch': 'submission.patch' if (output / 'submission.patch').is_file() else None,
+        'diagnosis': 'DIAGNOSIS.md' if diagnosis.is_file() else None,
         'maintainer_case': str(case['_dir'] / 'case.json'),
         'reference_calibration': str(calibration_path(case, engine)),
         'review_status': 'pending', 'review_response_schema': str(HERE / 'review-response.schema.json'),
@@ -695,9 +744,13 @@ def grade(case, patch, output, engine, image):
 
 def summary(input_dir, output):
     rows = []
-    for p in input_dir.rglob('result.json'):
+    # Candidate source and raw evaluation output live below task directories too.
+    # Only the organizer's direct per-task result is authoritative.
+    for p in input_dir.glob('*/result.json'):
         row = json.loads(p.read_text())
         if 'task_id' in row and 'score' in row:
+            if p.parent.name != row['task_id']:
+                raise BenchError('result directory does not match task id')
             rows.append(row)
     by_id = collections.defaultdict(list)
     for row in rows:

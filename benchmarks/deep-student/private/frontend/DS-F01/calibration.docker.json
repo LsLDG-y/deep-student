@@ -1,0 +1,37 @@
+{
+  "task_id": "DS-F01",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "image readiness contract F2P accepts uploaded pixels while optional analysis is pending"
+  ],
+  "PASS_TO_PASS": [
+    "image readiness contract P2P retains reported OCR and does not invent PDF pixels"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "image readiness contract F2P accepts uploaded pixels while optional analysis is pending": "failed",
+      "image readiness contract P2P retains reported OCR and does not invent PDF pixels": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.825,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "image readiness contract F2P accepts uploaded pixels while optional analysis is pending": "passed",
+      "image readiness contract P2P retains reported OCR and does not invent PDF pixels": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.817,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-F01",
+  "suite_version": "1.0.0"
+}

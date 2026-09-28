@@ -1,7 +1,7 @@
 """Run actual production migration in SQLite, including its historical dedup index."""
 import os, sqlite3, unittest
 from pathlib import Path
-ROOT=Path(os.environ.get('DS_SOURCE_ROOT', Path(__file__).resolve().parents[5]))
+ROOT=Path(os.environ['DS_SOURCE_ROOT'])
 SQL=ROOT/'src-tauri/migrations/mistakes/V20260824__normalize_anki_card_optional_json.sql'
 class Migration(unittest.TestCase):
  def setUp(self):

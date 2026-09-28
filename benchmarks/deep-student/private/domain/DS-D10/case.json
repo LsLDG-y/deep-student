@@ -16,5 +16,5 @@
   "problem_zh": "导入的填空卡在原模板不可用时退回普通文本，题面暴露了应该隐藏的答案。多空卡还需要保留其导入时对应的空位身份。请恢复正反面语义，并保持普通无模板卡的显示。",
   "estimated_minutes": 45,
   "reference_changed_lines": 5,
-  "family": "flashcard_rendering"
+  "family": "anki-face"
 }

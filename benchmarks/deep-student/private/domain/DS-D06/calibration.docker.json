@@ -1,0 +1,40 @@
+{
+  "task_id": "DS-D06",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "docker",
+  "image_id": "sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "save operation ownership F2P obsolete save reject cannot mutate a later load of the same ID",
+    "save operation ownership F2P obsolete save resolve cannot mutate a later load of the same ID"
+  ],
+  "PASS_TO_PASS": [
+    "save operation ownership P2P a current save still commits clean state and metadata"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "save operation ownership F2P obsolete save resolve cannot mutate a later load of the same ID": "failed",
+      "save operation ownership F2P obsolete save reject cannot mutate a later load of the same ID": "failed",
+      "save operation ownership P2P a current save still commits clean state and metadata": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.979,
+    "engine": "docker"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "save operation ownership F2P obsolete save resolve cannot mutate a later load of the same ID": "passed",
+      "save operation ownership F2P obsolete save reject cannot mutate a later load of the same ID": "passed",
+      "save operation ownership P2P a current save still commits clean state and metadata": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.929,
+    "engine": "docker"
+  },
+  "artifact_dir": "/Users/heli/code/deep-student/tmp/ds-bench-release-docker-20260928/DS-D06",
+  "suite_version": "1.0.0"
+}
