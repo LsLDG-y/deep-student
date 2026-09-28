@@ -128,6 +128,7 @@ python3 benchmarks/deep-student/bench.py grade DS-F10 \
 
 ## 文件入口
 
+- `OPENCODE.zh-CN.md`：OpenCode 官方 DeepSeek 的隔离执行、用量记录和全套评分入口。
 - `CATALOG.zh-CN.md`：34 题目录、难度、改动量、历史出处与执行范围。
 - `HISTORY.zh-CN.md`：872 条历史的筛选结论、真实补修链、大重构等排除项。
 - `RESEARCH.zh-CN.md`：SWE-bench、Pro V2、Live、Harbor 的官方资料和取舍。
