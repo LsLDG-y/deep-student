@@ -1,0 +1,19 @@
+{
+  "id": "DS-D06",
+  "title": "同一导图重载后被旧保存回执污染",
+  "category": "mindmap/async-save-aba",
+  "difficulty": 4,
+  "history": {
+    "fix_commit": "482201b2e04b5033118b6881b6ff51457a3a52f9",
+    "related_commits": [],
+    "evidence": "482201b2e 为保存捕获 documentGeneration，并在成功/失败两条回执路径验证；本题仅去掉这两个回执检查，保留加载顺序保护。与 DS-D07 同提交但不变量为 save ABA。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/mindmap/store/mindmapStore.ts"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "导图保存尚未返回时重新加载同一份导图，之后继续编辑；旧保存成功会把新编辑标成已保存，旧保存冲突有时又触发意外重载。请确保异步保存结果只影响其所属的文档实例，不能仅靠相同 ID 或版本值判断。",
+  "estimated_minutes": 65,
+  "reference_changed_lines": 2
+}

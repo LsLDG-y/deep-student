@@ -1,0 +1,31 @@
+{
+  "id": "DS-D04",
+  "title": "富文本搜索结果与用户看到的文本不一致",
+  "category": "editor/text-projection",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "062870732be4a26b77d3ceabcc554c024e5c2593",
+    "related_commits": [],
+    "evidence": "062870732 的历史 diff 同时引入 textblock 投影、大小写折叠偏移映射及不重叠匹配；本题回移旧逐 text node 搜索实现，保留后续 Worker 正则能力。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/components/crepe/plugins/searchHighlight.ts"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "笔记中肉眼连续的词被局部加粗或斜体后搜索不到。某些 Unicode 大小写不敏感搜索与重复文本的全部替换还会产生错误位置。请让搜索和替换遵循实际可见文本与文档位置，同时不要跨越硬换行。",
+  "estimated_minutes": 60,
+  "reference_changed_lines": 15,
+  "redactions": [
+    {
+      "path": "src/components/crepe/plugins/searchHighlight.ts",
+      "old": "/**\n * Flatten one textblock so adjacent text nodes separated only by marks remain\n * searchable as a single string. Non-text inline nodes are explicit barriers:\n * a match must never jump across a hard break, image, mention, or other atom.\n */\n",
+      "new": "/** Create a searchable projection of one text block. */\n"
+    },
+    {
+      "path": "src/components/crepe/plugins/searchHighlight.ts",
+      "old": "    // Search/replace semantics use non-overlapping matches. Advancing one\n    // character after an accepted match makes replace-all ranges overlap\n    // (for example, \"aaaa\" / \"aa\") and corrupts the transaction.\n",
+      "new": "    // Advance to the next match.\n"
+    }
+  ]
+}

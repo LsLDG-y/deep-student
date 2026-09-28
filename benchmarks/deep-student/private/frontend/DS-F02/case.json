@@ -1,0 +1,30 @@
+{
+  "id": "DS-F02",
+  "title": "删除一个附件导致其他引用一起失效",
+  "category": "shared_resource_lifetime",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "00ca3c7ca1da14d6642d0de13565fe1796ebc03b",
+    "related_commits": [],
+    "evidence": "00ca3c7ca 在 store 层 removeAttachment 添加同会话与跨会话持有者判断，同时保护 ContextRef 和 blob URL。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/core/store/sessionActions.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "同一文档被重复添加或被多个聊天会话引用后，移除其中一个附件会让仍保留的附件停止处理、引用丢失或预览失效。请让移除操作只释放真正无人使用的共享资源；最后一个持有者移除后仍须正常清理。",
+  "estimated_minutes": 55,
+  "reference_changed_lines": 11,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

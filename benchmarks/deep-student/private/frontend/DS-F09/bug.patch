@@ -1,0 +1,10 @@
+--- a/src/features/chat/skills/artifactSkeleton.ts
++++ b/src/features/chat/skills/artifactSkeleton.ts
+@@ -160,7 +160,6 @@
+   skeletonRef?: string,
+ ): { skillId: string; artifact: SkillArtifactDeclaration } | null {
+   if (skeletonRef) {
+-    if (!activeSkillIds.includes(skeletonRef)) return null;
+     const skill = getSkill(skeletonRef);
+     if (skill?.artifact?.intentSkeleton) {
+       return { skillId: skill.id, artifact: skill.artifact };

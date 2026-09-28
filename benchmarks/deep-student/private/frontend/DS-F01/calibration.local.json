@@ -1,0 +1,35 @@
+{
+  "task_id": "DS-F01",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "image readiness contract F2P accepts uploaded pixels while optional analysis is pending"
+  ],
+  "PASS_TO_PASS": [
+    "image readiness contract P2P retains reported OCR and does not invent PDF pixels"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "image readiness contract F2P accepts uploaded pixels while optional analysis is pending": "failed",
+      "image readiness contract P2P retains reported OCR and does not invent PDF pixels": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.847,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "image readiness contract F2P accepts uploaded pixels while optional analysis is pending": "passed",
+      "image readiness contract P2P retains reported OCR and does not invent PDF pixels": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.651,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-core-smoke-1/DS-F01"
+}

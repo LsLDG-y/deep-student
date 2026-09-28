@@ -1,0 +1,30 @@
+{
+  "id": "DS-F09",
+  "title": "未激活模板引起产物错误降级",
+  "category": "skill_scope",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "54abb2fa71dc0405991fcc8c2e9b24d3cb162e7f",
+    "related_commits": [],
+    "evidence": "54abb2fa7 在 findActiveArtifactSkill 的 skeletonRef 分支补已激活集合验证；原逻辑只要全局 getSkill 找得到便参与验证。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/skills/artifactSkeleton.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "Agent 生成产物时引用了一个已安装但未在本会话激活的模板，应用却按该模板进行布局校验并显示降级提示。请使模板校验遵循会话可见范围，同时保持已激活模板的布局校验。",
+  "estimated_minutes": 35,
+  "reference_changed_lines": 1,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

@@ -1,0 +1,16 @@
+--- a/src/features/chat/hooks/useSessionManagement.ts
++++ b/src/features/chat/hooks/useSessionManagement.ts
+@@ -113,11 +113,8 @@
+       : null;
+ 
+     if (grouped || ungrouped) {
+-      const mergedById = new Map<string, ChatSession>();
+-      [...(grouped ?? []), ...(ungrouped ?? [])].forEach((session) => {
+-        mergedById.set(session.id, session);
+-      });
+-      const merged = [...mergedById.values()].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
++      const merged = [...(grouped ?? []), ...(ungrouped ?? [])]
++        .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
+       setSessions(merged);
+       setHasMoreUngrouped((ungrouped?.length ?? 0) >= SESSION_LIST_PAGE_SIZE);
+     } else {

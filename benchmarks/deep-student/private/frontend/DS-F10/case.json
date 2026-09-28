@@ -1,0 +1,30 @@
+{
+  "id": "DS-F10",
+  "title": "不同工具命名通道缺失字段差异预览",
+  "category": "tool_protocol_normalization",
+  "difficulty": 1,
+  "history": {
+    "fix_commit": "54abb2fa71dc0405991fcc8c2e9b24d3cb162e7f",
+    "related_commits": [],
+    "evidence": "54abb2fa7 把仅去除 builtin- 的识别替换为共享 normalizeToolName，补 executor 已接受的 mcp_ 和 mcp.tools. 命名通道。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/components/input-bar/AnkiCardUpdateDiff.tsx"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "修改 Anki 库卡的审批在部分工具调用通道只有原始参数，没有字段前后差异；同样的卡片修改从另一个通道则正常显示。请统一受支持的工具身份识别，同时不要把无关工具或不完整参数当作卡片更新。",
+  "estimated_minutes": 20,
+  "reference_changed_lines": 5,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

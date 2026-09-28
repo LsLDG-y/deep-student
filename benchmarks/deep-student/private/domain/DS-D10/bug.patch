@@ -1,0 +1,15 @@
+diff --git a/src/components/anki/AnkiTemplateCardFace.tsx b/src/components/anki/AnkiTemplateCardFace.tsx
+--- a/src/components/anki/AnkiTemplateCardFace.tsx
++++ b/src/components/anki/AnkiTemplateCardFace.tsx
+@@ -106,11 +106,6 @@
+   const plainText = fallbackText ?? defaultFaceText(card, side);
+   const previewHtml = useMemo(() => {
+     if (htmlContent) return renderCardTemplateMath(htmlContent);
+-    if (!template && extractClozeOrdinals(plainText).length > 0) {
+-      return renderCardTemplateMath(applyClozeMarkup(plainText, {
+-        side, ordinal: resolveClozeOrdinal(card),
+-      }));
+-    }
+     return '';
+   }, [htmlContent, template, plainText, card, side]);
+ 

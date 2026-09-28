@@ -1,0 +1,33 @@
+{
+  "id": "DS-F01",
+  "title": "图片已上传但发送门控仍等待",
+  "category": "attachment_readiness",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "3df6f8878e95ed5187f24a6baa900f7c9cfe1763",
+    "related_commits": [
+      "aaa90fbb0",
+      "784964fb9"
+    ],
+    "evidence": "3df6f8878 的 injectModeUtils diff 将 ready/processing 图片原图并入真实模式；784964fb9 只补无 processingStatus 的 ready 图片，未覆盖有空 readyModes 的路径。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/components/input-bar/injectModeUtils.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "已完成上传的图片在聊天输入区显示就绪或处理中，但发送仍被附件未就绪拦住，尤其当后台分析进度尚未回报可用模式时。请修复发送就绪判定，并保持 PDF 与用户选择的注入模式语义。",
+  "estimated_minutes": 35,
+  "reference_changed_lines": 35,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

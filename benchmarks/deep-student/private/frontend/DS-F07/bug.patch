@@ -1,0 +1,14 @@
+--- a/src/features/chat/adapters/TauriAdapter.ts
++++ b/src/features/chat/adapters/TauriAdapter.ts
+@@ -5008,10 +5008,7 @@
+       normalizedOverrideId = undefined;
+     }
+ 
+-    // 仅"用户显式固定"的会话才尊重其持久化 modelId；未固定会话一律忽略
+-    // （可能是旧版本烘焙的 fallback 残留），直接取当前全局默认，保证
+-    // "模型分配"切换后会话跟随新默认。
+-    const candidateModelId = pinnedByUser ? modelId : undefined;
++    const candidateModelId = modelId;
+     const normalizedModelId = await this.resolveEffectiveChatModelId(candidateModelId, validIds);
+     const effectiveModelId = normalizedOverrideId || normalizedModelId;
+     const modelInfo = getModelInfoByConfigId(effectiveModelId);

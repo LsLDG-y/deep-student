@@ -1,0 +1,26 @@
+{
+  "id": "DS-D12",
+  "title": "笔记改名后部分双链遗漏却报告全部同步",
+  "category": "notes/bounded-scan-reporting",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "4c97052b86aa2ae5a4320da684f7c5d97e44f219",
+    "related_commits": [],
+    "evidence": "4c97052b8 将 findRenameSources 从截断数组升级为 refs+truncated，并传播至 summary；本题回移历史中截断不可见的结果语义而保留现有接口。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/workbench/apps/notes/wikilinkRenameSync.ts"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "一篇被很多笔记引用的文章改名后，部分引用仍指向旧标题，界面却无法区分“已处理的都成功”与“所有来源都处理完”。请在保留有界扫描的前提下准确报告是否仍有未处理来源，并保持双链后缀和并发写入保护。",
+  "estimated_minutes": 30,
+  "reference_changed_lines": 2,
+  "redactions": [
+    {
+      "path": "src/features/workbench/apps/notes/wikilinkRenameSync.ts",
+      "old": "  /**\n   * C14：候选来源超过有界扫描预算被截断时为 true。宿主不能把本批成功\n   * 表达为“全库引用均已同步”，应提示仍可能有未处理来源。\n   */\n",
+      "new": "  /** Whether source discovery was truncated. */\n"
+    }
+  ]
+}

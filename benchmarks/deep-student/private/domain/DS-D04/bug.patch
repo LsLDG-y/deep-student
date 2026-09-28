@@ -1,0 +1,27 @@
+diff --git a/src/components/crepe/plugins/searchHighlight.ts b/src/components/crepe/plugins/searchHighlight.ts
+--- a/src/components/crepe/plugins/searchHighlight.ts
++++ b/src/components/crepe/plugins/searchHighlight.ts
+@@ -284,13 +284,18 @@
+   const useRegex = options.useRegex ?? false;
+   // User regex execution is ONLY allowed inside the terminable worker below.
+   if (useRegex) return [];
++  const q = caseSensitive ? query : query.toLowerCase();
+   const matches: SearchMatch[] = [];
+   doc.descendants((node, pos) => {
+-    if (!node.isTextblock) return true;
+-    const projection = projectTextblock(node, pos);
+-    for (const match of collectMatchesInTextblock(projection, query, caseSensitive, wholeWord)) matches.push(match);
+-    // Text children were consumed as one projection; do not visit them again.
+-    return false;
++    if (!node.isText || !node.text) return;
++    const raw = node.text;
++    const text = caseSensitive ? raw : raw.toLowerCase();
++    let idx = text.indexOf(q);
++    while (idx !== -1) {
++      const end = idx + q.length;
++      if (!wholeWord || isWholeWordMatch(raw, idx, end)) matches.push({ from: pos + idx, to: pos + end });
++      idx = text.indexOf(q, idx + 1);
++    }
+   });
+   return matches;
+ }

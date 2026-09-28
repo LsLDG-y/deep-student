@@ -1,0 +1,38 @@
+{
+  "task_id": "DS-D01",
+  "source_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "engine": "local",
+  "valid": true,
+  "FAIL_TO_PASS": [
+    "window preservation F2P editing a loaded prefix does not eat the separator before the unloaded tail",
+    "window preservation F2P loading and saving retain blank lines at window boundaries"
+  ],
+  "PASS_TO_PASS": [
+    "window preservation P2P ordinary windows and fully loaded saves keep their existing semantics"
+  ],
+  "buggy": {
+    "valid": true,
+    "tests": {
+      "window preservation F2P loading and saving retain blank lines at window boundaries": "failed",
+      "window preservation F2P editing a loaded prefix does not eat the separator before the unloaded tail": "failed",
+      "window preservation P2P ordinary windows and fully loaded saves keep their existing semantics": "passed"
+    },
+    "exit_code": 1,
+    "runtime_errors": 0,
+    "seconds": 0.87,
+    "engine": "local"
+  },
+  "reference": {
+    "valid": true,
+    "tests": {
+      "window preservation F2P loading and saving retain blank lines at window boundaries": "passed",
+      "window preservation F2P editing a loaded prefix does not eat the separator before the unloaded tail": "passed",
+      "window preservation P2P ordinary windows and fully loaded saves keep their existing semantics": "passed"
+    },
+    "exit_code": 0,
+    "runtime_errors": 0,
+    "seconds": 0.839,
+    "engine": "local"
+  },
+  "artifact_dir": "/private/tmp/ds-bench-core-smoke-1/DS-D01"
+}

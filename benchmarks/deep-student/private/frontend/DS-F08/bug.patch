@@ -1,0 +1,15 @@
+--- a/src/features/chat/components/input-bar/InputBarV2.tsx
++++ b/src/features/chat/components/input-bar/InputBarV2.tsx
+@@ -487,10 +487,8 @@
+     }, [store]);
+ 
+     const currentModelInfo = useMemo(
+-      // 未固定会话：用全局默认 config ID 精确匹配，避免同名模型跨供应商误匹配
+-      // 已固定会话：用会话持久化的 modelId 精确匹配
+-      () => availableModels?.find((model) => model.id === effectiveUnpinnedModelId),
+-      [availableModels, effectiveUnpinnedModelId]
++      () => availableModels?.find((model) => matchesModelIdentity(model, [modelId, modelDisplayName])),
++      [availableModels, modelDisplayName, modelId]
+     );
+ 
+     const runtimeOverrideModelInfo = useMemo(

@@ -1,0 +1,12 @@
+diff --git a/src/features/workbench/apps/notes/wikilinkRenameSync.ts b/src/features/workbench/apps/notes/wikilinkRenameSync.ts
+--- a/src/features/workbench/apps/notes/wikilinkRenameSync.ts
++++ b/src/features/workbench/apps/notes/wikilinkRenameSync.ts
+@@ -160,7 +160,7 @@
+     .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+   return {
+     refs: sorted.slice(0, RENAME_SYNC_SOURCE_LIMIT),
+-    truncated: sorted.length > RENAME_SYNC_SOURCE_LIMIT,
++    truncated: false,
+   };
+ }
+ 

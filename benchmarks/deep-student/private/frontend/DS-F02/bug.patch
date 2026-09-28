@@ -1,0 +1,32 @@
+--- a/src/features/chat/core/store/sessionActions.ts
++++ b/src/features/chat/core/store/sessionActions.ts
+@@ -236,11 +236,7 @@
+           });
+ 
+           // ★ remove 语义收敛：取消后端 PDF 处理（fire-and-forget），不再由 UI 负责
+-          if (
+-            attachment?.sourceId &&
+-            !remainingAttachments.some(a => a.sourceId === attachment.sourceId) &&
+-            !isAttachmentSourceShared(attachment.sourceId)
+-          ) {
++          if (attachment?.sourceId) {
+             cancelAttachmentProcessing(attachmentId, attachment.sourceId);
+ 
+             // ★ P0 修复：清理 pdfProcessingStore 中的状态，防止内存泄漏和状态污染。
+@@ -260,14 +256,13 @@
+           }));
+ 
+           // 同步移除对应的 ContextRef（如果存在 resourceId）
+-          if (attachment?.resourceId && !remainingAttachments.some(a => a.resourceId === attachment.resourceId)) {
++          if (attachment?.resourceId) {
+             state.removeContextRef(attachment.resourceId);
+             console.log('[ChatStore] removeAttachment: Removed ContextRef for', attachment.resourceId);
+           }
+ 
+           // 🔧 P1-25: 释放 Blob URL，避免内存泄漏
+-          if (attachment?.previewUrl?.startsWith('blob:') &&
+-            !remainingAttachments.some(a => a.previewUrl === attachment.previewUrl)) {
++          if (attachment?.previewUrl?.startsWith('blob:')) {
+             URL.revokeObjectURL(attachment.previewUrl);
+             console.log('[ChatStore] removeAttachment: Revoked Blob URL');
+           }

@@ -1,0 +1,32 @@
+{
+  "id": "DS-F08",
+  "title": "同名模型显示了错误供应商",
+  "category": "model_identity_ui",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "471082dd259ac30cca259e73103a6ee4737d02cf",
+    "related_commits": [
+      "15b904309"
+    ],
+    "evidence": "471082dd2 将 currentModelInfo 从 modelId/displayName 模糊查找改为有效配置 ID 精确查找。15b904309 先修运行时固定语义，随后该提交补同名供应商显示。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/components/input-bar/InputBarV2.tsx"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "两个供应商提供同名模型时，切换默认配置后，聊天输入区有时仍显示列表中另一个供应商，连同模型能力提示一起偏离实际配置。请按真实模型身份显示当前选择，并保持会话明确固定的模型。",
+  "estimated_minutes": 55,
+  "reference_changed_lines": 6,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

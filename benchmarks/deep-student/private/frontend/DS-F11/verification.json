@@ -1,0 +1,25 @@
+{
+  "method": "production_module_behavior",
+  "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "status": "validated",
+  "anchor_passed": 2,
+  "bug_fail_to_pass_failed": 1,
+  "bug_pass_to_pass_passed": 1,
+  "patch_apply_check": true,
+  "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+  "runtime_boundary": "Not a native Tauri desktop end-to-end run.",
+  "assertions": [
+    {
+      "name": "F2P gives one row to a session present in both response windows",
+      "bug_status": "failed",
+      "anchor_status": "passed",
+      "failure": "AssertionError: expected [ 'duplicate', 'duplicate', 'old' ] to deeply equal [ 'duplicate', 'old' ]"
+    },
+    {
+      "name": "P2P preserves unique grouped and ungrouped rows in recency order",
+      "bug_status": "passed",
+      "anchor_status": "passed",
+      "failure": null
+    }
+  ]
+}

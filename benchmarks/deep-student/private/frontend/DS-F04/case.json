@@ -1,0 +1,30 @@
+{
+  "id": "DS-F04",
+  "title": "切换会话后旧流污染新会话",
+  "category": "event_isolation",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "1d2302e59639e1eb9dc1462e4b310c4384b8dc41",
+    "related_commits": [],
+    "evidence": "1d2302e59 在 dispatchBlockEvent 入口增加显式 sessionId 不匹配的隔离，已有事件注册和序列分发保持不变。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/core/middleware/eventBridge.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "快速切换聊天会话后，前一个会话晚到的工具事件偶尔进入当前会话，两个流复用块标识时尤其明显。请隔离明确属于其他会话的事件，同时兼容未携带会话标签的旧事件。",
+  "estimated_minutes": 55,
+  "reference_changed_lines": 11,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "DS-F03",
+  "title": "迟到的流式块落到回答末尾",
+  "category": "stream_ordering",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "3e3a47087d5cc2b280f3b1d3b4f27df3747b83ba",
+    "related_commits": [],
+    "evidence": "3e3a47087 明确记录安装版 0.9.50 的复现形态，并把 createBlockInternal 的直接 push 改为按 startedAt 稳定插入。此题反向移植插入缺陷，保留锚点其他终态防护。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/core/store/createChatStore.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "聊天仍在流式输出时，一个较早发生的工具或思考块因迟到被渲染到正文之后。刷新前后顺序可能不同。请保证流式消息块按实际时间稳定归位，同时保持同一时间块的顺序及正常追加行为。",
+  "estimated_minutes": 55,
+  "reference_changed_lines": 25,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

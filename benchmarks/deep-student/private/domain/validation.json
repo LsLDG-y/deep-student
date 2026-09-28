@@ -1,0 +1,316 @@
+{
+  "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+  "validated_at": "2026-09-28",
+  "environment": "Node 26, project Vitest/jsdom, independent git archive snapshot and symlinked installed dependencies",
+  "baseline": {
+    "passed": 39,
+    "failed": 0
+  },
+  "bug_variants": [
+    {
+      "id": "DS-D01",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "window preservation F2P loading and saving retain blank lines at window boundaries",
+          "status": "failed"
+        },
+        {
+          "name": "window preservation F2P editing a loaded prefix does not eat the separator before the unloaded tail",
+          "status": "failed"
+        },
+        {
+          "name": "window preservation P2P ordinary windows and fully loaded saves keep their existing semantics",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 2,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D02",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "authoritative settings transaction F2P an unreadable native baseline aborts before the first write",
+          "status": "failed"
+        },
+        {
+          "name": "authoritative settings transaction F2P failed compensation must not abandon remaining compensation or replace the original error",
+          "status": "failed"
+        },
+        {
+          "name": "authoritative settings transaction P2P successful native batch writes persist all settings",
+          "status": "passed"
+        },
+        {
+          "name": "authoritative settings transaction P2P display-only reads retain cache fallback",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 2,
+      "p2p_passed": 2,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D03",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "persistent note images F2P upload and later rendering share portable asset references",
+          "status": "failed"
+        },
+        {
+          "name": "persistent note images P2P URLs and already portable paths retain their normal behavior",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 1,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D04",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "visible text search F2P finds a phrase split across formatting and replaces the real document range",
+          "status": "failed"
+        },
+        {
+          "name": "visible text search F2P case folding maps expanding Unicode characters back to document positions",
+          "status": "failed"
+        },
+        {
+          "name": "visible text search F2P repetitive text produces disjoint replacement ranges",
+          "status": "failed"
+        },
+        {
+          "name": "visible text search P2P hard breaks remain barriers while plain search options work",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 3,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D05",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "navigation input ownership F2P nested editable descendants retain navigation input",
+          "status": "failed"
+        },
+        {
+          "name": "navigation input ownership F2P composition, handled events and key repeats do not trigger navigation",
+          "status": "failed"
+        },
+        {
+          "name": "navigation input ownership F2P multiple mounted hosts consume one physical event once",
+          "status": "failed"
+        },
+        {
+          "name": "navigation input ownership P2P ordinary global back and forward remain available",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 3,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D06",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "save operation ownership F2P obsolete save resolve cannot mutate a later load of the same ID",
+          "status": "failed"
+        },
+        {
+          "name": "save operation ownership F2P obsolete save reject cannot mutate a later load of the same ID",
+          "status": "failed"
+        },
+        {
+          "name": "save operation ownership P2P a current save still commits clean state and metadata",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 2,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D07",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "load lifecycle ownership F2P reset retires pending loads",
+          "status": "failed"
+        },
+        {
+          "name": "load lifecycle ownership F2P destroy retires pending loads",
+          "status": "failed"
+        },
+        {
+          "name": "load lifecycle ownership F2P creation retires an older load and cannot publish over a newer load",
+          "status": "failed"
+        },
+        {
+          "name": "load lifecycle ownership P2P ordinary loads and creation publish their documents",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 3,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D08",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "AI edit output budget F2P regex amplification is rejected without returning an oversized candidate",
+          "status": "failed"
+        },
+        {
+          "name": "AI edit output budget F2P untouched suffix and multibyte replacement count toward one output budget",
+          "status": "failed"
+        },
+        {
+          "name": "AI edit output budget P2P valid regex, zero-width and literal substitutions retain semantics",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 2,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D09",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "template math rendering F2P math text renders inside the actual isolated card preview",
+          "status": "failed"
+        },
+        {
+          "name": "template math rendering P2P code examples, attributes, plain content and HTML sanitization retain behavior",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 1,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D10",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "imported cloze fallback F2P absent templates still hide only the imported card ordinal on the front",
+          "status": "failed"
+        },
+        {
+          "name": "imported cloze fallback P2P ordinary missing-template cards retain controlled plain front and back",
+          "status": "passed"
+        },
+        {
+          "name": "imported cloze fallback P2P available cloze templates continue to conceal answers",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 1,
+      "p2p_passed": 2,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D11",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "review duration contract F2P a valid presentation measurement includes thinking before answer reveal",
+          "status": "failed"
+        },
+        {
+          "name": "review duration contract F2P absent or nonfinite measurements must not invent an answer duration",
+          "status": "failed"
+        },
+        {
+          "name": "review duration contract F2P supplied measured time is capped and rounded at persistence",
+          "status": "failed"
+        },
+        {
+          "name": "review duration contract P2P a valid rating still advances the queue and clears the flip state",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 3,
+      "p2p_passed": 1,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    },
+    {
+      "id": "DS-D12",
+      "apply_check": true,
+      "returncode": 1,
+      "tests": [
+        {
+          "name": "bounded rename completion F2P sources beyond the scan budget are reported as unprocessed rather than full success",
+          "status": "failed"
+        },
+        {
+          "name": "bounded rename completion P2P a complete small scan rewrites links with fresh concurrency baselines",
+          "status": "passed"
+        },
+        {
+          "name": "bounded rename completion P2P total discovery failure is still visible and performs no writes",
+          "status": "passed"
+        }
+      ],
+      "f2p_failed": 1,
+      "p2p_passed": 2,
+      "p2p_failed": 0,
+      "errors": [],
+      "valid": true
+    }
+  ],
+  "restored": {
+    "passed": 39,
+    "failed": 0
+  },
+  "scope": "Behavior-level production functions/hooks/components; native IPC mocked; real desktop UI not exercised."
+}

@@ -1,0 +1,26 @@
+{
+  "id": "DS-D11",
+  "title": "复习用时只统计翻面后的几秒",
+  "category": "flashcards/measurement-contract",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "714ebad816f12efdc4433b70a662e4361795bbe1",
+    "related_commits": [],
+    "evidence": "714ebad81 将 store.rate 从 Date.now-flippedAtMs 改为接收卡面 presentation measurement；本题回移 store 的旧计算，其余有效时间测量链仍保留。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/flashcards/store/fsrsReviewStore.ts"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "用户思考约 40 秒、翻面看答案 2 秒后评分，统计中却只记录 2 秒。卡面已经提供整次有效作答用时，请修正评分持久化契约，保留上限处理，并在未取得可靠测量时不要猜测。",
+  "estimated_minutes": 30,
+  "reference_changed_lines": 6,
+  "redactions": [
+    {
+      "path": "src/features/flashcards/store/fsrsReviewStore.ts",
+      "old": "    // 卡面提供从题目展示到评分的有效用时；没有测量值时不猜测。\n",
+      "new": "    // Persist the duration reported for this answer.\n"
+    }
+  ]
+}

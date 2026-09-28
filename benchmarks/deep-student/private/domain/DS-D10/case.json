@@ -1,0 +1,19 @@
+{
+  "id": "DS-D10",
+  "title": "导入 Cloze 卡模板缺失时泄露正面答案",
+  "category": "anki/cloze-fallback",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "681e1e128826ac60a85f6625fef03dda7706e1a9",
+    "related_commits": [],
+    "evidence": "681e1e128 添加缺模板场景 applyClozeMarkup + ordinal 回退；本题仅移除该实际组件分支，不影响有模板填空或其他数学路径。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/components/anki/AnkiTemplateCardFace.tsx"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "导入的填空卡在原模板不可用时退回普通文本，题面暴露了应该隐藏的答案。多空卡还需要保留其导入时对应的空位身份。请恢复正反面语义，并保持普通无模板卡的显示。",
+  "estimated_minutes": 45,
+  "reference_changed_lines": 5
+}

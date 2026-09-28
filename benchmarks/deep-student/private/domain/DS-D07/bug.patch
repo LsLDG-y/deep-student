@@ -1,0 +1,36 @@
+diff --git a/src/features/mindmap/store/mindmapStore.ts b/src/features/mindmap/store/mindmapStore.ts
+--- a/src/features/mindmap/store/mindmapStore.ts
++++ b/src/features/mindmap/store/mindmapStore.ts
+@@ -1290,8 +1290,6 @@
+ 
+       // 创建新知识导图（B13：重置字段与 loadMindMap / reset 对齐）
+       createNewMindMap: async (title: string, folderId?: string) => {
+-        const seq = get()._loadSeq + 1;
+-        set({ _loadSeq: seq });
+         const doc = createDefaultDocument(title);
+ 
+         const result = await api.createMindMap({
+@@ -1301,7 +1299,6 @@
+           folderId,
+         });
+ 
+-        if (get()._loadSeq !== seq) return result.id;
+         documentGeneration += 1;
+ 
+         // 与 loadMindMap 一致：切文档前清 pending 定时器，防止旧文档的 debounce 保存串扰
+@@ -1353,7 +1350,6 @@
+       // 清全部 pending 定时器（宿主换 store 实例前调用）；幂等，不重置状态
+       destroy: () => {
+         documentGeneration += 1;
+-        set({ _loadSeq: get()._loadSeq + 1 });
+         pendingSaveRequested = false;
+         clearPendingTimers();
+       },
+@@ -1369,7 +1365,6 @@
+       // 重置状态（修复: 补全所有遗漏字段）
+       reset: () => {
+         documentGeneration += 1;
+-        set({ _loadSeq: get()._loadSeq + 1 });
+         // 清除 pending timer
+         clearPendingTimers();
+         pendingSaveRequested = false;

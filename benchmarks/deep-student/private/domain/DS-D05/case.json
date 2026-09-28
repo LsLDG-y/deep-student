@@ -1,0 +1,19 @@
+{
+  "id": "DS-D05",
+  "title": "全局导航快捷键抢走编辑器输入",
+  "category": "input/event-ownership",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "f7f6968030d8bf966ce5118a61daeba533d6c6bd",
+    "related_commits": [],
+    "evidence": "f7f696803 增加 consumed/composition/repeat 守卫与 closest 可编辑祖先检查；其旧版本完整回移，不涉及命令系统已迁移的快捷键。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/hooks/useNavigationShortcuts.ts"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "使用富文本编辑器或输入法时，导航快捷键偶发使整个页面后退；多个宿主并存时一次按键还会跳过两页。请明确全局导航事件的消费边界，保留普通页面上的后退/前进能力。",
+  "estimated_minutes": 35,
+  "reference_changed_lines": 13
+}

@@ -1,0 +1,23 @@
+diff --git a/src/features/notes/markdownWindow.ts b/src/features/notes/markdownWindow.ts
+--- a/src/features/notes/markdownWindow.ts
++++ b/src/features/notes/markdownWindow.ts
+@@ -135,15 +135,11 @@
+  * 无修改 round-trip 不再保持原文。按行数组传递（而非 join 后的字符串）
+  * 同时消除「right === "" 是没有行还是单个空行」的歧义。
+  */
+-function joinWindowWithSuffixLines(left: string, rightLines: string[], hasLeftLines = true): string {
+-  if (rightLines.length === 0) {
+-    return left;
+-  }
++function joinWindowWithSuffixLines(left: string, rightLines: string[], _hasLeftLines = true): string {
+   const right = rightLines.join('\n');
+-  if (!hasLeftLines && !left) {
+-    return right;
+-  }
+-  return `${left}\n${right}`;
++  if (!left) return right;
++  if (!right) return left.endsWith('\n') ? left : `${left}\n`;
++  return left.endsWith('\n') ? `${left}${right}` : `${left}\n${right}`;
+ }
+ 
+ function adjustMarkdownBoundary(lines: string[], requestedBoundary: number): number {

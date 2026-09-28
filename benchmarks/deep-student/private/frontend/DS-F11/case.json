@@ -1,0 +1,30 @@
+{
+  "id": "DS-F11",
+  "title": "分组移动期间侧栏出现重复会话",
+  "category": "pagination_identity",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "6c1903ccc844f849b25c1ca8934e9a752c5c3884",
+    "related_commits": [],
+    "evidence": "6c1903ccc 把 grouped + ungrouped 直接串联改为按会话 ID 合并后排序。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/hooks/useSessionManagement.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "会话在分组与未分组之间移动的同时刷新侧栏，有时同一会话出现两行。请让合并后的侧栏每个会话只有一个条目，并保持最新数据与按更新时间排序的行为。",
+  "estimated_minutes": 35,
+  "reference_changed_lines": 7,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

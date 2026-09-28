@@ -1,0 +1,28 @@
+{
+  "id": "DS-D02",
+  "title": "设置批量写入失败后错误补偿",
+  "category": "settings/transaction-compensation",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "f03a40f0701fead66b4cdb3a28795366c77fe7ee",
+    "related_commits": [
+      "88a48fb677dd389251792d17701402db7cece903"
+    ],
+    "evidence": "88a48fb 首次增加已写键回滚，但通过宽松 getSettings 读取基线且单个补偿错误中断循环；f03a40f 的 diff 明确补修这两个漏洞，属于有证据的二次收敛。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/utils/settingsApi.ts"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "一次保存多个设置时，数据库基线读取偶发失败后仍开始写入；中途写入失败时还可能留下部分新值。请确保写入以权威存储的可靠基线为准，并使补偿失败不阻断其他可恢复设置，同时保留展示读取的离线回退。",
+  "estimated_minutes": 45,
+  "reference_changed_lines": 18,
+  "redactions": [
+    {
+      "path": "src/utils/settingsApi.ts",
+      "old": "    // 宽松读取仅供展示路径：Tauri 运行时的 IPC 失败回退 localStorage（通常\n    // 为 null）。注意：写路径/回滚基线必须使用 getSettingStrict——把\"读失败\"\n    // 当\"键不存在\"会让 saveSettings 用错误基线回滚（2026-09-07 审阅 N06）。\n",
+      "new": "    // Read fallback for unavailable native storage.\n"
+    }
+  ]
+}

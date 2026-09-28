@@ -1,0 +1,19 @@
+{
+  "id": "DS-D03",
+  "title": "Windows 笔记图片持久化后失联",
+  "category": "notes/cross-platform-paths",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "7691dc8cd8a6ab391e489537981739e5e0fe2b6a",
+    "related_commits": [],
+    "evidence": "7691dc8 将上传结果和 proxyDomURL 的 notes_assets 入口统一转换反斜杠；本题只回移该前端路径处理，保留其他后续上传能力。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/components/crepe/features/imageUpload.ts"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "Windows 上粘贴到笔记的图片有时保存成功却不能在重新打开后显示，旧笔记中的同类图片也受影响。请让上传后持久化的引用与已有引用的渲染均可跨平台工作，并保留远程图片行为。",
+  "estimated_minutes": 35,
+  "reference_changed_lines": 6
+}

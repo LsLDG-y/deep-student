@@ -1,0 +1,32 @@
+{
+  "id": "DS-F07",
+  "title": "未固定模型的旧会话不跟随默认值",
+  "category": "model_configuration",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "15b9043097b99774513383fff51213450f0263d2",
+    "related_commits": [
+      "471082dd2"
+    ],
+    "evidence": "15b904309 在 normalizeChatModelSelection 中只对 modelIdPinnedByUser=true 尊重持久化 modelId；本题反向移植该决策缺陷。与随后 471082dd2 的显示身份缺陷分属运行时路由和 UI 选择。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/adapters/TauriAdapter.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "修改全局默认聊天模型后，一些旧会话仍使用过去的模型，即使用户从未在这些会话中手动固定模型。请区分持久化的历史默认值与用户明确选择，保持显式固定和有效临时覆盖的优先级。",
+  "estimated_minutes": 55,
+  "reference_changed_lines": 5,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

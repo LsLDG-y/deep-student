@@ -1,0 +1,21 @@
+diff --git a/src/features/flashcards/store/fsrsReviewStore.ts b/src/features/flashcards/store/fsrsReviewStore.ts
+--- a/src/features/flashcards/store/fsrsReviewStore.ts
++++ b/src/features/flashcards/store/fsrsReviewStore.ts
+@@ -1245,14 +1245,14 @@
+ 
+   rate: async (rating, answerDurationMs) => {
+     const sessionGeneration = get().sessionGeneration;
+-    const { queue, queueIndex, ratingBusy, flipped } = get();
++    const { queue, queueIndex, ratingBusy, flipped, flippedAtMs } = get();
+     if (ratingBusy || !flipped) return;
+     const current = queue[queueIndex];
+     if (!current) return;
+ 
+     // 卡面提供从题目展示到评分的有效用时；没有测量值时不猜测。
+-    const durationMs = typeof answerDurationMs === 'number' && Number.isFinite(answerDurationMs)
+-      ? Math.round(Math.min(Math.max(0, answerDurationMs), MAX_ANSWER_DURATION_MS))
++    const durationMs = flippedAtMs != null
++      ? Math.min(Math.max(0, Date.now() - flippedAtMs), MAX_ANSWER_DURATION_MS)
+       : null;
+ 
+     const queueSnapshot = queue.map((card) => ({ ...card }));

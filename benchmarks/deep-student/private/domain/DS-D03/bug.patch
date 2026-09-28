@@ -1,0 +1,23 @@
+diff --git a/src/components/crepe/features/imageUpload.ts b/src/components/crepe/features/imageUpload.ts
+--- a/src/components/crepe/features/imageUpload.ts
++++ b/src/components/crepe/features/imageUpload.ts
+@@ -160,7 +160,7 @@
+         // 1. markdown 正文只存储小体积的路径引用（如 "notes_assets/abc123.png"）
+         // 2. 图片文件已经通过 notes_save_asset 保存到磁盘
+         // 3. 编辑器渲染时 proxyDomURL 会自动转换路径为 data URL 显示
+-        const stableRef = normalizeNoteAssetPath(saved.relative_path);
++        const stableRef = saved.relative_path;
+ 
+         emitImageUploadDebug('upload_complete', 'info', '使用稳定路径引用代替 data URL', {
+           stableRef,
+@@ -259,9 +259,7 @@
+         urlLength: url?.length || 0,
+       });
+ 
+-      const normalizedAssetUrl = url.startsWith('notes_assets\\')
+-        ? normalizeNoteAssetPath(url)
+-        : url;
++      const normalizedAssetUrl = url;
+       
+       // 如果是 http/https/blob/data URL，直接返回
+       if (url.startsWith('http://') || url.startsWith('https://') || 

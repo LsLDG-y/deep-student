@@ -1,0 +1,19 @@
+diff --git a/src/features/mindmap/store/mindmapStore.ts b/src/features/mindmap/store/mindmapStore.ts
+--- a/src/features/mindmap/store/mindmapStore.ts
++++ b/src/features/mindmap/store/mindmapStore.ts
+@@ -2842,7 +2842,6 @@
+             expectedUpdatedAt,
+             versionSource: saveSource,
+           });
+-          if (documentGeneration !== savingGeneration || get().mindmapId !== savingMindmapId) return true;
+ 
+           set((state) => {
+             state.isSaving = false;
+@@ -2880,7 +2879,6 @@
+           }
+           return true;
+         } catch (error) {
+-          if (documentGeneration !== savingGeneration || get().mindmapId !== savingMindmapId) return false;
+           console.error('[MindMapStore] save failed:', error);
+           // 失败路径交给重试/冲突流程处理，避免补存请求造成额外循环
+           pendingSaveRequested = false;

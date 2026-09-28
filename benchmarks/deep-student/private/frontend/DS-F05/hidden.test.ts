@@ -1,0 +1,9 @@
+import { describe,it,expect,vi } from 'vitest';
+import { createRestoreActions } from '@/features/chat/core/store/restoreActions';
+vi.mock('@/features/chat/resources',()=>({resourceStoreApi:{exists:vi.fn(async()=>true),get:vi.fn()}}));
+vi.mock('@/components/UnifiedNotification',()=>({showGlobalNotification:vi.fn()}));
+function run(orphan:boolean){let state:any={sessionId:null,isDataLoaded:false,messageMap:new Map(),messageOrder:[],blocks:new Map(),attachments:[],pendingContextRefs:[],groupId:null,sessionStatus:'idle',currentStreamingMessageId:null,activeBlockIds:new Set(),streamingVariantIds:new Set(),pendingBlockingInteraction:null,setPendingApproval:vi.fn(),repairSkillState:vi.fn()};const actions=createRestoreActions((p:any)=>{state={...state,...(typeof p==='function'?p(state):p)}},()=>state);actions.restoreFromBackend({session:{id:'history',mode:'chat',persistStatus:'active',createdAt:'2026-08-01',updatedAt:'2026-08-01'},messages:[{id:'m',sessionId:'history',role:'assistant',timestamp:10,blockIds:orphan?['good','missing']:['good'],variants:[]}],blocks:[{id:'good',messageId:'m',type:'content',status:'success',content:'kept'},...(orphan?[{id:'dangling',messageId:'absent',type:'content',status:'success',content:'orphan'}]:[])],state:{}} as any);return state;}
+describe('restoration graph integrity',()=>{
+ it('F2P keeps healthy messages while isolating missing parents and missing children',()=>{const s=run(true);expect([...s.blocks.keys()]).toEqual(['good']);expect(s.messageMap.get('m').blockIds).toEqual(['good']);expect(s.messageOrder).toEqual(['m']);});
+ it('P2P restores a healthy history without losing its contents',()=>{const s=run(false);expect(s.blocks.get('good').content).toBe('kept');expect(s.messageMap.get('m').blockIds).toEqual(['good']);expect(s.isDataLoaded).toBe(true);});
+});

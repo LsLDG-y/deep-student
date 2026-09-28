@@ -1,0 +1,30 @@
+{
+  "id": "DS-F05",
+  "title": "旧历史损坏记录破坏消息块关联",
+  "category": "history_recovery",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "1d2302e59639e1eb9dc1462e4b310c4384b8dc41",
+    "related_commits": [],
+    "evidence": "1d2302e59 的恢复修复先核对块父消息，再过滤消息和变体的缺失块引用。本题只重现历史图关联损坏，保留消息级异常隔离。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/core/store/restoreActions.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "某些旧会话包含父消息已不存在的块，或消息引用了已经缺失的块。载入后会出现悬空内容和无效块引用。请将损坏局限在对应记录，同时让完整的消息、内容和顺序继续可用。",
+  "estimated_minutes": 55,
+  "reference_changed_lines": 16,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}

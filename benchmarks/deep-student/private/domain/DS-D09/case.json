@@ -1,0 +1,19 @@
+{
+  "id": "DS-D09",
+  "title": "卡片模板中的数学公式停留在原始标记",
+  "category": "anki/template-rendering",
+  "difficulty": 2,
+  "history": {
+    "fix_commit": "681e1e128826ac60a85f6625fef03dda7706e1a9",
+    "related_commits": [],
+    "evidence": "681e1e128 引入模板文本节点 MathML 渲染并由 AnkiTemplateCardFace 调用；本题在组件调用边界回移未渲染模板 HTML 的旧行为。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/components/anki/AnkiTemplateCardFace.tsx"
+  ],
+  "test_file": "hidden.test.tsx",
+  "problem_zh": "普通卡面可渲染数学公式，但使用自定义模板后，预览中的公式只显示原始 LaTeX 定界符。请让隔离预览中的模板正文也渲染公式，保留代码示例、属性文本和 HTML 净化行为。",
+  "estimated_minutes": 35,
+  "reference_changed_lines": 2
+}

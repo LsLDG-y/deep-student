@@ -1,0 +1,30 @@
+{
+  "id": "DS-F06",
+  "title": "忙碌会话释放后缓存持续超限",
+  "category": "cache_lifecycle",
+  "difficulty": 3,
+  "history": {
+    "fix_commit": "46ff59dfea5aa44b54adf11786be59323e642e87",
+    "related_commits": [],
+    "evidence": "46ff59dfe 把 getOrCreate 单次淘汰改为回收全部可淘汰超额项。忙碌/租约可暂超上限是既有允许行为。",
+    "mode": "historical_backport"
+  },
+  "patch_files": [
+    "src/features/chat/core/session/sessionManager.ts"
+  ],
+  "test_file": "hidden.test.ts",
+  "problem_zh": "会话忙碌时缓存允许暂时超过容量，但忙碌任务结束后，继续打开新会话仍长期保留过量缓存。请在适当时机回收所有可回收的超额项，同时保护当前会话、仍被使用的会话以及异步保存流程。",
+  "estimated_minutes": 55,
+  "reference_changed_lines": 6,
+  "verification": {
+    "method": "production_module_behavior",
+    "anchor_commit": "d6534ff2715e59c4c2c3e6c7bec5f6554576ce68",
+    "status": "validated",
+    "anchor_passed": 2,
+    "bug_fail_to_pass_failed": 1,
+    "bug_pass_to_pass_passed": 1,
+    "patch_apply_check": true,
+    "execution_environment": "macOS, installed Node/Vitest, jsdom; external IPC mocked; actual production modules imported",
+    "runtime_boundary": "Not a native Tauri desktop end-to-end run."
+  }
+}
