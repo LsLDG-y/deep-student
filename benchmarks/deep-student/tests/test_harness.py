@@ -43,7 +43,7 @@ class GradingInventoryTests(TempTree):
         return {'valid': True, 'FAIL_TO_PASS': ['repair target'], 'PASS_TO_PASS': ['preserve ordinary behavior']}
 
     def result(self, states, *, valid=True, exit_code=0):
-        return {'valid': valid, 'tests': states, 'exit_code': exit_code}
+        return {'valid': valid, 'tests': states, 'exit_code': exit_code, 'complete_test_inventory': True}
 
     def test_no_tests_cannot_resolve(self):
         self.assertEqual(bench.score_tests(self.calibration(), self.result({}))['score'], 0)
@@ -90,7 +90,9 @@ class SummaryTests(TempTree):
                 'b': {'id': 'b', 'category': 'io', 'difficulty': 3}}
 
     def row(self, task='a', **overrides):
-        return {'task_id': task, 'score': 100, 'resolved': True, 'status': 'resolved', **overrides}
+        return {'schema_version': 1, 'suite_version': bench.SUITE['version'], 'source_commit': bench.ANCHOR,
+                'engine': 'local', 'image_id': None, 'task_id': task,
+                'score': 100, 'resolved': True, 'status': 'resolved', **overrides}
 
     def summarize(self):
         with mock.patch.object(bench, 'cases', self.available):
@@ -162,6 +164,7 @@ class GradeEvidenceTests(TempTree):
     def calibration(self, case, version=None):
         value = {'task_id': case['id'], 'valid': True, 'source_commit': bench.ANCHOR,
                  'suite_version': bench.SUITE['version'] if version is None else version,
+                 'engine': 'local',
                  'FAIL_TO_PASS': ['repair target'], 'PASS_TO_PASS': ['preserve ordinary behavior']}
         path = bench.calibration_path(case, 'local')
         path.write_text(json.dumps(value))
@@ -209,8 +212,8 @@ class GradeEvidenceTests(TempTree):
 
     def test_calibration_records_current_suite_version(self):
         case = self.case()
-        bad = {'valid': True, 'tests': {'repair target': 'failed', 'preserve ordinary behavior': 'passed'}, 'exit_code': 1}
-        good = {'valid': True, 'tests': {'repair target': 'passed', 'preserve ordinary behavior': 'passed'}, 'exit_code': 0}
+        bad = {'valid': True, 'tests': {'repair target': 'failed', 'preserve ordinary behavior': 'passed'}, 'exit_code': 1, 'complete_test_inventory': True}
+        good = {'valid': True, 'tests': {'repair target': 'passed', 'preserve ordinary behavior': 'passed'}, 'exit_code': 0, 'complete_test_inventory': True}
         with mock.patch.object(bench, 'prepare_source'), mock.patch.object(bench, 'evaluate_source', side_effect=[bad, good]):
             result = bench.calibrate([case], self.root / 'calibrate', 'local', 'unused-image')
         self.assertEqual(result['valid'], 1)

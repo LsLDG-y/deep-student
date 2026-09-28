@@ -79,9 +79,9 @@
 
 每题需在同一物化方式下对“缺陷”和“参考”两份工程做差分校准：至少一项 FAIL_TO_PASS、至少一项 PASS_TO_PASS，且参考工程全部通过；候选修复必须通过校准时的完整测试清单。以各题生成的 `calibration.<engine>.json` 为正式准入和计分依据，不把提交标题或提交者声称的验证视为本次执行结果。
 
-领域 12 题已在本机独立锚点快照验证：正常 39/39 通过；逐题缺陷共 24 个 F2P 失败、15 个 P2P 通过；恢复后 39/39 通过，明细见 `private/domain/validation.json`。聊天题本地生产模块验证记录位于各题 `verification`。随后独立完成的 macOS 与 Linux ARM64 Docker 统一校准均为 34/34 有效、48 个 F2P 和 38 个 P2P；实际环境、首次故障和最终材料位置见 `VALIDATION.zh-CN.md`，不由早期本地记录自动推断容器结果。
+领域 12 题已在本机独立锚点快照验证：正常 39/39 通过；逐题缺陷共 24 个 F2P 失败、15 个 P2P 通过；恢复后 39/39 通过，明细见 `private/domain/validation.json`。聊天题本地生产模块验证记录位于各题 `verification`。1.0.0 的 macOS 与 Linux ARM64 Docker 校准均为 34/34 有效；1.0.1 已重新完成 Docker 校准，仍为 34/34 有效、48 个 F2P 和 38 个 P2P，旧 macOS 校准不能代替新版 local 校准；实际环境、首次故障和最终材料位置见 `VALIDATION.zh-CN.md`，不由早期本地记录自动推断容器结果。
 
-这里运行的是真实生产模块行为，但范围不是完整桌面端端到端测试：IPC、云服务、通知和非目标 UI 边界使用可控夹具；Rust harness 通过 `#[path]` 编译完整生产模块，不复制被测函数；B06 使用真实 SQLite 执行 SQL。B05 已通过 Linux ARM64 Docker 校准并转为 `ready`：release 模式下，2 MB / 200 万细分片负载的缺陷处理耗时约 57.64 秒，参考版本两个测试合计约 0.03 秒，3 秒阈值只计事件处理、不计编译。校准记录见 `private/backend/DS-B05/calibration.docker.json`；命令总耗时不是性能断言耗时。更换架构或资源配额后须重新校准，确认参考版本仍有足够余量再用于跨模型总分。
+这里运行的是真实生产模块行为，但范围不是完整桌面端端到端测试：IPC、云服务、通知和非目标 UI 边界使用可控夹具；Rust harness 通过 `#[path]` 编译完整生产模块，不复制被测函数；B06 使用真实 SQLite 执行 SQL。B05 已通过 Linux ARM64 Docker 校准并转为 `ready`：release 模式使用 2 MB / 200 万细分片固定负载，3 秒阈值只计事件处理、不计编译；各版本实测计时见 `VALIDATION.zh-CN.md`。校准记录见 `private/backend/DS-B05/calibration.docker.json`；命令总耗时不是性能断言耗时。更换架构或资源配额后须重新校准，确认参考版本仍有足够余量再用于跨模型总分。
 
 ## 覆盖短板
 

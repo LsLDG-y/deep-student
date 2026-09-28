@@ -324,7 +324,7 @@ def init_public_git(source):
     run(['git', 'config', 'user.name', 'Benchmark'], cwd=source)
     run(['git', 'config', 'user.email', 'benchmark@invalid'], cwd=source)
     run(['git', 'config', 'core.hooksPath', '/dev/null'], cwd=source)
-    (source / '.gitignore').write_text('node_modules/\ntarget/\n/tmp/\n.benchmark-tests/\n.benchmark-runner/\n')
+    (source / '.gitignore').write_text('node_modules\ntarget/\n/tmp/\n.benchmark-tests/\n.benchmark-runner/\n/.mount-read\n/.mount-write\n')
     run(['git', 'add', '.'], cwd=source)
     env = {**os.environ, 'GIT_AUTHOR_DATE': '2026-01-01T00:00:00Z', 'GIT_COMMITTER_DATE': '2026-01-01T00:00:00Z'}
     run(['git', 'commit', '-qm', 'Task starting state'], cwd=source, env=env)
@@ -348,6 +348,12 @@ def prepare(case, output):
     return {'task_id': case['id'], 'workspace': str(output), 'prompt': str(output / 'TASK.md')}
 
 
+def container_user():
+    """Keep host file ownership where possible, but never run as container root."""
+    uid = os.getuid()
+    return f'{uid}:{os.getgid()}' if uid else '65534:65534'
+
+
 def sandbox(case, output, image):
     result = prepare(case, output)
     # Some VM file shares map host ownership to root. This is an isolated,
@@ -360,13 +366,23 @@ def sandbox(case, output, image):
     name = 'ds-bench-' + uuid.uuid4().hex[:12]
     command = ['docker', 'run', '-d', '--name', name, '--network', 'none', '--read-only',
                '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--pids-limit', '256',
-               '--memory', '4g', '--cpus', '2', '--user', f'{os.getuid()}:{os.getgid()}',
+               '--memory', '4g', '--cpus', '2', '--user', container_user(),
                '--tmpfs', '/tmp:rw,exec,nosuid,nodev,size=2g', '-e', 'HOME=/tmp/home',
                '-e', 'CARGO_TARGET_DIR=/tmp/cargo-target', '-e', 'CARGO_HOME=/tmp/cargo-home', '-e', 'DS_SOURCE_ROOT=/workspace',
                '--label', f'ds.bench.suite={SUITE["version"]}', '--label', f'ds.bench.task={case["id"]}',
                '-v', f'{output}:/workspace:rw', '-w', '/workspace', image,
-               'sh', '-c', 'mkdir -p /tmp/home /tmp/cargo-home && git config --global --add safe.directory /workspace && cp /usr/local/cargo/config.toml /tmp/cargo-home/config.toml && cp -a /opt/cargo-target /tmp/cargo-target && exec sleep infinity']
-    run(command)
+               'sleep', 'infinity']
+    try:
+        run(command)
+        # A detached container is not ready until toolchain initialization succeeds.
+        run(['docker', 'exec', name, 'sh', '-c',
+             'mkdir -p /tmp/home /tmp/cargo-home && git config --global --add safe.directory /workspace && cp /usr/local/cargo/config.toml /tmp/cargo-home/config.toml && cp -a /opt/cargo-target /tmp/cargo-target'])
+    except BaseException:
+        try:
+            run(['docker', 'stop', '--timeout', '1', name], check=False, timeout=15)
+        except Exception:
+            pass  # Preserve the startup failure if Docker cleanup also fails.
+        raise
     result.update({'container': name, 'network': 'none', 'image': image,
                    'tool_example': f'python3 {HERE / "bench.py"} exec {name} -- sh -lc "cat TASK.md"',
                    'stop_command': f'docker stop {name}', 'isolation_note': 'Agent tools must be limited to this container; do not grant host shell access.'})
@@ -407,24 +423,59 @@ def source_paths_ok(paths):
 
 
 def validate_patch(patch):
-    text = patch.read_text()
+    try:
+        text = patch.read_text(encoding='utf-8')
+    except UnicodeDecodeError as exc:
+        raise BenchError('submission patch must be UTF-8 text') from exc
     if not text.strip():
         return []
-    # Git's parser, rather than diff header string splitting, resolves changed paths.
-    p = run(['git', 'apply', '--numstat', '-z', str(patch.resolve())],
-            cwd=patch.resolve().parent, env=patch_environment(patch.resolve().parent))
-    paths = []
-    for record in p.stdout.split(b'\0'):
-        if not record:
-            continue
-        fields = record.decode().split('\t', 2)
-        if len(fields) != 3 or fields[0] == '-' or fields[1] == '-':
-            raise BenchError('binary and rename patches are not accepted')
-        paths.append(fields[2])
-    source_paths_ok(paths)
-    # Symlinks/submodules permit access outside the source tree. Modes are Git metadata.
-    if re.search(r'(?m)^(?:new file mode|old mode|new mode|deleted file mode|index .*\.\..*) (?:120000|160000)\b', text):
-        raise BenchError('symlink and submodule changes are not accepted')
+    # Extended Git headers can change a different source path from the one
+    # --numstat reports. This submission format accepts ordinary file diffs.
+    for line in text.splitlines():
+        if line.startswith(('rename from ', 'rename to ', 'copy from ', 'copy to ')):
+            raise BenchError('rename and copy patches are not accepted')
+        mode = None
+        match = re.match(r'^(?:new file mode|deleted file mode|old mode|new mode) (\S+)', line)
+        if match:
+            mode = match[1]
+        elif line.startswith('index '):
+            fields = line.split()
+            if len(fields) >= 3:
+                mode = fields[2]
+        if mode is not None:
+            try:
+                numeric_mode = int(mode, 8)
+            except ValueError as exc:
+                raise BenchError(f'invalid Git file mode: {mode}') from exc
+            if numeric_mode not in {0o100644, 0o100755}:
+                raise BenchError(f'only regular file modes are accepted: {mode}')
+    # Git resolves both extended and ordinary diff headers. Forward numstat
+    # exposes destinations only; reverse numstat exposes the original paths,
+    # including implicit moves without any "rename from/to" metadata.
+    def parsed_paths(reverse=False):
+        command = ['git', 'apply', '--numstat', '-z']
+        if reverse:
+            command.append('--reverse')
+        parsed = run(command + [str(patch.resolve())], cwd=patch.resolve().parent,
+                     env=patch_environment(patch.resolve().parent))
+        paths = []
+        for record in parsed.stdout.split(b'\0'):
+            if not record:
+                continue
+            try:
+                fields = record.decode('utf-8').split('\t', 2)
+            except UnicodeDecodeError as exc:
+                raise BenchError('submission patch paths must be UTF-8 text') from exc
+            if len(fields) != 3 or fields[0] == '-' or fields[1] == '-':
+                raise BenchError('binary and rename patches are not accepted')
+            paths.append(fields[2])
+        return paths
+
+    paths = parsed_paths()
+    original_paths = parsed_paths(reverse=True)
+    source_paths_ok(paths + original_paths)
+    if paths != original_paths:
+        raise BenchError('patch source and destination paths must match')
     if 'GIT binary patch' in text:
         raise BenchError('binary patches are not accepted')
     return paths
@@ -432,6 +483,26 @@ def validate_patch(patch):
 
 def collect(case, workspace, output):
     """Compare with evaluator-rebuilt source; never trust agent Git refs or commits."""
+    import difflib
+    import stat
+
+    def read_regular_file(path):
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            return None
+        if not stat.S_ISREG(info.st_mode):
+            raise BenchError(f'only regular source files can be collected: {path}')
+        # Do not block on a FIFO substituted after lstat. Reject a final-path
+        # symlink and recheck the opened descriptor before reading any bytes.
+        flags = os.O_RDONLY | os.O_NONBLOCK | getattr(os, 'O_NOFOLLOW', 0)
+        with os.fdopen(os.open(path, flags), 'rb') as stream:
+            opened = os.fstat(stream.fileno())
+            if not stat.S_ISREG(opened.st_mode):
+                raise BenchError(f'only regular source files can be collected: {path}')
+            mode = 0o100755 if opened.st_mode & stat.S_IXUSR else 0o100644
+            return stream.read(), mode
+
     if output.exists():
         raise BenchError(f'output already exists: {output}')
     root = Path(tempfile.mkdtemp(prefix='ds-bench-collect-'))
@@ -447,7 +518,15 @@ def collect(case, workspace, output):
                 raise BenchError(f'symlink directory in submission: {ancestor}')
         all_paths = set(p.relative_to(base) for p in before.rglob('*') if p.is_file())
         if after.exists():
-            all_paths |= {p.relative_to(workspace) for p in after.rglob('*') if p.is_file() or p.is_symlink()}
+            if not after.is_dir():
+                raise BenchError(f'source subtree must be a directory: {after}')
+            for path in after.rglob('*'):
+                info = path.lstat()
+                if stat.S_ISDIR(info.st_mode):
+                    continue
+                if not stat.S_ISREG(info.st_mode):
+                    raise BenchError(f'only regular source files can be collected: {path}')
+                all_paths.add(path.relative_to(workspace))
         for relative in sorted(all_paths):
             a, b = base / relative, workspace / relative
             parents = [b, *b.parents][:len(relative.parts)]
@@ -455,19 +534,26 @@ def collect(case, workspace, output):
                 raise BenchError(f'symlink in source submission: {relative}')
             if any(part in {'__tests__', 'tests'} for part in relative.parts) or re.search(r'\.(test|spec)\.[^.]+$', str(relative)):
                 continue
-            av = a.read_bytes() if a.exists() else b''
-            bv = b.read_bytes() if b.exists() else b''
-            if av == bv:
+            original, candidate = read_regular_file(a), read_regular_file(b)
+            if original == candidate:
                 continue
-            import difflib
+            av, amode = original if original is not None else (b'', None)
+            bv, bmode = candidate if candidate is not None else (b'', None)
+            headers = [f'diff --git a/{relative} b/{relative}\n']
+            if original is None:
+                headers.append(f'new file mode {bmode:06o}\n')
+            elif candidate is None:
+                headers.append(f'deleted file mode {amode:06o}\n')
+            elif amode != bmode:
+                headers.extend([f'old mode {amode:06o}\n', f'new mode {bmode:06o}\n'])
             try:
                 lines = difflib.unified_diff(av.decode().splitlines(keepends=True), bv.decode().splitlines(keepends=True),
-                    fromfile=f'a/{relative}' if a.exists() else '/dev/null',
-                    tofile=f'b/{relative}' if b.exists() else '/dev/null')
+                    fromfile=f'a/{relative}' if original is not None else '/dev/null',
+                    tofile=f'b/{relative}' if candidate is not None else '/dev/null')
                 diff = ''.join(line if line.endswith('\n') else line + '\n\\ No newline at end of file\n' for line in lines)
             except UnicodeDecodeError:
                 raise BenchError(f'binary source changes unsupported: {relative}')
-            chunks.append(f'diff --git a/{relative} b/{relative}\n' + diff)
+            chunks.append(''.join(headers) + diff)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(''.join(chunks))
     paths = validate_patch(output)
@@ -506,18 +592,62 @@ def install_test(case, source):
     return folder / candidate.name
 
 
+def validate_execution_report(result):
+    if not isinstance(result, dict) or type(result.get('valid')) is not bool:
+        raise BenchError('test report must be an object with boolean valid')
+    states = result.get('tests')
+    if not isinstance(states, dict):
+        raise BenchError('test report tests must be an object')
+    for name, status in states.items():
+        if not isinstance(name, str) or not name or not isinstance(status, str) or status not in {'passed', 'failed', 'skipped', 'pending', 'todo', 'disabled'}:
+            raise BenchError('test report contains an invalid test name or status')
+    complete = result.get('complete_test_inventory')
+    if complete is not None and type(complete) is not bool:
+        raise BenchError('test report inventory completeness must be boolean')
+    code = result.get('exit_code')
+    if code is not None and type(code) is not int:
+        raise BenchError('test report exit code must be an integer')
+    if result['valid'] and (not states or complete is not True or type(code) is not int):
+        raise BenchError('valid test report requires a complete inventory and exit code')
+    return result
+
+
+def invalid_execution_report(error, exit_code=None):
+    return {'valid': False, 'tests': {}, 'complete_test_inventory': False,
+            'exit_code': exit_code, 'error': str(error)}
+
+
 def parse_vitest(report, exit_code):
     data = json.loads(report.read_text())
+    if not isinstance(data, dict) or not isinstance(data.get('testResults', []), list):
+        raise BenchError('invalid Vitest report object or suites')
     states = {}
+    suites_complete = True
     for suite in data.get('testResults', []):
+        if not isinstance(suite, dict) or not isinstance(suite.get('assertionResults', []), list):
+            raise BenchError('invalid Vitest test suite')
+        suites_complete = suites_complete and suite.get('status') in ('passed', 'failed')
         for test in suite.get('assertionResults', []):
+            if not isinstance(test, dict) or not isinstance(test.get('fullName'), str) or not test['fullName']:
+                raise BenchError('invalid Vitest test name')
             name = test['fullName']
             if name in states:
                 raise BenchError(f'duplicate test name: {name}')
-            states[name] = test['status']
+            states[name] = test.get('status')
     errors = data.get('numRuntimeErrorTestSuites', 0)
-    valid = bool(states) and not errors and (exit_code == 0 or any(s == 'failed' for s in states.values()))
-    return {'valid': valid, 'tests': states, 'exit_code': exit_code, 'runtime_errors': errors}
+    if type(errors) is not int or errors < 0:
+        raise BenchError('invalid Vitest runtime error count')
+    counts = {key: data.get(key) for key in ['numTotalTests', 'numPassedTests', 'numFailedTests', 'numPendingTests', 'numTodoTests']}
+    complete = (bool(states) and suites_complete
+                and all(type(value) is int and value >= 0 for value in counts.values())
+                and counts['numTotalTests'] == len(states)
+                and counts['numPassedTests'] == sum(s == 'passed' for s in states.values())
+                and counts['numFailedTests'] == sum(s == 'failed' for s in states.values())
+                and counts['numPendingTests'] == counts['numTodoTests'] == 0
+                and counts['numPassedTests'] + counts['numFailedTests'] == counts['numTotalTests'])
+    valid = complete and not errors and (exit_code == 0 or any(s == 'failed' for s in states.values()))
+    return validate_execution_report({'valid': bool(valid), 'tests': states, 'exit_code': exit_code,
+                                      'runtime_errors': errors, 'complete_test_inventory': bool(complete)})
 
 
 def evaluate_source(case, source, out, engine, image):
@@ -543,7 +673,7 @@ def evaluate_source(case, source, out, engine, image):
         node.symlink_to('/opt/deps/node_modules', target_is_directory=True)
         cmd = ['docker', 'run', '--rm', '--name', container, '--network', 'none', '--read-only', '--cap-drop', 'ALL',
                '--security-opt', 'no-new-privileges', '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
-               '--user', f'{os.getuid()}:{os.getgid()}', '--tmpfs', '/tmp:rw,nosuid,nodev,size=1g',
+               '--user', container_user(), '--tmpfs', '/tmp:rw,nosuid,nodev,size=1g',
                '-v', f'{source}:/workspace:ro', '-v', f'{out}:/results:rw', '-w', '/workspace',
                image, '/opt/deps/node_modules/.bin/vitest', 'run', '--config', '.benchmark-runner/vitest.config.mts',
                '--configLoader', 'runner', '--reporter=json', '--outputFile=/results/tests.json']
@@ -594,30 +724,41 @@ def evaluate_native(case, source, out, engine, image):
         container = 'ds-eval-' + uuid.uuid4().hex[:12]
         cmd = ['docker', 'run', '--rm', '--name', container, '--network', 'none', '--read-only', '--cap-drop', 'ALL',
                '--security-opt', 'no-new-privileges', '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
-               '--user', f'{os.getuid()}:{os.getgid()}', '--tmpfs', '/tmp:rw,exec,nosuid,nodev,size=2g',
+               '--user', container_user(), '--tmpfs', '/tmp:rw,exec,nosuid,nodev,size=2g',
                '-e', 'DS_SOURCE_ROOT=/workspace', '-e', 'CARGO_TARGET_DIR=/tmp/cargo-target', '-e', 'CARGO_HOME=/tmp/cargo-home',
                '-v', f'{source}:/workspace:ro', '-v', f'{out}:/results:rw', '-w', '/workspace', image]
         if runner == 'cargo':
             cmd += ['bash', '-c', 'mkdir -p /tmp/cargo-home && cp /usr/local/cargo/config.toml /tmp/cargo-home/config.toml && cp -a /opt/cargo-target /tmp/cargo-target && exec "$@"', 'bench']
         cmd += command
     started = time.monotonic()
+    code = None
     try:
         code = run_evaluation(cmd, source, out, case.get('timeout_seconds', 240), env, container)
         if runner == 'cargo':
             states = {}
-            for name, state in re.findall(r'^test (.+?) \.\.\. (ok|FAILED|ignored)\s*$', (out / 'stdout.txt').read_text(errors='replace'), re.M):
+            stdout = (out / 'stdout.txt').read_text(errors='replace')
+            for name, state in re.findall(r'^test (.+?) \.\.\. (ok|FAILED|ignored)\s*$', stdout, re.M):
                 if name in states:
                     raise BenchError('duplicate native test name')
                 states[name] = {'ok': 'passed', 'FAILED': 'failed', 'ignored': 'skipped'}[state]
-            result = {'valid': bool(states) and (code == 0 or 'failed' in states.values()),
-                      'tests': states, 'exit_code': code}
+            announced = re.findall(r'^running (\d+) tests?\s*$', stdout, re.M)
+            finished = re.findall(r'^test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; \d+ measured; \d+ filtered out;.*$', stdout, re.M)
+            complete = (bool(states) and len(announced) == len(finished) == 1
+                        and int(announced[0]) == len(states) == sum(map(int, finished[0])))
+            result = {'valid': complete and (code == 0 or 'failed' in states.values()),
+                      'tests': states, 'exit_code': code, 'complete_test_inventory': complete}
         elif (out / 'tests.json').exists():
             result = json.loads((out / 'tests.json').read_text())
+            if not isinstance(result, dict):
+                raise BenchError('native test report must be an object')
             result['exit_code'] = code
         else:
-            result = {'valid': False, 'tests': {}, 'exit_code': code, 'error': 'test report missing'}
+            result = invalid_execution_report('test report missing', code)
+        result = validate_execution_report(result)
     except subprocess.TimeoutExpired:
-        result = {'valid': False, 'tests': {}, 'error': 'test timeout'}
+        result = invalid_execution_report('test timeout')
+    except (BenchError, ValueError, KeyError, TypeError) as exc:
+        result = invalid_execution_report(f'invalid test report: {exc}', code)
     result.update({'seconds': round(time.monotonic() - started, 3), 'engine': engine})
     dump(out / 'result.json', result)
     return result
@@ -636,7 +777,7 @@ def check_docker_mount(folder, image):
     folder.chmod(0o777)
     (folder / '.mount-read').write_text('DeepStudent benchmark mount probe\n')
     command = ['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
-               '--user', f'{os.getuid()}:{os.getgid()}', '--mount', f'type=bind,source={folder},target=/probe',
+               '--user', container_user(), '--mount', f'type=bind,source={folder},target=/probe',
                image, 'python3', '-c',
                "from pathlib import Path; assert Path('/probe/.mount-read').read_text() == 'DeepStudent benchmark mount probe\\n'; Path('/probe/.mount-write').write_text('ok')"]
     p = run(command, check=False)
@@ -660,12 +801,14 @@ def calibrate(selected, output, engine, image):
             bad, good = task / 'buggy', task / 'reference'
             prepare_source(case, bad)
             prepare_source(case, good, buggy=False)
-            b = evaluate_source(case, bad, task / 'buggy-results', engine, image)
-            g = evaluate_source(case, good, task / 'reference-results', engine, image)
+            b = validate_execution_report(evaluate_source(case, bad, task / 'buggy-results', engine, image))
+            g = validate_execution_report(evaluate_source(case, good, task / 'reference-results', engine, image))
             same = set(b['tests']) == set(g['tests'])
             f2p = sorted(n for n, status in b['tests'].items() if status == 'failed' and g['tests'].get(n) == 'passed')
             p2p = sorted(n for n, status in b['tests'].items() if status == 'passed' and g['tests'].get(n) == 'passed')
-            valid = b['valid'] and g['valid'] and same and bool(f2p) and bool(p2p) and all(s == 'passed' for s in g['tests'].values())
+            valid = (b['valid'] and g['valid'] and g.get('exit_code') == 0
+                     and b.get('complete_test_inventory') is True and g.get('complete_test_inventory') is True
+                     and same and bool(f2p) and bool(p2p) and all(s == 'passed' for s in g['tests'].values()))
             valid = valid and set(f2p + p2p) == set(b['tests'])
             row.update({'valid': valid, 'FAIL_TO_PASS': f2p, 'PASS_TO_PASS': p2p,
                         'buggy': b, 'reference': g, 'artifact_dir': str(task)})
@@ -679,11 +822,26 @@ def calibrate(selected, output, engine, image):
     return summary
 
 
+def calibration_inventory(calibration):
+    if not isinstance(calibration, dict):
+        raise BenchError('calibration must be an object')
+    f2p, p2p = calibration.get('FAIL_TO_PASS'), calibration.get('PASS_TO_PASS')
+    if (not isinstance(f2p, list) or not isinstance(p2p, list) or not f2p or not p2p
+            or any(not isinstance(name, str) or not name for name in f2p + p2p)
+            or len(set(f2p + p2p)) != len(f2p + p2p)):
+        raise BenchError('calibration requires distinct nonempty F2P and P2P test inventories')
+    return f2p, p2p
+
+
 def score_tests(calibration, result):
-    f2p, p2p = calibration['FAIL_TO_PASS'], calibration['PASS_TO_PASS']
+    f2p, p2p = calibration_inventory(calibration)
+    try:
+        result = validate_execution_report(result)
+    except BenchError as exc:
+        result = invalid_execution_report(exc)
     expected = set(f2p + p2p)
     states = result['tests']
-    complete = bool(expected) and set(states) == expected
+    complete = result.get('complete_test_inventory') is True and set(states) == expected
     repaired = [x for x in f2p if states.get(x) == 'passed']
     preserved = [x for x in p2p if states.get(x) == 'passed']
     resolved = result['valid'] and complete and len(repaired) == len(f2p) and len(preserved) == len(p2p) and result['exit_code'] == 0
@@ -695,11 +853,12 @@ def score_tests(calibration, result):
 
 def grade(case, patch, output, engine, image):
     output.mkdir(parents=True, exist_ok=False)
-    result = {'schema_version': 1, 'task_id': case['id'], 'source_commit': ANCHOR,
+    result = {'schema_version': 1, 'suite_version': SUITE['version'], 'task_id': case['id'], 'source_commit': ANCHOR,
               'category': case['category'], 'difficulty': case['difficulty'],
-              'family': case.get('family', case['category']), 'engine': engine,
+              'family': case.get('family', case['category']), 'engine': engine, 'image_id': None,
               'protocol': 'isolated_grading_only' if engine == 'docker' else 'development_not_isolated',
               'status': 'invalid', 'resolved': False, 'score': 0}
+    failure_status = 'invalid'
     try:
         submission = output / 'submission.patch'
         shutil.copyfile(patch, submission)
@@ -709,22 +868,27 @@ def grade(case, patch, output, engine, image):
         if not cal_path.is_file():
             raise BenchError(f'run calibration for {case["id"]} on {engine} first')
         cal = json.loads(cal_path.read_text())
-        if not cal['valid'] or cal['source_commit'] != ANCHOR or cal.get('suite_version') != SUITE['version']:
+        if (not isinstance(cal, dict) or cal.get('valid') is not True
+                or cal.get('source_commit') != ANCHOR or cal.get('suite_version') != SUITE['version']
+                or cal.get('task_id') != case['id'] or cal.get('engine') != engine):
             raise BenchError('task is not calibrated for this suite version and pinned anchor')
+        calibration_inventory(cal)
         if engine == 'docker':
             result['image_id'] = image_identity(image)
             if result['image_id'] != cal.get('image_id'):
                 raise BenchError('container image changed since calibration; calibrate this image first')
         result['changed_files'] = validate_patch(submission)
+        failure_status = 'execution_error'
         source = output / 'source'
         prepare_source(case, source)
         if submission.read_text().strip():
             apply_patch(source, submission)
-        measured = evaluate_source(case, source, output / 'evaluation', engine, image)
+        measured = validate_execution_report(evaluate_source(case, source, output / 'evaluation', engine, image))
         result.update(score_tests(cal, measured))
         result['status'] = 'resolved' if result['resolved'] else ('unresolved' if measured['valid'] else 'execution_error')
         result['execution'] = measured
-    except (BenchError, OSError, subprocess.TimeoutExpired) as e:
+    except (BenchError, OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError) as e:
+        result.update({'status': failure_status, 'resolved': False, 'score': 0})
         result['error'] = str(e)
     dump(output / 'result.json', result)
     diagnosis = patch.with_suffix('.diagnosis.md')
@@ -747,18 +911,46 @@ def summary(input_dir, output):
     # Candidate source and raw evaluation output live below task directories too.
     # Only the organizer's direct per-task result is authoritative.
     for p in input_dir.glob('*/result.json'):
-        row = json.loads(p.read_text())
-        if 'task_id' in row and 'score' in row:
-            if p.parent.name != row['task_id']:
-                raise BenchError('result directory does not match task id')
-            rows.append(row)
+        try:
+            row = json.loads(p.read_text())
+        except (ValueError, OSError) as exc:
+            raise BenchError(f'invalid result file {p}: {exc}') from exc
+        if not isinstance(row, dict) or not isinstance(row.get('task_id'), str) or not row['task_id']:
+            raise BenchError('result must be an object with a task id')
+        if p.parent.name != row['task_id']:
+            raise BenchError('result directory does not match task id')
+        rows.append(row)
     by_id = collections.defaultdict(list)
     for row in rows:
-        if type(row.get('resolved')) is not bool or row.get('status') not in {'resolved', 'unresolved', 'invalid', 'execution_error'}:
+        if type(row.get('schema_version')) is not int or row['schema_version'] != 1:
+            raise BenchError('unsupported result schema version')
+        if not isinstance(row.get('suite_version'), str) or row['suite_version'] != SUITE['version']:
+            raise BenchError('result suite version does not match this suite')
+        if not isinstance(row.get('source_commit'), str) or row['source_commit'] != ANCHOR:
+            raise BenchError('result source commit does not match the pinned anchor')
+        if not isinstance(row.get('engine'), str) or row['engine'] not in {'docker', 'local'}:
+            raise BenchError('result engine must be docker or local')
+        if (type(row.get('resolved')) is not bool or not isinstance(row.get('status'), str)
+                or row['status'] not in {'resolved', 'unresolved', 'invalid', 'execution_error'}):
             raise BenchError('malformed result: resolved must be boolean and status must be known')
-        if row['resolved'] != (row['status'] == 'resolved') or row.get('score') != (100 if row['resolved'] else 0):
+        if (type(row.get('score')) is not int or row['resolved'] != (row['status'] == 'resolved')
+                or row['score'] != (100 if row['resolved'] else 0)):
             raise BenchError('inconsistent result status/score')
+        image_id = row.get('image_id')
+        if row['engine'] == 'docker':
+            if image_id is None and row['status'] in {'invalid', 'execution_error'}:
+                pass  # An infrastructure failure may precede image inspection.
+            elif not isinstance(image_id, str) or not image_id:
+                raise BenchError('completed Docker results require an image id')
+        elif image_id is not None:
+            raise BenchError('local results cannot claim a Docker image id')
         by_id[row['task_id']].append(row)
+    engines = {row['engine'] for row in rows}
+    image_ids = {row['image_id'] for row in rows if row.get('image_id') is not None}
+    if len(engines) > 1:
+        raise BenchError('cannot mix local and Docker results in one report')
+    if len(image_ids) > 1:
+        raise BenchError('cannot mix Docker image identities in one report')
     duplicates = [k for k, v in by_id.items() if len(v) > 1]
     if duplicates:
         raise BenchError(f'duplicate task attempts; use one sealed run per report: {duplicates}')
@@ -775,11 +967,12 @@ def summary(input_dir, output):
             grouped[key].append(c['id'])
         groups[field] = {k: {'total': len(ids), 'resolved': sum(bool(by_id[x][0]['resolved']) for x in ids if x in by_id),
                                'missing': sum(x not in by_id for x in ids)} for k, ids in grouped.items()}
-    result = {'schema_version': 1, 'suite_version': SUITE['version'], 'total': len(all_cases), 'attempted': len(rows),
+    result = {'schema_version': 1, 'suite_version': SUITE['version'], 'source_commit': ANCHOR,
+              'image_id': next(iter(image_ids), None), 'total': len(all_cases), 'attempted': len(rows),
               'resolved': solved, 'score': round(100 * solved / len(all_cases), 2) if all_cases else 0,
               'missing': sorted(set(all_cases) - by_id.keys()), 'breakdown': groups,
               'interpretation': 'Full-suite strict resolution rate; missing/invalid tasks score zero. Difficulty is provisional.'}
-    result['engines'] = sorted(set(r.get('engine', 'unknown') for r in rows))
+    result['engines'] = sorted(engines)
     result['agent_isolation_verified'] = False
     result['agent_isolation_note'] = 'Grading isolation is automatic. Agent-side tool restrictions and prior task exposure must be attested by the external controller/reviewer.'
     dump(output, result)

@@ -33,11 +33,24 @@ class Results(unittest.TestResult):
         self.states[test.id()] = 'skipped'
 
 
+def test_ids(suite):
+    for test in suite:
+        if isinstance(test, unittest.TestSuite):
+            yield from test_ids(test)
+        else:
+            yield test.id()
+
+
+suite = unittest.defaultTestLoader.loadTestsFromModule(module)
+expected = list(test_ids(suite))
 result = Results()
-unittest.defaultTestLoader.loadTestsFromModule(module).run(result)
+suite.run(result)
 for test, trace in result.errors + result.failures:
     print(test.id(), trace, file=sys.stderr)
-report = {'valid': bool(result.states), 'tests': result.states,
-          'exit_code': 0 if result.wasSuccessful() else 1}
+complete = (bool(expected) and len(set(expected)) == len(expected)
+            and result.testsRun == len(expected) and set(result.states) == set(expected))
+report = {'valid': complete, 'tests': result.states, 'expected_tests': expected,
+          'complete_test_inventory': complete, 'tests_run': result.testsRun,
+          'exit_code': 0 if complete and result.wasSuccessful() else 1}
 Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + '\n')
 sys.exit(report['exit_code'])
