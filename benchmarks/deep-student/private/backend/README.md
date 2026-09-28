@@ -32,3 +32,7 @@ Some historical fixes were squash commits. DS-B06/08/09 document precisely what 
 ## Performance case qualification
 
 DS-B05 is `ready` following Linux ARM64 Docker calibration using `deep-student-bench:1.0` (image `sha256:c36f054875bb4cef944733cf45b591e4babaec9595ff1c6ff5177918dd4d2bf1`). The release-mode production workload is 2 MB delivered in 2 million tiny chunks, with a 3-second event-processing budget that excludes compilation. The buggy parser fails that assertion while retaining pass-to-pass behavior; the reference passes both tests. Versioned measurements and raw-log locations are recorded in `../../VALIDATION.zh-CN.md`. Command totals in `DS-B05/calibration.docker.json` include compile/process overhead and are not the assertion timing. Recalibrate under any new architecture or resource limits, and exclude this case from the scored core if the reference lacks adequate margin there. Do not count timeouts, compile errors or infrastructure failures as behavioral bug detections.
+
+## Scope limits
+
+These cases exercise production business modules and protocol paths, not a full Tauri app launch or a live cloud account. DS-B07 validates the registry boundary, not a complete cross-device sync. UI rendering, storage-provider behavior and desktop lifecycle are outside this subset. A shared evaluator should label these boundaries in the result and offer the raw machine reports to the later reviewer.
