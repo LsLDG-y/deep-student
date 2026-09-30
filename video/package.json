@@ -1,0 +1,31 @@
+{
+  "name": "deep-student-pv",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Deep Student 30s product video (Remotion project)",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts DeepStudentPV out/deep-student-pv.mp4",
+    "render:4k": "remotion render src/index.ts DeepStudentPV out/deep-student-pv-4k.mp4 --scale=2",
+    "render:prores": "remotion render src/index.ts DeepStudentPV out/deep-student-pv-4k.mov --scale=2 --codec=prores --prores-profile=4444",
+    "still": "remotion still src/index.ts DeepStudentPV",
+    "audio": "node scripts/synth-score.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "2.1.10",
+    "@remotion/bundler": "4.0.530",
+    "@remotion/cli": "4.0.530",
+    "@remotion/renderer": "4.0.530",
+    "katex": "0.16.22",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.530"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.6.3"
+  }
+}
