@@ -511,7 +511,7 @@ export const MindmapToolbar = ({ tk, recite = false, structureActive = false }: 
     </TB>
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: tk.mutedFg, marginLeft: 4 }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: tk.mutedFg, opacity: 0.6 }} />
-      已保存
+      {S.mm.saved}
     </span>
     <span style={{ flex: 1 }} />
     <TB tk={tk} active={structureActive}>
@@ -521,7 +521,7 @@ export const MindmapToolbar = ({ tk, recite = false, structureActive = false }: 
       <Gear size={16} />
     </TB>
     <span style={{ width: 1, height: 18, background: tk.border, margin: '0 6px' }} />
-    <span style={{ fontSize: 11, color: tk.mutedFg, marginRight: 2 }}>学习</span>
+    <span style={{ fontSize: 11, color: tk.mutedFg, marginRight: 2 }}>{S.mm.learning}</span>
     <TB tk={tk} active={recite} style={{ padding: '0 7px' }}>
       <BookOpen size={15} />
       {recite ? S.mm.exit : S.mm.recite}
@@ -565,7 +565,7 @@ export const ReciteStatusBar = ({ tk, revealed, total, barK = 1 }: { tk: Tokens;
         <span style={{ display: 'block', height: '100%', width: `${pct}%`, background: tk.warning }} />
       </span>
       <span style={{ fontVariantNumeric: 'tabular-nums', color: tk.mutedFg, fontSize: 12 }}>
-        {revealed}/{total} · {pct}%{revealed < total ? `　剩余 ${total - revealed}` : ''}
+        {revealed}/{total} · {pct}%{revealed < total ? `　${S.mm.remaining(total - revealed)}` : ''}
       </span>
       <span style={{ width: 1, height: 16, background: tk.border }} />
       <span style={btn}>

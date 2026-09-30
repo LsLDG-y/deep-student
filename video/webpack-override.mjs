@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
+// remotion.config.ts 会被打包成 CJS 执行，import.meta 不可用；npm scripts 的 cwd 恒为 video/。
+const here = process.cwd();
 
 /**
  * 允许从主应用源码直接导入 locale 文案、图标与静态资源（单一来源），
