@@ -1,4 +1,5 @@
-// 用法：node scripts/stills.mjs 1.0 2.4 3.8 …（单位：秒）→ out/stills/t-XX.XX.png
+// 用法：node scripts/stills.mjs 1.0 2.4 3.8 …（单位：脚本秒，与场景代码里的时间一致）→ out/stills/t-XX.XX.png
+const PACE = 2; // 与 src/lib/time.ts 的 PACE 保持一致
 import { bundle } from '@remotion/bundler';
 import { renderStill, selectComposition } from '@remotion/renderer';
 import fs from 'node:fs';
@@ -24,7 +25,7 @@ const serveUrl = await bundle({
 const browserExecutable = process.env.REMOTION_CHROME ?? null;
 const composition = await selectComposition({ serveUrl, id: 'DeepStudentPV', browserExecutable });
 for (const s of times) {
-  const frame = Math.min(composition.durationInFrames - 1, Math.round(s * composition.fps));
+  const frame = Math.min(composition.durationInFrames - 1, Math.round(s * PACE * composition.fps));
   const output = path.join(outDir, `t-${s.toFixed(2)}.png`);
   await renderStill({ composition, serveUrl, frame, output, scale, browserExecutable });
   console.log(output);

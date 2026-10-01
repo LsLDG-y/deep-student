@@ -1,7 +1,14 @@
 import { Easing, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
 export const FPS = 60;
-export const DURATION_S = 30;
+/**
+ * 成片节奏：1 秒脚本时间 = PACE 秒成片时间。
+ * 场景/相机/字幕里写的秒数都是「脚本时间」（30s 剧本），成片按 PACE 放慢到 60s。
+ * 产品弹簧（springAt）按真实时间求值，保持与应用一致的手感。
+ */
+export const PACE = 2;
+export const SCRIPT_S = 30;
+export const DURATION_S = SCRIPT_S * PACE;
 export const WIDTH = 1920;
 export const HEIGHT = 1080;
 
@@ -27,7 +34,7 @@ export const ease = {
 export const useTime = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  return frame / fps;
+  return frame / fps / PACE;
 };
 
 export const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
@@ -58,7 +65,7 @@ export const springAt = (t: number, start: number, cfg: SpringCfg) =>
   t < start
     ? 0
     : spring({
-        frame: (t - start) * FPS,
+        frame: (t - start) * PACE * FPS,
         fps: FPS,
         config: { stiffness: cfg.stiffness, damping: cfg.damping, mass: cfg.mass ?? 1 },
       });
