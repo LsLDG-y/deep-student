@@ -15,17 +15,23 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "2.1.10",
+    "@react-three/fiber": "8.17.10",
+    "@react-three/postprocessing": "2.16.3",
     "@remotion/bundler": "4.0.530",
     "@remotion/cli": "4.0.530",
     "@remotion/renderer": "4.0.530",
+    "@remotion/three": "4.0.530",
     "katex": "0.16.22",
+    "postprocessing": "6.36.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "remotion": "4.0.530"
+    "remotion": "4.0.530",
+    "three": "0.169.0"
   },
   "devDependencies": {
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
+    "@types/three": "0.169.0",
     "typescript": "5.6.3"
   }
 }

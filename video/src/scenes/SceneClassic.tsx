@@ -2,7 +2,7 @@ import logoUrl from '@app-public/logo-black.svg';
 import { AbsoluteFill } from 'remotion';
 import { camAt, CameraView, project, type Cam, type CamKey } from '../lib/camera';
 import { DUR, userBubbleSpring } from '../lib/motion';
-import { clamp, ease, keys, prog, springAt } from '../lib/time';
+import { clamp, ease, keys, PACE, prog, springAt } from '../lib/time';
 import { S } from '../strings';
 import { font, light, type Tokens } from '../theme';
 import { Pupil, pathAt } from '../ui/brand';
@@ -27,6 +27,9 @@ import {
 import { MindmapCard } from '../ui/mindmap';
 import { PAGE_H, SELECTION_BOX, TextbookPage, THEOREM_CHARS } from '../ui/TextbookPage';
 import { Tex } from '../ui/tex';
+import { CUT_ZOOM, POST, RV, STRIP_WORLD } from './retrieval/beats';
+import { Handoff } from './retrieval/Handoff';
+import { Vectorize } from './retrieval/Vectorize';
 
 export const REF_LABEL = '高等数学（第七版）上册 page:132';
 export const PHOTOS = ['错题-中值定理.jpg', '错题-辅助函数.jpg'];
@@ -79,16 +82,22 @@ export const CLASSIC_CAM: CamKey[] = [
   [4.35, { x: THREAD_X + COMPOSER_W / 2, y: chatY(EMPTY.composerTop) + 80, zoom: 1.6 }, ease.inOutCubic],
   [4.55, { x: THREAD_X + COMPOSER_W / 2, y: chatY(EMPTY.composerTop) + 80, zoom: 1.62 }, ease.linear],
   [5.2, { x: THREAD_X + COMPOSER_W / 2, y: chatY(170), zoom: 1.6 }, ease.inOutCubic],
-  [6.3, { x: THREAD_X + COMPOSER_W / 2, y: chatY(200), zoom: 1.66 }, ease.linear],
-  [6.75, { x: THREAD_X + COMPOSER_W / 2, y: chatY(230), zoom: 5.2, rx: 72 }, ease.inCubic],
-  [8.0, { x: THREAD_X + COMPOSER_W / 2, y: chatY(360), zoom: 3.4, rx: -40 }, ease.linear],
-  [8.5, { x: THREAD_X + COMPOSER_W / 2, y: chatY(360), zoom: 1.5, rx: 0 }, ease.outCubic],
-  [8.9, { x: THREAD_X + COMPOSER_W / 2, y: chatY(372), zoom: 1.52 }, ease.linear],
-  [9.45, { x: CW.panelX + CW.panel / 2, y: 470, zoom: 1.25 }, ease.inOutCubic],
-  [9.85, { x: CW.panelX + CW.panel / 2 + 6, y: 476, zoom: 1.27 }, ease.linear],
-  [10.2, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.6 }, ease.inOutQuint],
-  [10.5, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.64 }, ease.linear],
-  [11, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.9 }, ease.inCubic],
+  [5.98, { x: THREAD_X + COMPOSER_W / 2, y: chatY(196), zoom: 1.65 }, ease.linear],
+  // 02 看清：推向气泡看向量化，再顺着向量条匹配剪辑进 3D
+  [6.32, { x: THREAD_X + COMPOSER_W / 2 + 10, y: 205, zoom: 2.1 }, ease.inOutCubic],
+  [6.62, { x: STRIP_WORLD.x, y: 262, zoom: 2.28 }, ease.inOutCubic],
+  [RV.cut, { x: STRIP_WORLD.x, y: STRIP_WORLD.y, zoom: CUT_ZOOM }, ease.inCubic],
+  // 3D 期间相机跳到全窗机位，3D 淡出时界面已就位
+  [RV.cut + 0.005, { x: CW.w / 2, y: CW.h / 2, zoom: 0.93 }, ease.linear],
+  [RV.reveal, { x: CW.w / 2, y: CW.h / 2, zoom: 0.93 }, ease.linear],
+  [9.0, { x: CW.w / 2, y: CW.h / 2, zoom: 1.0 }, ease.outCubic],
+  [8.5 + POST - 0.2, { x: THREAD_X + COMPOSER_W / 2, y: chatY(360), zoom: 1.5 }, ease.inOutCubic],
+  [8.9 + POST, { x: THREAD_X + COMPOSER_W / 2, y: chatY(372), zoom: 1.52 }, ease.linear],
+  [9.45 + POST, { x: CW.panelX + CW.panel / 2, y: 470, zoom: 1.25 }, ease.inOutCubic],
+  [9.85 + POST, { x: CW.panelX + CW.panel / 2 + 6, y: 476, zoom: 1.27 }, ease.linear],
+  [10.2 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.6 }, ease.inOutQuint],
+  [10.5 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.64 }, ease.linear],
+  [11 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.9 }, ease.inCubic],
 ];
 
 export const classicCam = (t: number): Cam => camAt(t, CLASSIC_CAM);
@@ -110,7 +119,7 @@ const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
   const l2 = '内可导，曲线上就一定有一点的切线与两端连线平行';
   const l3 = '证明的关键是构造辅助函数 φ(x)，把问题化归为罗尔定理';
   const l4 = '你上次在 ξ 的取值上丢过分——它严格落在开区间内';
-  const s1 = 8.05;
+  const s1 = 8.05 + POST;
   const s2 = s1 + [...l1].length / CPS;
   const sf = s2 + [...l2].length / CPS + 0.03;
   const s3 = sf + 0.08;
@@ -151,7 +160,7 @@ const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
       </div>
       <div style={{ ...base, top: ANSWER_LINES.l5 }}>
         {line('完整证明见教材 ', s5)}
-        {t >= s5 + 0.06 ? <PdfBadge page={134} tk={tk} press={Math.max(0, 1 - Math.abs(t - 9.1) / 0.1)} /> : null}
+        {t >= s5 + 0.06 ? <PdfBadge page={134} tk={tk} press={Math.max(0, 1 - Math.abs(t - (9.1 + POST)) / 0.1)} /> : null}
       </div>
     </div>
   );
@@ -164,10 +173,13 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
   const composerTop = sent ? EMPTY.composerTop + (DOCK_TOP - EMPTY.composerTop) * dockK : EMPTY.composerTop;
   const userK = springAt(t, 4.56, userBubbleSpring);
   const asstK = prog(t, 5.5, 5.5 + DUR.messageEnter, ease.brand);
-  const thinkingSec = Math.min(3, Math.floor(t - 5.5) + 1);
-  const retrievalDone = t >= 8.0;
+  const thinkingSec = Math.floor((Math.min(t, RV.done) - 5.5) * PACE) + 1;
+  const retrievalDone = t >= RV.done;
+  const row0Done = t >= RV.land2;
+  const row1Done = t >= RV.land3;
+  const rowFlash = (at: number) => (t >= at ? Math.exp(-(t - at) * PACE * 3) : 0);
   const sweep = (start: number) => ((t - start) % 0.8) / 0.8;
-  const cardEnter = (_n: unknown, i: number) => prog(t, 9.55 + i * 0.04, 9.55 + i * 0.04 + DUR.mindmapNodeEnter, ease.wbOut);
+  const cardEnter = (_n: unknown, i: number) => prog(t, 9.55 + POST + i * 0.04, 9.55 + POST + i * 0.04 + DUR.mindmapNodeEnter, ease.wbOut);
   return (
     <>
       {emptyFade > 0 ? (
@@ -202,40 +214,40 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
             kind="thinking"
             t={t}
             shimmer={!retrievalDone}
-            label={retrievalDone ? S.thought(3) : S.thinking(thinkingSec)}
+            label={retrievalDone ? S.thought(thinkingSec) : S.thinking(thinkingSec)}
           />
           {t >= 6.0 ? (
-            <div style={{ marginTop: 12, opacity: prog(t, 6.0, 6.15) }}>
+            <div style={{ marginTop: 12, opacity: prog(t, 6.0, 6.15), borderRadius: 8, background: `hsl(215 72% 42% / ${0.12 * rowFlash(RV.land2)})` }}>
               <TimelineRow
                 tk={tk}
                 kind="search"
                 t={t}
                 label={S.unifiedSearch}
-                status={retrievalDone ? S.retrievalSummary(2) : S.searching}
-                sweepK={retrievalDone ? undefined : sweep(6.0)}
+                status={row0Done ? S.retrievalSummary(2) : S.searching}
+                sweepK={row0Done ? undefined : sweep(6.0)}
               />
             </div>
           ) : null}
           {t >= 6.1 ? (
-            <div style={{ marginTop: 12, opacity: prog(t, 6.1, 6.25) }}>
+            <div style={{ marginTop: 12, opacity: prog(t, 6.1, 6.25), borderRadius: 8, background: `hsl(152 60% 36% / ${0.12 * rowFlash(RV.land3)})` }}>
               <TimelineRow
                 tk={tk}
                 kind="search"
                 t={t}
                 label={S.memorySearch}
-                status={retrievalDone ? S.retrievalSummary(1) : S.searching}
-                sweepK={retrievalDone ? undefined : sweep(6.1)}
+                status={row1Done ? S.retrievalSummary(1) : S.searching}
+                sweepK={row1Done ? undefined : sweep(6.1)}
               />
             </div>
           ) : null}
         </div>
       ) : null}
 
-      {t >= 8.0 ? <Answer tk={tk} t={t} /> : null}
+      {t >= 8.0 + POST ? <Answer tk={tk} t={t} /> : null}
 
-      {t >= 9.5 ? (
+      {t >= 9.5 + POST ? (
         <div style={{ position: 'absolute', left: 32, top: MSG.card }}>
-          <MindmapCard tk={tk} width={COMPOSER_W} enter={cardEnter} openPress={Math.max(0, 1 - Math.abs(t - 10.5) / 0.1)} />
+          <MindmapCard tk={tk} width={COMPOSER_W} enter={cardEnter} openPress={Math.max(0, 1 - Math.abs(t - (10.5 + POST)) / 0.1)} />
         </div>
       ) : null}
 
@@ -284,12 +296,14 @@ export const SceneClassic = ({ t }: { t: number }) => {
   const selectionUi = t >= 2.55 && t < 3.25;
   const selUiFade = 1 - prog(t, 3.05, 3.25);
   const chipK = prog(t, 3.02, 3.5, ease.inOutCubic);
-  const worldFade = 1 - prog(t, 6.45, 6.75) + prog(t, 8.0, 8.25);
-  const panelScroll = keys(t, [
-    [9.15, 0],
-    [9.55, 2 * (PAGE_H + 16), ease.inOutCubic],
-  ]);
-  const pageLabel = t < 9.3 ? 132 : t < 9.42 ? 133 : 134;
+  // 教材页落进面板的瞬间，面板以硬弹簧"啪"地翻到第 134 页
+  const snapK = springAt(t, RV.land1 - 0.07, { stiffness: 420, damping: 26 });
+  const panelScroll = 2 * (PAGE_H + 16) * snapK;
+  const pageLabel = snapK < 0.3 ? 132 : snapK < 0.75 ? 133 : 134;
+  const pageFlash = Math.max(
+    t >= RV.land1 ? Math.exp(-(t - RV.land1) * PACE * 1.6) : 0,
+    t >= 9.15 + POST ? Math.exp(-(t - 9.15 - POST) * PACE * 1.6) : 0,
+  );
 
   const chipPos = (() => {
     const a = { x: SEL.x + SEL.w / 2 - 120, y: SEL.y + 30 };
@@ -310,19 +324,19 @@ export const SceneClassic = ({ t }: { t: number }) => {
     [4.4, SEND_BTN.x, SEND_BTN.y],
     [4.6, SEND_BTN.x, SEND_BTN.y],
     [5.3, THREAD_X + 420, chatY(360)],
-    [8.6, THREAD_X + 420, chatY(360)],
-    [9.0, PDF_BADGE.x, PDF_BADGE.y],
-    [9.15, PDF_BADGE.x, PDF_BADGE.y],
-    [9.9, OPEN_BTN.x - 60, OPEN_BTN.y + 40],
-    [10.42, OPEN_BTN.x, OPEN_BTN.y],
+    [8.6 + POST, THREAD_X + 420, chatY(360)],
+    [9.0 + POST, PDF_BADGE.x, PDF_BADGE.y],
+    [9.15 + POST, PDF_BADGE.x, PDF_BADGE.y],
+    [9.9 + POST, OPEN_BTN.x - 60, OPEN_BTN.y + 40],
+    [10.42 + POST, OPEN_BTN.x, OPEN_BTN.y],
   ]);
   const pupilScreen = project(cam, pupilWorld.x, pupilWorld.y);
-  const pupilOpacity = prog(t, 0.3, 0.55) * (1 - prog(t, 6.3, 6.5)) + prog(t, 8.5, 8.7) - (t > 10.55 ? 1 : 0);
+  const pupilOpacity = prog(t, 0.3, 0.55) * (1 - prog(t, 5.9, 6.1)) + prog(t, 8.5 + POST, 8.7 + POST) - (t > 10.55 + POST ? 1 : 0);
 
   return (
     <AbsoluteFill>
       <CameraView cam={cam}>
-        <div style={{ position: 'absolute', left: 0, top: 0, width: CW.w, height: CW.h, opacity: worldFade }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: CW.w, height: CW.h }}>
           <ClassicWindow
             tk={tk}
             title={t < 5.3 ? S.nav.newChat : SESSION_TITLE}
@@ -413,9 +427,28 @@ export const SceneClassic = ({ t }: { t: number }) => {
               <Toast tk={tk} text={S.refAdded} sub="高等数学（第七版）上册" />
             </div>
           ) : null}
+
+          {pageFlash > 0.01 ? (
+            <div
+              style={{
+                position: 'absolute',
+                left: PAGE_ORIGIN.x - 6,
+                top: PAGE_ORIGIN.y + 2 * (PAGE_H + 16) - panelScroll + 80,
+                width: 688 + 12,
+                height: 400,
+                borderRadius: 8,
+                background: `hsl(215 80% 55% / ${0.12 * pageFlash})`,
+                boxShadow: `inset 3px 0 0 hsl(215 72% 42% / ${pageFlash})`,
+                clipPath: `inset(${Math.max(0, CW.title + 44 - (PAGE_ORIGIN.y + 2 * (PAGE_H + 16) - panelScroll + 80))}px 0 0 0)`,
+              }}
+            />
+          ) : null}
+
+          <Vectorize t={t} />
         </div>
       </CameraView>
-      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1, 10.5]} />
+      <Handoff t={t} cam={cam} />
+      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, 10.5 + POST]} />
     </AbsoluteFill>
   );
 };

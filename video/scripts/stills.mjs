@@ -23,10 +23,11 @@ const serveUrl = await bundle({
   publicDir: path.join(root, 'public'),
 });
 const browserExecutable = process.env.REMOTION_CHROME ?? null;
-const composition = await selectComposition({ serveUrl, id: 'DeepStudentPV', browserExecutable });
+const chromiumOptions = { gl: 'angle' };
+const composition = await selectComposition({ serveUrl, id: 'DeepStudentPV', browserExecutable, chromiumOptions });
 for (const s of times) {
   const frame = Math.min(composition.durationInFrames - 1, Math.round(s * PACE * composition.fps));
   const output = path.join(outDir, `t-${s.toFixed(2)}.png`);
-  await renderStill({ composition, serveUrl, frame, output, scale, browserExecutable });
+  await renderStill({ composition, serveUrl, frame, output, scale, browserExecutable, chromiumOptions });
   console.log(output);
 }

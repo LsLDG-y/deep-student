@@ -2,7 +2,8 @@ import { AbsoluteFill } from 'remotion';
 import './global.css';
 import { useTime } from './lib/time';
 import { Supers } from './overlays/Supers';
-import { KnowledgeSea } from './scenes/KnowledgeSea';
+import { RV } from './scenes/retrieval/beats';
+import { Archive3D } from './scenes/retrieval/Archive3D';
 import { SceneClassic } from './scenes/SceneClassic';
 import { brand } from './theme';
 import { PaperGrid } from './ui/brand';
@@ -14,8 +15,8 @@ export const PV = () => {
   return (
     <AbsoluteFill style={{ background: brand.paper, overflow: 'hidden' }}>
       <PaperGrid />
-      {t < 11 ? <SceneClassic t={t} /> : null}
-      {t >= 6.4 && t < 8.35 ? <KnowledgeSea t={t} /> : null}
+      {t < 12 ? <SceneClassic t={t} /> : null}
+      {t >= RV.cut && t < RV.reveal + 0.16 ? <Archive3D t={t} /> : null}
       <Supers t={t} />
     </AbsoluteFill>
   );
