@@ -212,16 +212,52 @@ export const AppIcon = ({ src, size }: { src: string; size: number }) => (
   </span>
 );
 
+/** 悬停气泡（Dock.css .wb-dock-tip：玻璃底、带箭头，悬停 350ms 后浮现，图标本身不放大）。 */
+const DockTip = ({ tk, label, k }: { tk: Tokens; label: string; k: number }) => {
+  const g = glass(tk, true);
+  return (
+    <span
+      style={{
+        position: 'absolute',
+        left: '50%',
+        bottom: 'calc(100% + 12px)',
+        padding: '4px 11px',
+        borderRadius: 8,
+        fontSize: 12,
+        fontWeight: 500,
+        lineHeight: 1.4,
+        whiteSpace: 'nowrap',
+        color: tk.foreground,
+        background: `${g.sheen}, ${tk.dark ? 'hsl(0 0% 14% / 0.82)' : 'hsl(0 0% 99% / 0.82)'}`,
+        backdropFilter: g.blur,
+        border: `1px solid ${g.border}`,
+        boxShadow: `inset 0 1px 0 ${g.highlight}, 0 6px 18px hsl(0 0% 0% / 0.16)`,
+        opacity: k,
+        transform: `translate(-50%, ${(1 - k) * 5}px) scale(${0.94 + 0.06 * k})`,
+        transformOrigin: '50% 100%',
+      }}
+    >
+      {label}
+    </span>
+  );
+};
+
 export const Dock = ({
   tk,
   running = [],
   bounce = {},
+  tip,
+  press = {},
   style,
 }: {
   tk: Tokens;
   running?: string[];
   /** 每个图标的弹跳位移（px，向上为正）。 */
   bounce?: Record<string, number>;
+  /** 正在悬停的图标与气泡进度 */
+  tip?: { id: string; k: number };
+  /** 按压压暗（0–1） */
+  press?: Record<string, number>;
   style?: CSSProperties;
 }) => {
   const g = glass(tk, true);
@@ -253,7 +289,8 @@ export const Dock = ({
           <span key={`sep${i}`} style={{ width: 1, height: 32, margin: '0 4px', background: tk.dark ? 'hsl(0 0% 18% / 0.8)' : 'hsl(0 0% 88% / 0.8)' }} />
         ) : (
           <span key={e.id} style={{ position: 'relative', width: WB.dockItem, height: WB.dockItem, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ display: 'inline-flex', transform: `translateY(${-(bounce[e.id] ?? 0)}px)` }}>
+            {tip && tip.id === e.id && tip.k > 0.001 ? <DockTip tk={tk} label={e.label} k={tip.k} /> : null}
+            <span style={{ display: 'inline-flex', transform: `translateY(${-(bounce[e.id] ?? 0)}px)`, filter: press[e.id] ? `brightness(${1 - 0.18 * press[e.id]})` : undefined }}>
               {e.icon ? (
                 <AppIcon src={e.icon} size={42} />
               ) : (

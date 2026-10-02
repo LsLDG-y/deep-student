@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { AbsoluteFill } from 'remotion';
-import { ease, lerp, prog } from '../../lib/time';
+import { ease, lerp, prog, SCRIPT_S } from '../../lib/time';
 import { brand, font } from '../../theme';
 import { LogoMark, Pupil, PUPIL } from '../../ui/brand';
 import { FN } from './beats';
@@ -48,8 +48,10 @@ export const EndCard = ({ t }: { t: number }) => {
   const b = (t - FN.blink) / 0.14;
   const blink = b > 0 && b < 1 ? 1 - 0.92 * Math.sin(b * Math.PI) : 1;
   const glance = prog(t, FN.glance, FN.glance + 0.12, ease.brand) * (1 - prog(t, FN.glance + 0.4, FN.glance + 0.52, ease.brand));
+  // 落定后的长停留里镜头极慢地推近，画面不至于完全静止
+  const drift = prog(t, FN.reveal1, SCRIPT_S, ease.linear);
   return (
-    <AbsoluteFill style={{ fontFamily: font.ui }}>
+    <AbsoluteFill style={{ fontFamily: font.ui, transform: `scale(${1 + 0.035 * drift}) translateY(${-6 * drift}px)`, transformOrigin: '50% 46%' }}>
       {reveal > 0 ? (
         <LogoMark
           id="endcard"

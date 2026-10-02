@@ -156,8 +156,10 @@ const DAY_CAM: CamKey[] = [
   [DAY.todayOpen + 0.55, { x: 960, y: 500, zoom: 1.1 }, ease.inOutCubic],
   [DAY.todayFocus - 0.4, { x: 990, y: 498, zoom: 1.12 }, ease.linear],
   [DAY.todayFocus + 0.05, { x: 1150, y: 560, zoom: 1.3 }, ease.inOutCubic],
-  [DAY.todayOut, { x: 1150, y: 560, zoom: 1.32 }, ease.linear],
-  [DAY.examOpen, { x: 960, y: 540, zoom: 1.02 }, ease.inOutCubic],
+  // 每次去 Dock 打开下一个应用之前，镜头先退到能看见 Dock 的全景
+  [DAY.todayOut - 0.35, { x: 1150, y: 560, zoom: 1.32 }, ease.linear],
+  [DAY.examOpen - 0.25, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
+  [DAY.examOpen + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
   [EXAM_GRAB, { x: 900, y: 560, zoom: 1.02 }, ease.inOutCubic],
   [DAY.examDrop + 0.25, { x: 990, y: 520, zoom: 1.1 }, ease.inOutCubic],
   [DAY.examParsed, { x: 1000, y: 516, zoom: 1.12 }, ease.linear],
@@ -165,19 +167,23 @@ const DAY_CAM: CamKey[] = [
   [DAY.examExplain + 0.5, { x: 920, y: 520, zoom: 1.24 }, ease.inOutCubic],
   [DAY.examMastery - 0.05, { x: 930, y: 560, zoom: 1.22 }, ease.linear],
   [DAY.examMastery + 0.5, { x: 1010, y: 520, zoom: 1.1 }, ease.inOutCubic],
-  [DAY.examOut, { x: 1010, y: 520, zoom: 1.12 }, ease.linear],
-  [DAY.essayOpen, { x: 960, y: 540, zoom: 1.02 }, ease.inOutCubic],
+  [DAY.essayOpen - 0.6, { x: 1010, y: 520, zoom: 1.12 }, ease.linear],
+  [DAY.essayOpen - 0.2, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
+  [DAY.essayOpen + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
   [DAY.essayGrade - 0.3, { x: 1040, y: 470, zoom: 1.08 }, ease.inOutCubic],
   [DAY.essayGrade + 0.45, { x: 780, y: 500, zoom: 1.24 }, ease.inOutCubic],
   [DAY.essayScore + 0.1, { x: 820, y: 520, zoom: 1.24 }, ease.linear],
   [DAY.essayScore + 0.6, { x: 990, y: 520, zoom: 1.1 }, ease.inOutCubic],
   [DAY.essayPolish - 0.05, { x: 1000, y: 520, zoom: 1.1 }, ease.linear],
   [DAY.essayPolish + 0.45, { x: 1300, y: 500, zoom: 1.3 }, ease.inOutCubic],
-  [DAY.translateOpen - 0.05, { x: 1310, y: 520, zoom: 1.32 }, ease.linear],
-  [DAY.translateOpen + 0.45, { x: 1040, y: 556, zoom: 1.04 }, ease.inOutCubic],
+  [DAY.translateOpen - 0.6, { x: 1310, y: 520, zoom: 1.32 }, ease.linear],
+  [DAY.translateOpen - 0.2, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
+  [DAY.translateOpen + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
+  [DAY.translateOpen + 0.5, { x: 1040, y: 556, zoom: 1.04 }, ease.inOutCubic],
   [DAY.translateRun + 0.35, { x: 1040, y: 540, zoom: 1.18 }, ease.inOutCubic],
-  [DAY.writingOut - 0.1, { x: 1040, y: 580, zoom: 1.22 }, ease.linear],
-  [DAY.researchOpen, { x: 960, y: 540, zoom: 1.02 }, ease.inOutCubic],
+  [DAY.researchOpen - 0.65, { x: 1040, y: 580, zoom: 1.22 }, ease.linear],
+  [DAY.researchOpen - 0.2, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
+  [DAY.researchOpen + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
   [DAY.researchSend - 0.15, { x: 760, y: 540, zoom: 1.12 }, ease.inOutCubic],
   [DAY.researchSteps + 0.35, { x: 740, y: 470, zoom: 1.24 }, ease.inOutCubic],
   [DAY.researchNote - 0.1, { x: 760, y: 500, zoom: 1.24 }, ease.linear],
@@ -185,11 +191,15 @@ const DAY_CAM: CamKey[] = [
   [DAY.paperSend - 0.05, { x: 1290, y: 520, zoom: 1.18 }, ease.linear],
   [DAY.paperSend + 0.45, { x: 740, y: 540, zoom: 1.18 }, ease.inOutCubic],
   [DAY.paperDownload + 0.3, { x: 820, y: 500, zoom: 1.26 }, ease.inOutCubic],
-  [DAY.hubIndex - 0.05, { x: 830, y: 510, zoom: 1.24 }, ease.linear],
-  [DAY.hubIndex + 0.45, { x: 960, y: 520, zoom: 1.12 }, ease.inOutCubic],
+  [DAY.hubIndex - 0.25, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
+  [DAY.hubIndex + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
+  [DAY.hubIndex + 0.55, { x: 960, y: 520, zoom: 1.12 }, ease.inOutCubic],
   [DAY.end - 0.3, { x: 1000, y: 500, zoom: 1.22 }, ease.linear],
   [DAY.end + 0.4, { x: 1000, y: 500, zoom: 1.12 }, ease.inOutCubic],
 ];
+
+/** 每次从 Dock 打开应用：瞳点先移到图标上，悬停出气泡，按下压暗，图标弹跳，窗口弹开。 */
+const LAUNCH_LEAD = 0.55;
 
 const PUPIL_PATH: Array<[number, number, number]> = (() => {
   const todo = dockIconCenter('todo');
@@ -199,13 +209,20 @@ const PUPIL_PATH: Array<[number, number, number]> = (() => {
   const drop = inWin(EXAM_RECT, EXAM_DROP);
   const start = inWin(EXAM_RECT, examStartCenter());
   const optA = inWin(EXAM_RECT, examOptionCenter(0));
+  const icon = (id: string) => dockIconCenter(id);
+  const approach = (id: string, at: number): Array<[number, number, number]> => [
+    [at - LAUNCH_LEAD, icon(id).x + 150, icon(id).y - 200],
+    [at - 0.08, icon(id).x, icon(id).y],
+  ];
+  const grade = { x: ESSAY_RECT.x + essayGradeCenter().x, y: ESSAY_RECT.y + 38 + essayGradeCenter().y };
+  const run = { x: TRANS_RECT.x + transButtonCenter().x, y: TRANS_RECT.y + 38 + transButtonCenter().y };
+  const dl = { x: CHAT_RECT.x + DL_BTN.x, y: CHAT_RECT.y + 38 + DL_BTN.y };
   return [
-    [DAY.todayOpen - 0.45, todo.x + 120, todo.y - 160],
-    [DAY.todayOpen - 0.08, todo.x, todo.y],
+    ...approach('todo', DAY.todayOpen),
     [DAY.todayOpen + 0.5, todo.x + 40, todo.y - 220],
     [DAY.todayFocus - 0.08, fx, fy],
     [DAY.todayFocus + 0.3, fx + 6, fy + 2],
-    [DAY.examOpen + 0.15, CHIP_HOME.x + 260, CHIP_HOME.y - 40],
+    ...approach('exam', DAY.examOpen),
     [EXAM_GRAB - 0.04, CHIP_HOME.x + 40, CHIP_HOME.y + 24],
     [DAY.examDrop - 0.04, drop.x - 110, drop.y - 6],
     [DAY.examParsed - 0.3, drop.x + 60, drop.y + 40],
@@ -213,30 +230,65 @@ const PUPIL_PATH: Array<[number, number, number]> = (() => {
     [DAY.examStart + 0.25, start.x + 10, start.y - 20],
     [DAY.examPick - 0.07, optA.x, optA.y],
     [DAY.examPick + 0.35, optA.x + 40, optA.y + 120],
-    [DAY.essayOpen + 0.35, ESSAY_RECT.x + ESSAY_W - 260, ESSAY_RECT.y + 200],
-    [DAY.essayGrade - 0.06, ESSAY_RECT.x + essayGradeCenter().x, ESSAY_RECT.y + 38 + essayGradeCenter().y],
-    [DAY.essayGrade + 0.4, ESSAY_RECT.x + ESSAY_W - 300, ESSAY_RECT.y + 300],
-    [DAY.translateOpen + 0.35, TRANS_RECT.x + TRANS_W - 240, TRANS_RECT.y + 160],
-    [DAY.translateRun - 0.06, TRANS_RECT.x + transButtonCenter().x, TRANS_RECT.y + 38 + transButtonCenter().y],
-    [DAY.translateRun + 0.4, TRANS_RECT.x + TRANS_W - 300, TRANS_RECT.y + 240],
-    [DAY.paperDownload - 0.5, CHAT_RECT.x + DL_BTN.x - 220, CHAT_RECT.y + 38 + DL_BTN.y + 160],
-    [DAY.paperDownload - 0.06, CHAT_RECT.x + DL_BTN.x, CHAT_RECT.y + 38 + DL_BTN.y],
-    [DAY.paperDownload + 0.4, CHAT_RECT.x + DL_BTN.x - 60, CHAT_RECT.y + 38 + DL_BTN.y + 120],
+    ...approach('essay', DAY.essayOpen),
+    [DAY.essayGrade - 0.06, grade.x, grade.y],
+    [DAY.essayGrade + 0.4, grade.x - 240, grade.y + 280],
+    ...approach('translation', DAY.translateOpen),
+    [DAY.translateRun - 0.06, run.x, run.y],
+    [DAY.translateRun + 0.4, run.x - 240, run.y + 220],
+    ...approach('chat', DAY.researchOpen),
+    [DAY.researchOpen + 0.35, CHAT_RECT.x + CHAT_W / 2, CHAT_RECT.y + CHAT_H - 120],
+    [DAY.paperDownload - 0.5, dl.x - 220, dl.y + 160],
+    [DAY.paperDownload - 0.06, dl.x, dl.y],
+    [DAY.paperDownload + 0.3, dl.x - 60, dl.y + 120],
+    ...approach('files', DAY.hubIndex),
+    [DAY.hubIndex + 0.4, icon('files').x - 80, icon('files').y - 260],
   ];
 })();
-const CLICKS = [DAY.todayOpen - 0.05, DAY.todayFocus, DAY.examStart, DAY.examPick, DAY.essayGrade, DAY.translateRun, DAY.paperDownload];
+
+const LAUNCHES: Array<[string, number]> = [
+  ['todo', DAY.todayOpen],
+  ['exam', DAY.examOpen],
+  ['essay', DAY.essayOpen],
+  ['translation', DAY.translateOpen],
+  ['chat', DAY.researchOpen],
+  ['files', DAY.hubIndex],
+];
+const CLICKS = [...LAUNCHES.map(([, at]) => at - 0.05), DAY.todayFocus, DAY.examStart, DAY.examPick, DAY.essayGrade, DAY.translateRun, DAY.paperDownload];
+
+const dockTipAt = (t: number) => {
+  for (const [id, at] of LAUNCHES) {
+    const h0 = at - 0.36;
+    if (t >= h0 && t < at + 0.1) return { id, k: prog(t, h0 + 0.175, h0 + 0.24, ease.wbOut) * (1 - prog(t, at - 0.02, at + 0.06)) };
+  }
+  return undefined;
+};
+
+/** 瞳点可见区间：各段动作前后淡入淡出。 */
+const PUPIL_SHOW: Array<[number, number]> = [
+  [DAY.todayOpen - LAUNCH_LEAD, DAY.todayOut],
+  [DAY.examOpen - LAUNCH_LEAD, DAY.examPick + 0.5],
+  [DAY.essayOpen - LAUNCH_LEAD, DAY.essayGrade + 0.5],
+  [DAY.translateOpen - LAUNCH_LEAD, DAY.translateRun + 0.5],
+  [DAY.researchOpen - LAUNCH_LEAD, DAY.researchOpen + 0.45],
+  [DAY.paperDownload - 0.55, DAY.paperDownload + 0.5],
+  [DAY.hubIndex - LAUNCH_LEAD, DAY.hubIndex + 0.5],
+];
+const pupilOpacity = (t: number) => Math.max(0, ...PUPIL_SHOW.map(([a, b]) => Math.min(prog(t, a, a + 0.12), 1 - prog(t, b - 0.14, b))));
 
 const Desktop = ({ t, running, bounce }: { t: number; running: string[]; bounce: Record<string, number> }) => {
   const k = themeK(t);
   const bar = dayMenubar(t);
+  const tip = dockTipAt(t);
+  const press = Object.fromEntries(LAUNCHES.map(([id, at]) => [id, pressAt(t, at - 0.05, 0.07)]));
   const layer = (tk: Tokens, opacity: number, children: ReactNode) => (opacity > 0.001 ? <div style={{ position: 'absolute', inset: 0, opacity }}>{children}</div> : null);
   return (
     <>
       <Wallpaper drift={wallDrift(t)} night={night(t)} />
       {layer(dark, 1 - k, <MenuBar tk={dark} app={bar.app} due={bar.due} clock={bar.clock} focus={bar.focus} />)}
       {layer(light, k, <MenuBar tk={light} app={bar.app} due={bar.due} clock={bar.clock} focus={bar.focus} />)}
-      {layer(dark, 1 - k, <Dock tk={dark} running={running} bounce={bounce} />)}
-      {layer(light, k, <Dock tk={light} running={running} bounce={bounce} />)}
+      {layer(dark, 1 - k, <Dock tk={dark} running={running} bounce={bounce} tip={tip} press={press} />)}
+      {layer(light, k, <Dock tk={light} running={running} bounce={bounce} tip={tip} press={press} />)}
     </>
   );
 };
@@ -269,12 +321,7 @@ export const SceneDay = ({ t }: { t: number }) => {
 
   const pw = pathAt(t, PUPIL_PATH);
   const ps = project(cam, pw.x, pw.y);
-  const pOpacity =
-    prog(t, PUPIL_PATH[0][0], PUPIL_PATH[0][0] + 0.12) * (1 - prog(t, DAY.todayOut - 0.1, DAY.todayOut + 0.1)) +
-    prog(t, DAY.examOpen + 0.1, DAY.examOpen + 0.22) * (1 - prog(t, DAY.examPick + 0.4, DAY.examPick + 0.55)) +
-    prog(t, DAY.essayOpen + 0.25, DAY.essayOpen + 0.4) * (1 - prog(t, DAY.essayGrade + 0.4, DAY.essayGrade + 0.55)) +
-    prog(t, DAY.translateOpen + 0.25, DAY.translateOpen + 0.4) * (1 - prog(t, DAY.translateRun + 0.4, DAY.translateRun + 0.55)) +
-    prog(t, DAY.paperDownload - 0.55, DAY.paperDownload - 0.4) * (1 - prog(t, DAY.paperDownload + 0.4, DAY.paperDownload + 0.55));
+  const pOpacity = pupilOpacity(t);
 
   return (
     <AbsoluteFill style={{ opacity: 1 - exit, transform: `scale(${1 - 0.04 * exit})` }}>

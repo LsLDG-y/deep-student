@@ -1,6 +1,6 @@
 import { AbsoluteFill } from 'remotion';
 import { camAt, CameraView, type CamKey } from '../../lib/camera';
-import { clamp, ease, prog } from '../../lib/time';
+import { clamp, ease, FPS, PACE, prog } from '../../lib/time';
 import { brand, light } from '../../theme';
 import { MCP_H, MCP_W, McpPanel, MEM_H, MEM_W, MemoryPanel, MODELS_H, MODELS_W, ModelsPanel, SKILL_H, SKILL_W, SkillsPanel } from '../../ui/you';
 import { WbWindow } from '../../ui/workbench';
@@ -49,13 +49,32 @@ const rise = (t: number, at: number) => {
   return { opacity: clamp(k * 1.5), transform: `translateY(${(1 - k) * 36}px) scale(${0.97 + 0.03 * k})` };
 };
 
+/** 横移时按镜头每帧位移给一点水平运动模糊（只在快速横移的几帧里生效）。 */
+const FRAME = 1 / (FPS * PACE);
+const motionBlur = (t: number) => {
+  const a = camAt(t - FRAME, CAM);
+  const b = camAt(t, CAM);
+  const v = Math.abs(b.x - a.x) * b.zoom;
+  return Math.min(16, Math.max(0, (v - 6) * 0.28));
+};
+
 export const SceneYou = ({ t }: { t: number }) => {
   if (t < YOU.in0 - 0.15 || t > YOU.out1 + 0.05) return null;
   const tk = light;
   const cam = camAt(t, CAM);
   const fade = 1 - prog(t, YOU.out0, YOU.out1, ease.inOutCubic);
+  const blur = motionBlur(t);
   return (
-    <AbsoluteFill style={{ opacity: fade }}>
+    <AbsoluteFill style={{ opacity: fade, filter: blur > 0.3 ? 'url(#you-mblur)' : undefined }}>
+      {blur > 0.3 ? (
+        <svg width={0} height={0} style={{ position: 'absolute' }}>
+          <defs>
+            <filter id="you-mblur" x="-4%" y="0%" width="108%" height="100%" colorInterpolationFilters="sRGB">
+              <feGaussianBlur stdDeviation={`${blur.toFixed(2)} 0`} />
+            </filter>
+          </defs>
+        </svg>
+      ) : null}
       <CameraView cam={cam}>
         <div
           style={{
