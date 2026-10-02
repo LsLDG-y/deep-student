@@ -241,7 +241,7 @@ const QueryCells = ({ t }: { t: number }) => {
   useLayoutEffect(() => {
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
-    const hot = new THREE.Color(0.55, 1.1, 3.2);
+    const hot = new THREE.Color(0.62, 0.78, 1.0);
     for (let j = 0; j < STRIP.cells; j++) {
       const off = Math.abs(j - (STRIP.cells - 1) / 2) / ((STRIP.cells - 1) / 2);
       const k = prog(t, RV.cut + 0.02 + off * 0.07, RV.probe, ease.inCubic);
@@ -264,24 +264,28 @@ const QueryCells = ({ t }: { t: number }) => {
   return <primitive object={mesh} />;
 };
 
+/** 探针：一颗实心小点 + 一道细尾迹（不发光，与收尾地形的制图线条同一语言）。 */
+const TRAIL_N = 40;
+const PROBE_CORE = new THREE.Color(0.86, 0.92, 1.0);
+const PROBE_TRAIL = new THREE.Color(0.62, 0.76, 1.0);
 const Probe = ({ t }: { t: number }) => {
   const parts = useMemo(() => {
-    const glow = radialTex();
     const group = new THREE.Group();
-    const core = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 2.6, 6), toneMapped: false }));
-    const halo = new THREE.Sprite(
-      new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0.5, 0.9, 2.4), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, transparent: true }),
+    const core = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), new THREE.MeshBasicMaterial({ color: PROBE_CORE, toneMapped: false, fog: false }));
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(1.55, 1.75, 64),
+      new THREE.MeshBasicMaterial({ color: PROBE_TRAIL, transparent: true, depthWrite: false, toneMapped: false, fog: false, side: THREE.DoubleSide }),
     );
-    const trail = Array.from({ length: 40 }, () => {
-      const s = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0.4, 0.75, 2.0), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, transparent: true }),
-      );
-      group.add(s);
-      return s;
-    });
+    const geom = new LineGeometry();
+    geom.setPositions(new Array(TRAIL_N * 3).fill(0));
+    geom.setColors(new Array(TRAIL_N * 3).fill(1));
+    const mat = new LineMaterial({ vertexColors: true, linewidth: 2, transparent: true, depthWrite: false, toneMapped: false });
+    mat.resolution.set(WIDTH, HEIGHT);
+    const trail = new Line2(geom, mat);
+    trail.frustumCulled = false;
     const light = new THREE.PointLight(new THREE.Color('#5b9bff'), 0, 14, 1.2);
-    group.add(core, halo, light);
-    return { group, core, halo, trail, light };
+    group.add(core, ring, trail, light);
+    return { group, core, ring, trail, geom, mat, light };
   }, []);
 
   useLayoutEffect(() => {
@@ -293,58 +297,68 @@ const Probe = ({ t }: { t: number }) => {
     const fade = 1 - prog(t, 8.18, 8.38);
     const selectPulse = Math.exp(-Math.max(0, t - RV.select) * PACE * 4) * (t >= RV.select ? 1 : 0);
     parts.core.position.copy(p);
-    parts.core.scale.setScalar(0.045 * fade * (1 + birth * 1.5));
-    parts.halo.position.copy(p);
-    parts.halo.scale.setScalar((0.36 + birth * 1.8 + selectPulse * 0.9) * fade);
-    (parts.halo.material as THREE.SpriteMaterial).opacity = 0.5 * fade;
-    parts.trail.forEach((s, i) => {
-      const tp = probePos(t - (i + 1) * 0.0035);
-      s.position.copy(tp);
-      const k = 1 - i / parts.trail.length;
-      // 光尾离镜头太近时会糊满画面：近处的采样点直接隐去
-      const near = prog(camPose(t).pos.distanceTo(tp), 1.2, 2.6);
-      s.scale.setScalar(0.14 * k * fade);
-      (s.material as THREE.SpriteMaterial).opacity = 0.36 * k * k * fade * near * prog(t, RV.probe, RV.probe + 0.06);
-    });
+    parts.core.scale.setScalar(0.04 * fade * (1 + birth * 0.8));
+    // 选中那一下：一圈细环从点上弹开
+    parts.ring.position.copy(p);
+    parts.ring.quaternion.copy(camAtT(t).quaternion);
+    parts.ring.scale.setScalar(0.04 * (1 + (1 - selectPulse) * 5) * fade);
+    (parts.ring.material as THREE.MeshBasicMaterial).opacity = selectPulse * 0.7 * fade;
+    const bg = WHITE.clone().lerp(DUSK, mood(t));
+    const cam = camPose(t).pos;
+    const pos: number[] = [];
+    const cols: number[] = [];
+    const c = new THREE.Color();
+    for (let i = 0; i < TRAIL_N; i++) {
+      const tp = probePos(t - i * 0.0035);
+      pos.push(tp.x, tp.y, tp.z);
+      // 尾迹越旧越接近底色（等于淡出）；离镜头太近的一段也隐去，免得横穿画面
+      const k = (1 - i / TRAIL_N) ** 1.6 * prog(cam.distanceTo(tp), 1.2, 2.6) * prog(t - i * 0.0035, RV.probe, RV.probe + 0.06);
+      c.copy(bg).lerp(PROBE_TRAIL, k * fade);
+      cols.push(c.r, c.g, c.b);
+    }
+    parts.geom.setPositions(pos);
+    parts.geom.setColors(cols);
     parts.light.position.copy(p);
-    parts.light.intensity = (22 + birth * 40 + selectPulse * 24) * fade;
+    parts.light.intensity = (18 + birth * 24 + selectPulse * 16) * fade;
   }, [t, parts]);
   return <primitive object={parts.group} />;
 };
 
-/** 相似度波前：从探针扩散的薄壳（菲涅耳边缘光）。 */
+/** 相似度波前：从探针荡开的一圈圈细线圆环（像声呐，而不是发光的气泡）。 */
 const Pulses = ({ t }: { t: number }) => {
-  const shells = useMemo(
+  const rings = useMemo(
     () =>
       PULSES.map(() => {
-        const mat = new THREE.ShaderMaterial({
-          transparent: true,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-          side: THREE.DoubleSide,
-          uniforms: { uAlpha: { value: 0 }, uColor: { value: new THREE.Color(0.35, 0.6, 1.4) } },
-          vertexShader: `varying vec3 vN; varying vec3 vV;
-            void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
-          fragmentShader: `uniform float uAlpha; uniform vec3 uColor; varying vec3 vN; varying vec3 vV;
-            void main(){ float rim = pow(1.0-abs(dot(normalize(vN),normalize(vV))), 9.0); gl_FragColor = vec4(uColor*rim*uAlpha, 1.0); }`,
-        });
-        return new THREE.Mesh(new THREE.SphereGeometry(1, 64, 32), mat);
+        const geom = new LineGeometry();
+        const pts: number[] = [];
+        for (let i = 0; i <= 128; i++) {
+          const a = (i / 128) * Math.PI * 2;
+          pts.push(Math.cos(a), Math.sin(a), 0);
+        }
+        geom.setPositions(pts);
+        const mat = new LineMaterial({ color: PROBE_TRAIL, linewidth: 1.4, transparent: true, depthWrite: false, toneMapped: false });
+        mat.resolution.set(WIDTH, HEIGHT);
+        const line = new Line2(geom, mat);
+        line.frustumCulled = false;
+        return line;
       }),
     [],
   );
   useLayoutEffect(() => {
-    shells.forEach((m, k) => {
+    const q = camAtT(t).quaternion;
+    rings.forEach((m, k) => {
       const age = t - PULSES[k];
       m.visible = age > 0 && age < 1.2;
       if (!m.visible) return;
       m.position.copy(pulseOrigin(k));
+      m.quaternion.copy(q);
       m.scale.setScalar(Math.max(0.01, age * PULSE_SPEED));
-      (m.material as THREE.ShaderMaterial).uniforms.uAlpha.value = 0.3 * Math.exp(-age * 2.8) * prog(age, 0, 0.04);
+      (m.material as LineMaterial).opacity = 0.6 * Math.exp(-age * 2.6) * prog(age, 0, 0.04);
     });
-  }, [t, shells]);
+  }, [t, rings]);
   return (
     <>
-      {shells.map((m, k) => (
+      {rings.map((m, k) => (
         <primitive key={k} object={m} />
       ))}
     </>
