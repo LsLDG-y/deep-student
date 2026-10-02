@@ -27,6 +27,9 @@ import {
 import { MindmapCard } from '../ui/mindmap';
 import { PAGE_H, SELECTION_BOX, TextbookPage, THEOREM_CHARS } from '../ui/TextbookPage';
 import { Tex } from '../ui/tex';
+import { AnkiStackBlock, ankiActionCenter, ANKI_BLOCK } from '../ui/anki';
+import { MindmapView, MM, openAt, ORGANIZE_CLICKS, ORGANIZE_PUPIL, organizePupilOpacity } from './organize/MindmapView';
+import { CHAT_SCROLL, PR } from './practice/beats';
 import { CUT_ZOOM, POST, RV, STRIP_WORLD } from './retrieval/beats';
 import { Handoff } from './retrieval/Handoff';
 import { Vectorize } from './retrieval/Vectorize';
@@ -72,6 +75,14 @@ export const PDF_BADGE = { x: THREAD_X + 7 * 16 + 8 + 30, y: chatY(ANSWER_LINES.
 export const CARD = { x: THREAD_X, y: chatY(MSG.card), w: COMPOSER_W, h: 280 };
 export const OPEN_BTN = { x: CARD.x + CARD.w - 12 - 14, y: CARD.y + 6 + 14 };
 
+/** 导图卡之后：一句引导语 + Anki 卡片块（聊天区局部坐标，上滚前）。 */
+const LEAD = '这一节的 12 张复习卡也备好了，已加入卡片库：';
+const LEAD_Y = MSG.card + 280 + 16;
+const ANKI_Y = LEAD_Y + 24 + 12;
+/** 卡片块上滚到位后在世界坐标里的原点。 */
+const ANKI_WORLD = { x: THREAD_X, y: chatY(ANKI_Y - CHAT_SCROLL) };
+const REVIEW_BTN = { x: ANKI_WORLD.x + ankiActionCenter('review').x, y: ANKI_WORLD.y + ankiActionCenter('review').y };
+
 export const CLASSIC_CAM: CamKey[] = [
   [0, { x: 1085, y: 560, zoom: 0.9 }],
   [2.0, { x: 1160, y: 530, zoom: 1.02 }, ease.inOutCubic],
@@ -98,6 +109,24 @@ export const CLASSIC_CAM: CamKey[] = [
   [10.2 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.6 }, ease.inOutQuint],
   [10.5 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.64 }, ease.linear],
   [11 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.9 }, ease.inCubic],
+  // 03 整理（后半）：卡片展开成全窗导图，镜头顺势拉开；切结构时轻推，背诵时推近画布
+  [MM.open1, { x: CW.w / 2, y: CW.h / 2, zoom: 1.0 }, ease.outCubic],
+  [MM.structClick - 0.12, { x: CW.w / 2 + 6, y: CW.h / 2 - 4, zoom: 1.01 }, ease.linear],
+  [MM.steps[0] - 0.04, { x: 1060, y: 380, zoom: 1.28 }, ease.inOutCubic],
+  [MM.popClose, { x: 1050, y: 388, zoom: 1.31 }, ease.linear],
+  [MM.reciteClick + 0.14, { x: 1040, y: 330, zoom: 1.3 }, ease.inOutCubic],
+  [MM.close0, { x: 1036, y: 334, zoom: 1.33 }, ease.linear],
+  [MM.close1, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 + 40, zoom: 1.45 }, ease.inOutCubic],
+  // 04 练习：跟住上滚的卡片块，最后推向「复习这批」
+  [PR.scroll1, { x: THREAD_X + COMPOSER_W / 2, y: ANKI_WORLD.y + 170, zoom: 1.42 }, ease.inOutCubic],
+  [PR.done, { x: THREAD_X + COMPOSER_W / 2 + 4, y: ANKI_WORLD.y + 180, zoom: 1.46 }, ease.linear],
+  [PR.reviewClick, { x: REVIEW_BTN.x + 40, y: CW.h - 540 / 1.62, zoom: 1.62 }, ease.inOutCubic],
+];
+
+const PRACTICE_PUPIL: Array<[number, number, number]> = [
+  [PR.done + 0.02, ANKI_WORLD.x + 470, ANKI_WORLD.y + 150],
+  [PR.reviewClick - 0.05, REVIEW_BTN.x, REVIEW_BTN.y],
+  [PR.reviewClick + 0.3, REVIEW_BTN.x, REVIEW_BTN.y],
 ];
 
 export const classicCam = (t: number): Cam => camAt(t, CLASSIC_CAM);
@@ -180,6 +209,9 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
   const rowFlash = (at: number) => (t >= at ? Math.exp(-(t - at) * PACE * 3) : 0);
   const sweep = (start: number) => ((t - start) % 0.8) / 0.8;
   const cardEnter = (_n: unknown, i: number) => prog(t, 9.55 + POST + i * 0.04, 9.55 + POST + i * 0.04 + DUR.mindmapNodeEnter, ease.wbOut);
+  const scroll = CHAT_SCROLL * prog(t, PR.scroll0, PR.scroll1, ease.inOutCubic);
+  const leadChars = [...LEAD];
+  const leadN = Math.max(0, Math.min(leadChars.length, Math.floor(((t - PR.lead) * CPS) / 3) * 3));
   return (
     <>
       {emptyFade > 0 ? (
@@ -191,6 +223,7 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
         </div>
       ) : null}
 
+      <div style={{ position: 'absolute', inset: 0, transform: scroll > 0 ? `translateY(${-scroll}px)` : undefined }}>
       {sent ? (
         <div
           style={{
@@ -251,6 +284,16 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
         </div>
       ) : null}
 
+      {leadN > 0 ? (
+        <div style={{ position: 'absolute', left: 32, top: LEAD_Y, fontFamily: font.ui, fontSize: 16, lineHeight: '24px', color: tk.foreground, whiteSpace: 'nowrap' }}>
+          {leadChars.slice(0, leadN).join('')}
+        </div>
+      ) : null}
+      <div style={{ position: 'absolute', left: 32, top: ANKI_Y }}>
+        <AnkiStackBlock tk={tk} t={t} reviewHover={prog(t, PR.reviewClick - 0.08, PR.reviewClick - 0.03)} reviewPress={Math.max(0, 1 - Math.abs(t - PR.reviewClick) / 0.1)} />
+      </div>
+      </div>
+
       <div style={{ position: 'absolute', left: 32, top: composerTop }}>
         <Composer
           tk={tk}
@@ -285,7 +328,7 @@ const pageTilt = (t: number) => ({
   ]),
 });
 
-export const SceneClassic = ({ t }: { t: number }) => {
+export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: boolean }) => {
   const tk = light;
   const cam = classicCam(t);
   const chrome = prog(t, 2.25, 2.7, ease.inOutCubic);
@@ -330,8 +373,15 @@ export const SceneClassic = ({ t }: { t: number }) => {
     [9.9 + POST, OPEN_BTN.x - 60, OPEN_BTN.y + 40],
     [10.42 + POST, OPEN_BTN.x, OPEN_BTN.y],
   ]);
-  const pupilScreen = project(cam, pupilWorld.x, pupilWorld.y);
-  const pupilOpacity = prog(t, 0.3, 0.55) * (1 - prog(t, 5.9, 6.1)) + prog(t, 8.5 + POST, 8.7 + POST) - (t > 10.55 + POST ? 1 : 0);
+  const practice = t >= PR.scroll0;
+  const organize = t >= MM.open0 && !practice;
+  const trackWorld = practice ? pathAt(t, PRACTICE_PUPIL) : organize ? pathAt(t, ORGANIZE_PUPIL) : pupilWorld;
+  const pupilScreen = project(cam, trackWorld.x, trackWorld.y);
+  const pupilOpacity = practice
+    ? prog(t, PR.done, PR.done + 0.1)
+    : organize
+      ? organizePupilOpacity(t)
+      : prog(t, 0.3, 0.55) * (1 - prog(t, 5.9, 6.1)) + prog(t, 8.5 + POST, 8.7 + POST) - (t > 10.55 + POST ? 1 : 0);
 
   return (
     <AbsoluteFill>
@@ -339,7 +389,7 @@ export const SceneClassic = ({ t }: { t: number }) => {
         <div style={{ position: 'absolute', left: 0, top: 0, width: CW.w, height: CW.h }}>
           <ClassicWindow
             tk={tk}
-            title={t < 5.3 ? S.nav.newChat : SESSION_TITLE}
+            title={t < 5.3 ? S.nav.newChat : openAt(t) > 0.5 ? '微分中值定理' : SESSION_TITLE}
             activeSession={t >= 4.6 ? (t < 5.3 ? S.nav.newChat : SESSION_TITLE) : undefined}
             chromeOpacity={chrome}
             style={{ opacity: chrome > 0 ? 1 : 0, background: chrome < 1 ? 'transparent' : tk.background, boxShadow: chrome < 1 ? 'none' : undefined }}
@@ -407,7 +457,7 @@ export const SceneClassic = ({ t }: { t: number }) => {
                 top: chipPos.y,
                 transform: `scale(${1 + Math.sin(chipK * Math.PI) * 0.35})`,
                 transformOrigin: '0 50%',
-                filter: `drop-shadow(0 ${10 * Math.sin(chipK * Math.PI)}px 18px rgba(190,18,60,0.25))`,
+                filter: `drop-shadow(0 ${10 * Math.sin(chipK * Math.PI)}px 16px hsl(220 25% 12% / ${0.22 * Math.sin(chipK * Math.PI)}))`,
               }}
             >
               <RefChip label={REF_LABEL} tk={tk} />
@@ -445,10 +495,11 @@ export const SceneClassic = ({ t }: { t: number }) => {
           ) : null}
 
           <Vectorize t={t} />
+          <MindmapView t={t} tk={tk} card={CARD} />
         </div>
       </CameraView>
       <Handoff t={t} cam={cam} />
-      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, 10.5 + POST]} />
+      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, 10.5 + POST, ...ORGANIZE_CLICKS, PR.reviewClick]} />
     </AbsoluteFill>
   );
 };

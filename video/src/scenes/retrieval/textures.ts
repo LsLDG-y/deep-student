@@ -137,8 +137,6 @@ const draw: Record<CardType, (ctx: CanvasRenderingContext2D, W: number, H: numbe
     const u = W / 320;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'hsl(152 60% 36%)';
-    ctx.fillRect(0, 0, 5 * u, H);
     ctx.fillStyle = 'hsl(152 60% 36% / 0.12)';
     rr(ctx, 20 * u, 18 * u, 70 * u, 20 * u, 10 * u);
     ctx.fill();
@@ -317,8 +315,6 @@ export const makeHitCanvas = (kind: 'textbook' | 'note' | 'memory', width = 640)
   } else {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'hsl(152 60% 36%)';
-    ctx.fillRect(0, 0, 5 * u, H);
     ctx.fillStyle = 'hsl(152 60% 36% / 0.12)';
     rr(ctx, 20 * u, 20 * u, 70 * u, 20 * u, 10 * u);
     ctx.fill();

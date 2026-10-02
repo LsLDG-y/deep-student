@@ -23,6 +23,8 @@ export const LogoMark = ({
   eyeOpen = 1,
   blink = 1,
   pupilScale = 1,
+  pupilDx = 0,
+  pupilDy = 0,
   style,
 }: {
   id: string;
@@ -34,6 +36,9 @@ export const LogoMark = ({
   eyeOpen?: number;
   blink?: number;
   pupilScale?: number;
+  /** 瞳孔相对默认位置的偏移（viewBox 单位），用于「瞥一眼」。 */
+  pupilDx?: number;
+  pupilDy?: number;
   style?: CSSProperties;
 }) => {
   const r = 4 + reveal * 150;
@@ -54,7 +59,7 @@ export const LogoMark = ({
       </defs>
       <path d={LOGO_OUTER} fill={color} mask={`url(#${id}-holes)`} clipPath={`url(#${id}-reveal)`} />
       <g transform={pT}>
-        <circle cx={PUPIL.cx} cy={PUPIL.cy} r={PUPIL.r * pupilScale} fill={pupilColor} />
+        <circle cx={PUPIL.cx + pupilDx} cy={PUPIL.cy + pupilDy} r={PUPIL.r * pupilScale} fill={pupilColor} />
       </g>
     </svg>
   );
@@ -144,7 +149,7 @@ export const Pupil = ({
           borderRadius: '50%',
           background: color,
           transform: `scale(${s})`,
-          boxShadow: `0 0 ${18 * glow}px ${4 * glow}px hsl(215 72% 50% / ${0.35 * glow}), 0 2px 6px hsl(220 30% 10% / 0.25), inset 0 0 0 2px hsl(0 0% 100% / 0.9)`,
+          boxShadow: `0 0 0 ${5 * glow}px hsl(215 72% 42% / ${0.14 * glow}), 0 2px 6px hsl(220 30% 10% / 0.25), inset 0 0 0 2px hsl(0 0% 100% / 0.9)`,
         }}
       />
     </div>

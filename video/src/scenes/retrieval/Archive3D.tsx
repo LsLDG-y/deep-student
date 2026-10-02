@@ -45,21 +45,21 @@ const fogNear = (t: number) => keys(t, [[RV.cut, 3.2], [RV.probe, 3.2], [7.42, 5
 // 退场：雾向镜头合拢，只留命中卡（命中卡不受雾影响），交接给界面时画面是干净的白底
 const fogFar = (t: number) => keys(t, [[RV.cut, 3.4], [RV.probe, 3.4], [7.42, 46, ease.outCubic], [8.14, 46], [8.36, 5, ease.inOutCubic]]);
 const bloomI = (t: number) =>
-  keys(t, [[RV.cut, 0], [RV.probe - 0.07, 0.7], [RV.probe + 0.01, 2.2, ease.outCubic], [7.32, 0.85], [8.12, 0.8], [8.34, 0]]);
+  keys(t, [[RV.cut, 0], [RV.probe - 0.07, 0.4], [RV.probe + 0.01, 1.0, ease.outCubic], [7.32, 0.35], [8.12, 0.3], [8.34, 0]]);
 const bokeh = (t: number) => keys(t, [[RV.cut, 0], [7.16, 0], [7.36, 3.2], [8.2, 3.2], [8.36, 0]]);
 const vignette = (t: number) => keys(t, [[RV.cut, 0], [7.2, 0.5], [8.12, 0.5], [8.36, 0]]);
 const extractK = (t: number, i: number) => springAt(t, RV.extract + i * 0.06, { stiffness: 150, damping: 21 });
 
 const WHITE = new THREE.Color(1, 1, 1);
 const DUSK = new THREE.Color().setRGB(0.115, 0.125, 0.15, THREE.SRGBColorSpace);
-const GLOW_BLUE = new THREE.Vector3(0.32, 0.62, 1.5);
+const GLOW_BLUE = new THREE.Vector3(0.2, 0.38, 0.85);
 const smooth = (a: number, b: number, x: number) => {
   const k = clamp((x - a) / (b - a));
   return k * k * (3 - 2 * k);
 };
 
 // ── 纹理 ──────────────────────────────────────────────
-const canvasTex = (c: HTMLCanvasElement) => {
+export const canvasTex = (c: HTMLCanvasElement) => {
   const tx = new THREE.CanvasTexture(c);
   tx.colorSpace = THREE.SRGBColorSpace;
   tx.anisotropy = 8;
@@ -295,16 +295,16 @@ const Probe = ({ t }: { t: number }) => {
     parts.core.position.copy(p);
     parts.core.scale.setScalar(0.045 * fade * (1 + birth * 1.5));
     parts.halo.position.copy(p);
-    parts.halo.scale.setScalar((0.55 + birth * 3 + selectPulse * 1.6) * fade);
-    (parts.halo.material as THREE.SpriteMaterial).opacity = 0.9 * fade;
+    parts.halo.scale.setScalar((0.36 + birth * 1.8 + selectPulse * 0.9) * fade);
+    (parts.halo.material as THREE.SpriteMaterial).opacity = 0.5 * fade;
     parts.trail.forEach((s, i) => {
       const tp = probePos(t - (i + 1) * 0.0035);
       s.position.copy(tp);
       const k = 1 - i / parts.trail.length;
       // 光尾离镜头太近时会糊满画面：近处的采样点直接隐去
       const near = prog(camPose(t).pos.distanceTo(tp), 1.2, 2.6);
-      s.scale.setScalar(0.2 * k * fade);
-      (s.material as THREE.SpriteMaterial).opacity = 0.6 * k * k * fade * near * prog(t, RV.probe, RV.probe + 0.06);
+      s.scale.setScalar(0.14 * k * fade);
+      (s.material as THREE.SpriteMaterial).opacity = 0.36 * k * k * fade * near * prog(t, RV.probe, RV.probe + 0.06);
     });
     parts.light.position.copy(p);
     parts.light.intensity = (22 + birth * 40 + selectPulse * 24) * fade;
@@ -363,26 +363,21 @@ const hitPose = (t: number, i: number) => {
 };
 
 const HitCards = ({ t, assets }: { t: number; assets: ArchiveAssets }) => {
-  const parts = useMemo(() => {
-    const frame = roundedTex(240, 320, 16, 28);
-    return HITS.map((_, i) => {
-      const card = new THREE.Mesh(
-        new THREE.BoxGeometry(HIT_W, HIT_H, 0.014),
-        // 受雾影响：开场时藏在雾里；抽离后离镜头 4.6 < fog.near，退场合拢的雾也盖不到它们
-        new THREE.MeshBasicMaterial({ map: canvasTex(assets.hits[i].canvas), toneMapped: false }),
-      );
-      const halo = new THREE.Mesh(
-        new THREE.PlaneGeometry(HIT_W * 1.5, HIT_H * 1.4),
-        new THREE.MeshBasicMaterial({ map: frame, color: new THREE.Color(0.24, 0.48, 1.15), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
-      );
-      halo.position.z = -0.02;
-      card.add(halo);
-      return { card, halo };
-    });
-  }, [assets]);
+  const parts = useMemo(
+    () =>
+      HITS.map((_, i) => {
+        const card = new THREE.Mesh(
+          new THREE.BoxGeometry(HIT_W, HIT_H, 0.014),
+          // 受雾影响：开场时藏在雾里；抽离后离镜头 4.6 < fog.near，退场合拢的雾也盖不到它们
+          new THREE.MeshBasicMaterial({ map: canvasTex(assets.hits[i].canvas), toneMapped: false }),
+        );
+        return { card };
+      }),
+    [assets],
+  );
 
   useLayoutEffect(() => {
-    parts.forEach(({ card, halo }, i) => {
+    parts.forEach(({ card }, i) => {
       card.visible = t < RV.reveal;
       if (!card.visible) return;
       const { pos, q, k } = hitPose(t, i);
@@ -393,9 +388,7 @@ const HitCards = ({ t, assets }: { t: number; assets: ArchiveAssets }) => {
       // 选中前与周围受光纸片同亮度（随场景压暗），选中后点亮
       const lit = prog(t, RV.select, RV.select + 0.12);
       const pre = 0.88 - 0.42 * mood(t);
-      (card.material as THREE.MeshBasicMaterial).color.setScalar(pre + (1 - pre) * lit + flash * 0.35);
-      (halo.material as THREE.MeshBasicMaterial).opacity =
-        (prog(t, RV.select, RV.select + 0.12) * 0.5 + flash * 0.4) * (1 - prog(t, 8.2, 8.36));
+      (card.material as THREE.MeshBasicMaterial).color.setScalar(pre + (1 - pre) * lit + flash * 0.2);
     });
   }, [t, parts]);
   return (
@@ -414,12 +407,12 @@ const Links = ({ t }: { t: number }) => {
     return HITS.map(() => {
       const geom = new LineGeometry();
       geom.setPositions([0, 0, 0, 0, 0, 1]);
-      const mat = new LineMaterial({ color: new THREE.Color(0.34, 0.62, 1.7), linewidth: 2.4, transparent: true, depthWrite: false, toneMapped: false });
+      const mat = new LineMaterial({ color: new THREE.Color(0.46, 0.66, 1.0), linewidth: 2, transparent: true, depthWrite: false, toneMapped: false });
       mat.resolution.set(WIDTH, HEIGHT);
       const line = new Line2(geom, mat);
       line.frustumCulled = false;
       const dot = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0.6, 1.1, 2.8), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, transparent: true }),
+        new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0.5, 0.75, 1.3), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, transparent: true }),
       );
       return { line, geom, mat, dot };
     });
@@ -439,7 +432,7 @@ const Links = ({ t }: { t: number }) => {
       mat.opacity = 0.9 * fade;
       const f = ((t - RV.select) * PACE * 1.8 + i * 0.3) % 1;
       dot.position.copy(a).lerp(end, f);
-      dot.scale.setScalar(0.35 * fade);
+      dot.scale.setScalar(0.22 * fade);
     });
   }, [t, parts]);
   return (
@@ -536,10 +529,9 @@ const Overlay = ({ t }: { t: number }) => {
               transform: `translate(-50%, -100%) translateY(${(1 - k) * 6}px)`,
               opacity: k,
               padding: '3px 8px',
-              borderRadius: 6,
-              background: 'hsl(220 14% 12% / 0.62)',
-              border: '1px solid hsl(0 0% 100% / 0.12)',
-              backdropFilter: 'blur(8px)',
+              borderRadius: 5,
+              background: 'hsl(220 10% 11%)',
+              border: '1px solid hsl(0 0% 100% / 0.1)',
               fontFamily: font.mono,
               fontSize: 13,
               color: 'hsl(0 0% 94%)',
@@ -563,11 +555,10 @@ const Overlay = ({ t }: { t: number }) => {
             top: 76,
             width: 300,
             padding: '14px 18px',
-            borderRadius: 14,
-            background: 'hsl(220 14% 12% / 0.55)',
-            border: '1px solid hsl(0 0% 100% / 0.1)',
-            backdropFilter: 'blur(18px) saturate(1.2)',
-            boxShadow: 'inset 0 1px 0 hsl(0 0% 100% / 0.08), 0 24px 60px -30px #000',
+            borderRadius: 10,
+            background: 'hsl(220 10% 10%)',
+            border: '1px solid hsl(0 0% 100% / 0.09)',
+            boxShadow: '0 18px 40px -24px #000',
             opacity: hud,
             transform: `translateY(${(1 - hud) * -8}px)`,
             color: 'hsl(0 0% 96%)',
@@ -603,10 +594,9 @@ const Overlay = ({ t }: { t: number }) => {
               textAlign: 'center',
               whiteSpace: 'nowrap',
               padding: '10px 16px',
-              borderRadius: 12,
-              background: 'hsl(220 14% 12% / 0.6)',
-              border: '1px solid hsl(0 0% 100% / 0.1)',
-              backdropFilter: 'blur(12px)',
+              borderRadius: 8,
+              background: 'hsl(220 10% 10%)',
+              border: '1px solid hsl(0 0% 100% / 0.09)',
             }}
           >
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'hsl(214 30% 76%)' }}>
