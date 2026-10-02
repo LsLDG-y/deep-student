@@ -1,6 +1,9 @@
 import { Audio, Sequence, staticFile } from 'remotion';
 import { FPS, PACE } from '../lib/time';
+import { DAY } from '../scenes/day/beats';
 import { FN } from '../scenes/finale/beats';
+import { YOU } from '../scenes/you/SceneYou';
+import { STEPS } from '../ui/research';
 import { GROW, majorRingTimes } from '../scenes/finale/terrain';
 import { MM } from '../scenes/organize/MindmapView';
 import { PR } from '../scenes/practice/beats';
@@ -67,8 +70,63 @@ const CUES: Cue[] = [
   // 05 记住：曲线越过 90% 依次点亮（最薄弱的最先）→ 切到统计页
   ...CURVES.map((_, i): Cue => [hitAt(WK.curves, i), CURVE_NOTES[i], 0.3]),
   [WK.stats, 'tick', 0.24],
-  // 收尾：夜色退去 → 纸面隆起，山顶每长过一根计曲线轻响一下 → 镜头抬起看见整片地形
-  [WK.out0 - 0.06, 'swell', 0.42],
+  // 夜里收场 → 清晨
+  [WK.out0, 'whoosh-down', 0.18],
+  [DAY.dawn0 + 0.1, 'swell', 0.4],
+  [DAY.clock, 'tick', 0.14],
+  // 今日：Dock 打开 → 开始专注
+  [DAY.todayOpen - 0.05, 'click', 0.3],
+  [DAY.todayOpen + 0.02, 'pop', 0.26],
+  [DAY.todayFocus, 'click', 0.33],
+  [DAY.todayFocus + 0.03, 'note-mid', 0.22],
+  [DAY.todayOut, 'whoosh-down', 0.16],
+  // 06 检验：拖入试卷 → 逐题识别 → 开始练习 → 选错 → 正确答案 → 回流复习
+  [DAY.examOpen + 0.02, 'pop', 0.24],
+  [DAY.examOpen + 0.5, 'tick', 0.18],
+  [DAY.examDrop, 'pop', 0.3],
+  ...Array.from({ length: 6 }, (_, i): Cue => [DAY.examDrop + 0.25 + i * 0.16, 'tick', 0.1]),
+  [DAY.examParsed, 'note-mid', 0.24],
+  [DAY.examStart, 'click', 0.33],
+  [DAY.examStart + 0.06, 'whoosh-up', 0.14],
+  [DAY.examPick, 'click', 0.33],
+  [DAY.examPick + 0.02, 'note-low', 0.26],
+  [DAY.examPick + 0.18, 'note-high', 0.18],
+  [DAY.examMastery + 0.3, 'tick', 0.16],
+  [DAY.examMastery + 0.68, 'pop', 0.24],
+  [DAY.examOut, 'whoosh-down', 0.16],
+  // 07 写作与精读：开始批改 → 批注逐条 → 分数 → 润色 → 翻译逐段
+  [DAY.essayOpen + 0.02, 'pop', 0.24],
+  [DAY.essayGrade, 'click', 0.33],
+  ...Array.from({ length: 7 }, (_, i): Cue => [DAY.essayGrade + 0.15 + i * 0.22, 'tick', 0.1]),
+  [DAY.essayScore + 0.55, 'note-high', 0.24],
+  [DAY.essayPolish, 'flip', 0.24],
+  [DAY.translateOpen + 0.02, 'pop', 0.24],
+  [DAY.translateRun, 'click', 0.33],
+  ...Array.from({ length: 4 }, (_, i): Cue => [DAY.translateRun + 0.1 + i * 0.4, 'tick', 0.12]),
+  [DAY.writingOut, 'whoosh-down', 0.18],
+  // 08 调研：发出 → 步骤逐条打勾 → 存为笔记 → 搜论文 → 下载 → 索引完成
+  [DAY.researchOpen + 0.02, 'pop', 0.24],
+  [DAY.researchSend, 'whoosh-up', 0.16],
+  ...STEPS.map((_, i): Cue => [DAY.researchSteps + ((i + 1) * (DAY.researchNote - 0.15 - DAY.researchSteps)) / STEPS.length, 'tick', 0.16]),
+  [DAY.researchNote + 0.02, 'pop', 0.26],
+  [DAY.paperSend, 'whoosh-up', 0.16],
+  [DAY.paperSend + 0.62, 'ping', 0.16],
+  [DAY.paperDownload, 'click', 0.33],
+  [DAY.paperDownload + 0.64, 'note-mid', 0.22],
+  [DAY.hubIndex + 0.02, 'pop', 0.24],
+  ...Array.from({ length: 4 }, (_, i): Cue => [DAY.hubIndex + 0.3 + ((i + 1) * (DAY.end - 0.65 - DAY.hubIndex)) / 4, 'tick', 0.14]),
+  [DAY.end - 0.32, 'note-high', 0.24],
+  // 09 懂你：记忆逐条写入 → 技能 → MCP → 多模型（每次横移一声）
+  ...Array.from({ length: 4 }, (_, i): Cue => [YOU.memory + 0.15 + i * 0.24, 'tick', 0.12]),
+  [YOU.skills - 0.12, 'whoosh-up', 0.2],
+  ...Array.from({ length: 6 }, (_, i): Cue => [YOU.skills + 0.1 + i * 0.1, 'tick', 0.08]),
+  [YOU.mcp - 0.12, 'whoosh-up', 0.2],
+  ...Array.from({ length: 4 }, (_, i): Cue => [YOU.mcp + 0.2 + i * 0.11, 'click', 0.18]),
+  [YOU.mcp + 0.9, 'ping', 0.16],
+  [YOU.models - 0.12, 'whoosh-up', 0.2],
+  [YOU.out0 - 0.1, 'note-high', 0.2],
+  // 收尾：纸面隆起，山顶每长过一根计曲线轻响一下 → 镜头抬起看见整片地形
+  [FN.kb0 - 0.1, 'swell', 0.36],
   [GROW.t0 + 0.04, 'whoosh-up', 0.16],
   ...majorRingTimes().map((t, i): Cue => [t, 'ping', 0.15 - i * 0.025]),
   [FN.pull0 + 0.72, 'whoosh-up', 0.2],

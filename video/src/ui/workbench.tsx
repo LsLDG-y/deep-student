@@ -37,30 +37,36 @@ const glass = (tk: Tokens, strong = false) => ({
 });
 
 /**
- * 壁纸：产品默认预设 mountain-mist（CC0 实拍，见 public/wallpapers/study-os/ATTRIBUTION.md），
- * 片中是晚上 21:30，压暗、降饱和成夜色；其上叠产品暗色档的 scrim 与暗角（WallpaperLayer.css）。
+ * 壁纸：产品默认预设 mountain-mist（CC0 实拍，见 public/wallpapers/study-os/ATTRIBUTION.md）。
+ * night = 1 是晚上 21:30：压暗、降饱和、冷色；night = 0 是白天原片。
+ * 其上叠产品对应明暗档的 scrim、压暗层（imageDim 0.06）与暗角（WallpaperLayer.css）。
  */
-export const Wallpaper = ({ drift = 0, style }: { drift?: number; style?: CSSProperties }) => (
-  <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: 'hsl(220 14% 7%)', ...style }}>
-    <Img
-      src={mountainMist}
-      style={{
-        position: 'absolute',
-        left: -48,
-        top: -27,
-        width: WIDTH + 96,
-        height: HEIGHT + 54,
-        objectFit: 'cover',
-        objectPosition: 'center 52%',
-        filter: 'brightness(0.42) saturate(0.55) contrast(1.08)',
-        transform: `translate(${drift * -16}px, ${drift * 7}px)`,
-      }}
-    />
-    <div style={{ position: 'absolute', inset: 0, background: 'hsl(214 46% 30% / 0.5)', mixBlendMode: 'multiply' }} />
-    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, hsl(0 0% 9% / 0.10) 0%, hsl(0 0% 9% / 0.30) 100%)' }} />
-    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(135% 110% at 50% 42%, transparent 55%, hsl(0 0% 0% / 0.34) 100%)' }} />
-  </div>
-);
+export const Wallpaper = ({ drift = 0, night = 1, style }: { drift?: number; night?: number; style?: CSSProperties }) => {
+  const mix = (day: number, nightV: number) => day + (nightV - day) * night;
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: 'hsl(220 14% 7%)', ...style }}>
+      <Img
+        src={mountainMist}
+        style={{
+          position: 'absolute',
+          left: -48,
+          top: -27,
+          width: WIDTH + 96,
+          height: HEIGHT + 54,
+          objectFit: 'cover',
+          objectPosition: 'center 52%',
+          filter: `brightness(${mix(1, 0.42)}) saturate(${mix(1, 0.55)}) contrast(${mix(1, 1.08)})`,
+          transform: `translate(${drift * -16}px, ${drift * 7}px)`,
+        }}
+      />
+      <div style={{ position: 'absolute', inset: 0, background: 'hsl(214 46% 30% / 0.5)', mixBlendMode: 'multiply', opacity: night }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, hsl(0 0% 9% / 0.10) 0%, hsl(0 0% 9% / 0.30) 100%)', opacity: night }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, hsl(0 0% 100% / 0.06) 0%, hsl(0 0% 100% / 0.18) 100%)', opacity: 1 - night }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgb(0 0 0)', opacity: 0.06 * (1 - night) }} />
+      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(135% 110% at 50% 42%, transparent ${mix(58, 55)}%, hsl(0 0% 0% / ${mix(0.18, 0.34)}) 100%)` }} />
+    </div>
+  );
+};
 
 // ── 菜单栏 ─────────────────────────────────────────────
 const MenuItem = ({ children, strong = false, tk }: { children: ReactNode; strong?: boolean; tk: Tokens }) => (

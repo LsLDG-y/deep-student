@@ -82,6 +82,9 @@ export const EndCard = ({ t }: { t: number }) => {
           <span>本地优先</span>
         </span>
       </Rise>
+      <Rise t={t} at={FN.platforms0} style={{ top: LOGO.cy + LOGO.size / 2 + 254 }}>
+        <span style={{ fontSize: 18, letterSpacing: '0.08em', color: brand.ink3 }}>Windows · macOS · Linux · Android</span>
+      </Rise>
     </AbsoluteFill>
   );
 };

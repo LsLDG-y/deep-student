@@ -35,10 +35,11 @@ const camDist = (t: number) =>
   Math.exp(
     keys(t, [
       [FN.pull0, Math.log(2.05)],
-      [FN.pull0 + 0.45, Math.log(4.4), ease.outCubic],
+      [FN.pull0 + 0.5, Math.log(4.4), ease.outCubic],
       [FN.pull1, Math.log(D_END), ease.inOutCubic],
     ]),
-  );
+  ) *
+  (1 + 0.022 * Math.max(0, t - FN.pull1));
 const camTilt = (t: number) => TILT_END * ease.inOutCubic(prog(t, FN.pull0 + 0.7, FN.pull1 - 0.15));
 const camAz = (t: number) => lerp(-0.12, 0.2, ease.inOutCubic(prog(t, FN.pull0, FN.fade1)));
 const pageZ = (t: number) => surfaceAt(t, 0, 0) + PAGE.lift;
@@ -236,7 +237,7 @@ const Rig = ({ t }: { t: number }) => {
 };
 
 // ── 山头标注（DOM，制图式：▲ + 名称 + 资料数） ─────────────
-const LABEL_IN = 24.25;
+const LABEL_IN = FN.pull0 + 2.1;
 const Labels = ({ t }: { t: number }) => {
   const { d } = camPose(t);
   const f = fogRange(d);
@@ -244,7 +245,7 @@ const Labels = ({ t }: { t: number }) => {
     <AbsoluteFill style={{ pointerEvents: 'none', fontFamily: font.ui }}>
       {SUMMITS.map((p, i) => {
         const main = i === 0;
-        const at = main ? LABEL_IN : LABEL_IN + 0.35 + Math.hypot(p.sx, p.sy) / 40;
+        const at = main ? LABEL_IN : LABEL_IN + 0.5 + Math.hypot(p.sx, p.sy) / 26;
         const k = prog(t, at, at + 0.4, ease.brand) * prog(growthAt(t, p.sx, p.sy), 0.7, 1) * (main ? prog(d, 8, 14) : 1);
         if (k <= 0) return null;
         const s = main ? pinScreen(t) : toScreen(t, new THREE.Vector3(p.sx, p.sy, surfaceAt(t, p.sx, p.sy)));

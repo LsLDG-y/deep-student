@@ -17,6 +17,8 @@ export type Super = {
   tone?: Tone;
   pos?: CSSProperties;
   align?: 'left' | 'center';
+  /** 居中标题默认带顶部柔光底；落在壁纸 / 空白处的幕标题不需要 */
+  scrim?: boolean;
 };
 
 export const SUPERS: Super[] = [
@@ -34,8 +36,32 @@ export const SUPERS: Super[] = [
   { s: 17.02, e: 18.32, text: 'FSRS 帮你排好每一次复习', kind: 'feature', tone: 'dark' },
   { s: 19.0, e: 19.9, text: '05 记住', kind: 'chapter', tone: 'dark' },
   { s: 20.0, e: 22.3, text: '越薄弱的，越早再见', kind: 'feature', tone: 'dark' },
-  { s: 23.3, e: 26.62, text: '从一页纸，到一整座知识库。', kind: 'title', pos: { left: 0, right: 0, top: 112 }, align: 'center' },
-  { s: 25.2, e: 26.62, text: '内置 40+ 技能，支持 MCP，预置 12 家模型供应商；本地优先，开源。', kind: 'subtitle' },
+  // 第二幕：第二天，白天的学习桌面
+  { s: 24.05, e: 25.75, text: '不止一份资料。', kind: 'title', pos: { left: 0, right: 0, top: 380 }, align: 'center', scrim: false },
+  { s: 26.5, e: 28.5, text: '今天要复习的、要做的，一屏看清', kind: 'feature' },
+  { s: 28.65, e: 29.85, text: '开一个番茄钟，进入专注', kind: 'feature' },
+  { s: 30.0, e: 30.9, text: '06 检验', kind: 'chapter' },
+  { s: 30.95, e: 33.0, text: '试卷拖进来，题目集就有了', kind: 'feature' },
+  { s: 33.6, e: 35.6, text: '答错的题，AI 讲清楚错在哪', kind: 'feature' },
+  { s: 35.9, e: 37.85, text: '薄弱点自动回到复习里', kind: 'feature' },
+  { s: 38.0, e: 38.9, text: '07 写作与精读', kind: 'chapter' },
+  { s: 39.0, e: 41.0, text: '作文按考试标准逐项打分', kind: 'feature' },
+  { s: 41.15, e: 42.7, text: '逐句润色，改在哪一看就懂', kind: 'feature' },
+  { s: 43.1, e: 45.8, text: '整篇翻译，逐段对照精读', kind: 'feature' },
+  { s: 46.0, e: 46.9, text: '08 调研', kind: 'chapter' },
+  { s: 47.0, e: 49.5, text: '一句话，交给它去查、去读、去写', kind: 'feature' },
+  { s: 50.1, e: 52.2, text: '论文搜到、下好、读进资料库', kind: 'feature' },
+  { s: 52.35, e: 53.85, text: '导入即索引，下次提问就能引用', kind: 'feature' },
+  // 第三幕：越用越懂你
+  { s: 54.15, e: 55.55, text: '越用，越懂你。', kind: 'title', pos: { left: 0, right: 0, top: 380 }, align: 'center', scrim: false },
+  { s: 55.6, e: 56.45, text: '09 懂你', kind: 'chapter' },
+  { s: 56.5, e: 57.9, text: '记住你的薄弱点和习惯', kind: 'feature' },
+  { s: 58.0, e: 59.2, text: '40+ 技能，按需加载', kind: 'feature' },
+  { s: 59.3, e: 60.3, text: '接入 MCP，连上外部工具', kind: 'feature' },
+  { s: 60.4, e: 61.5, text: '同一个问题，几个模型一起答', kind: 'feature' },
+  // 收尾
+  { s: 62.3, e: 69.55, text: '从一页纸，到一整座知识库。', kind: 'title', pos: { left: 0, right: 0, top: 112 }, align: 'center' },
+  { s: 65.6, e: 69.55, text: '内置 40+ 技能，支持 MCP，预置 12 家模型供应商；本地优先，开源。', kind: 'subtitle' },
 ];
 
 /** 逐字从一道看不见的基线下升起（遮罩揭示），收尾时整行轻轻下沉淡出。 */
@@ -111,7 +137,7 @@ const SuperView = ({ sp, t }: { sp: Super; t: number }) => {
     const k = prog(t, sp.s - 0.1, sp.s + 0.4, ease.brand) * (1 - prog(t, sp.e - 0.26, sp.e, ease.inCubic));
     return (
       <>
-        {centered ? <Scrim at="top" w={0} h={400} color={ground} edge={groundEdge} opacity={k} /> : null}
+        {centered && sp.scrim !== false ? <Scrim at="top" w={0} h={400} color={ground} edge={groundEdge} opacity={k} /> : null}
         <div
           style={{
             position: 'absolute',

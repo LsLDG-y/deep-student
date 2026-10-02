@@ -7,6 +7,8 @@
  * 原点附近噪声淡出，山顶保持平整。
  */
 
+import { FN } from './beats';
+
 export type Bump = {
   /** 山顶在地面上的位置（未扭曲坐标） */
   x: number;
@@ -35,13 +37,13 @@ const mulberry = (seed: number) => () => {
 /** 第一座是教材这一页所在的主题，山顶做平，纸能稳稳平放。 */
 export const NAMED: NamedPeak[] = [
   { name: '微分中值定理', count: 386, x: 0, y: 0, h: 4.4, s: 3.5, pow: 3.4 },
-  { name: '泰勒公式', count: 214, x: -10, y: 8, h: 4.2, s: 4.0, rot: 0.6, asp: 0.7 },
-  { name: '定积分', count: 297, x: 11, y: 11, h: 5.4, s: 4.8, rot: -0.4, asp: 0.75 },
+  { name: '雅思写作', count: 133, x: -10, y: 8, h: 4.2, s: 4.0, rot: 0.6, asp: 0.7 },
+  { name: '大模型与数学证明', count: 52, x: 11, y: 11, h: 5.4, s: 4.8, rot: -0.4, asp: 0.75 },
   { name: '线性代数', count: 241, x: -19, y: 23, h: 7.4, s: 6.6, rot: 0.9, asp: 0.62 },
   { name: '概率论', count: 168, x: 21, y: 28, h: 7.0, s: 6.2, rot: -0.7, asp: 0.7 },
   { name: '机器学习', count: 152, x: 2, y: 39, h: 9.6, s: 8.2, rot: 0.15, asp: 0.68 },
   { name: '有机化学', count: 176, x: -31, y: 45, h: 8.6, s: 7.8, rot: 1.1, asp: 0.66 },
-  { name: '英语写作', count: 133, x: 34, y: 48, h: 7.6, s: 7.6, rot: -1.0, asp: 0.7 },
+  { name: '考研英语', count: 214, x: 34, y: 48, h: 7.6, s: 7.6, rot: -1.0, asp: 0.7 },
 ];
 
 /** 山脊与台地：把主峰连成连绵的山系，谷底也不是一马平川。 */
@@ -197,7 +199,7 @@ export const heightAt = (x: number, y: number) => {
 };
 
 /** 生长：从那一页向外扩散，波前经过处地面隆起。单位为脚本秒。 */
-export const GROW = { t0: 23.28, speed: 21, dur: 1.5 } as const;
+export const GROW = { t0: FN.veil1 - 0.02, speed: 15, dur: 1.9 } as const;
 export const growthAt = (t: number, x: number, y: number) => {
   const k = Math.min(1, Math.max(0, (t - GROW.t0 - Math.hypot(x, y) / GROW.speed) / GROW.dur));
   return k * k * (3 - 2 * k);

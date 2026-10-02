@@ -159,12 +159,18 @@ const reverb = (inL, inR, { room = 0.86, damp = 0.32, width = 1 } = {}) => {
 };
 
 // ── 配乐 ─────────────────────────────────────────────
-const DUR = 60;
+// 2:30 三幕编排（成片秒）：
+//   0–46   第一幕：读懂 → 看清（22 起鼓）→ 整理 → 练习（30 入夜转小调）→ 记住（夜里放慢）
+//   46–52  过场：清晨，垫音打开、微光，全片唯一的喘息
+//   52–108 第二幕：今日（半拍脉冲）→ 检验（十六分琶音 + 鼓）→ 写作与精读（收）→ 调研（鼓回来，上扬进第三幕）
+//   108–124 第三幕：108 标题处抽空，111.2 全编制进入，全片最快
+//   124–140 收尾：登顶，微光；140–150 片尾落定
+const DUR = 150;
 const BEAT = 0.5;
 const dry = new Stereo(DUR + 4);
 const send = new Stereo(DUR + 4);
 
-// D 大调：Dmaj9 – Bm9 – Gmaj9 – A(add9)；换和弦时刻 = 2 + 4k，与 22/30/38/46/54 秒的章节点对齐
+// D 大调：Dmaj9 – Bm9 – Gmaj9 – A(add9)；夜里换成 Bm – G – Em – A
 const CHORDS = {
   D: [50, 57, 61, 64, 66],
   Bm: [47, 54, 57, 61, 62],
@@ -175,22 +181,31 @@ const CHORDS = {
 const ROOT = { D: 38, Bm: 35, G: 31, A: 33, Em: 28 };
 const CYCLE = ['D', 'Bm', 'G', 'A'];
 const NIGHT = ['Bm', 'G', 'Em', 'A'];
+const LIFT = ['G', 'A', 'Bm', 'D'];
+const FINALE = ['D', 'G', 'A', 'D'];
 const chordAt = (t) => {
-  if (t < 2 || t >= 54) return 'D';
-  const k = Math.floor((t - 2) / 4);
-  const inNight = t >= 30 && t < 38;
-  return (inNight ? NIGHT : CYCLE)[k % 4];
+  if (t < 2) return 'D';
+  if (t < 30) return CYCLE[Math.floor((t - 2) / 4) % 4];
+  if (t < 42) return NIGHT[Math.floor((t - 30) / 4) % 4];
+  if (t < 46) return t < 44 ? 'G' : 'A';
+  if (t < 52) return t < 49 ? 'D' : 'A';
+  if (t < 108) return CYCLE[Math.floor((t - 52) / 4) % 4];
+  if (t < 111.2) return 'A';
+  if (t < 124) return LIFT[Math.floor((t - 111.2) / 3.2) % 4];
+  if (t < 140) return FINALE[Math.floor((t - 124) / 4) % 4];
+  return 'D';
 };
 
-const padGain = auto([[0, 0], [2.5, 0.75], [30, 0.8], [32.7, 0.95], [38, 0.85], [46, 1.05], [54, 1.0], [58.5, 0.6], [60, 0]]);
-const padCut = auto([[0, 600], [5, 1300], [11, 1700], [22, 2200], [32.4, 2200], [33.4, 760], [38, 1100], [45.5, 2000], [46.5, 3400], [54, 2600], [60, 1800]]);
-const arpGain = auto([[0, 0], [5, 0], [5.6, 0.45], [22, 0.55], [22.5, 0.7], [32.6, 0.7], [33.2, 0.32], [38, 0.4], [45.5, 0.75], [46.2, 0.9], [54.4, 0.7], [56, 0]]);
-const arpCut = auto([[0, 3000], [32.6, 3600], [33.2, 1300], [38, 1800], [46, 5200], [56, 4000]]);
-const bassGain = auto([[0, 0], [5, 0], [6, 0.55], [32.6, 0.6], [33.2, 0.35], [38, 0.45], [46, 0.7], [57.5, 0.5], [60, 0]]);
-const kickOn = (t) => (t >= 22 && t < 32.7) || (t >= 42 && t < 54);
-const kickGain = auto([[0, 0], [22, 0.9], [32.6, 0.9], [42, 0.55], [46, 1.0], [54, 1.0]]);
-const hatOn = (t) => (t >= 22 && t < 32.7) || (t >= 44 && t < 54);
-const shimmerGain = auto([[0, 0], [45.5, 0], [47, 0.5], [54, 0.6], [60, 0]]);
+const padGain = auto([[0, 0], [2.5, 0.75], [30, 0.8], [32.7, 0.95], [38, 0.85], [44, 0.8], [46, 0.9], [48.5, 1.05], [52, 0.85], [76, 0.85], [80, 0.95], [92, 0.85], [108, 1.0], [111.2, 0.9], [124, 1.05], [140, 1.0], [147, 0.6], [150, 0]]);
+const padCut = auto([[0, 600], [5, 1300], [11, 1700], [22, 2200], [32.4, 2200], [33.4, 760], [38, 1000], [44, 900], [46, 800], [49, 2600], [52, 1800], [76, 1800], [80, 1500], [92, 2000], [107.8, 2600], [108.2, 1200], [111.2, 3000], [124, 3400], [140, 2600], [150, 1800]]);
+const arpGain = auto([[0, 0], [5, 0], [5.6, 0.45], [22, 0.55], [22.5, 0.7], [32.6, 0.7], [33.2, 0.32], [38, 0.34], [44, 0.22], [46, 0], [51.2, 0], [52.4, 0.5], [60, 0.66], [76, 0.66], [77, 0.42], [92, 0.5], [107.9, 0.72], [108.1, 0], [111.1, 0], [111.3, 0.9], [124, 0.92], [136, 0.75], [140, 0.3], [146, 0]]);
+const arpCut = auto([[0, 3000], [32.6, 3600], [33.2, 1300], [38, 1700], [46, 1700], [52, 3000], [60, 3800], [76, 3800], [77, 2600], [92, 3200], [108, 4200], [111.2, 5400], [124, 5400], [140, 4000]]);
+const bassGain = auto([[0, 0], [5, 0], [6, 0.55], [32.6, 0.6], [33.2, 0.35], [38, 0.38], [44, 0.3], [46, 0], [51.5, 0], [52.5, 0.55], [107.9, 0.62], [108.1, 0], [111.1, 0], [111.3, 0.72], [124, 0.78], [140, 0.5], [148, 0]]);
+const kickOn = (t) => (t >= 22 && t < 32.7) || (t >= 52 && t < 76) || (t >= 92 && t < 108) || (t >= 111.2 && t < 136);
+const kickHalf = (t) => (t >= 52 && t < 60) || (t >= 92 && t < 96);
+const kickGain = auto([[0, 0], [22, 0.9], [32.6, 0.9], [52, 0.5], [60, 0.85], [76, 0.85], [92, 0.7], [104, 0.95], [108, 1.0], [124, 1.0], [136, 0.9]]);
+const hatOn = (t) => (t >= 22 && t < 32.7) || (t >= 64 && t < 76) || (t >= 96 && t < 108) || (t >= 111.2 && t < 124) || (t >= 128 && t < 136);
+const shimmerGain = auto([[0, 0], [46, 0], [48.5, 0.45], [52, 0.12], [56, 0], [122.5, 0], [124.6, 0.5], [140, 0.6], [150, 0]]);
 
 // 垫音：每个和弦段内 5 个音，三把微失谐锯齿 + 低通，长起音长释音
 const renderPad = () => {
@@ -251,8 +266,8 @@ const renderArp = () => {
   const tmpL = new Float32Array(dry.n);
   const tmpR = new Float32Array(dry.n);
   let step = 0;
-  for (let t = 5; t < 56; ) {
-    const fast = (t >= 22 && t < 32.7) || (t >= 46 && t < 54);
+  for (let t = 5; t < 146; ) {
+    const fast = (t >= 22 && t < 32.7) || (t >= 60 && t < 76) || (t >= 111.2 && t < 136);
     const len = fast ? BEAT / 4 : BEAT / 2;
     const tones = CHORDS[chordAt(t + 0.01)].map((m) => m + 12);
     const m = tones[pattern[step % pattern.length]] + (step % 16 >= 12 ? 12 : 0);
@@ -315,8 +330,7 @@ const renderDrums = () => {
   for (let b = 0; b * BEAT < DUR; b++) {
     const t = b * BEAT;
     if (kickOn(t)) {
-      const half = t >= 42 && t < 46;
-      if (!half || b % 2 === 0) kickAt(dry, t, kickGain(t));
+      if (!kickHalf(t) || b % 2 === 0) kickAt(dry, t, kickGain(t));
     }
     if (hatOn(t)) {
       for (const off of [0.25, 0.75]) {
@@ -356,7 +370,7 @@ const renderShimmer = () => {
   });
 };
 
-// 进收尾前的上扬：带通噪声扫频 + 渐强（44 → 46.2 秒）
+// 段落交接前的上扬：带通噪声扫频 + 渐强（进第三幕、进收尾）
 const renderRiser = (t0, t1) => {
   const r = mulberry(5);
   const f = new SVF();
@@ -374,14 +388,15 @@ renderArp();
 renderBass();
 renderDrums();
 renderShimmer();
-renderRiser(43.8, 46.05);
+renderRiser(105.8, 108.05);
+renderRiser(121.8, 124.05);
 
 const [wl, wr] = reverb(send.L, send.R, { room: 0.88, damp: 0.35 });
 const L = new Float32Array(Math.floor(DUR * SR));
 const R = new Float32Array(L.length);
 for (let i = 0; i < L.length; i++) {
   const t = i / SR;
-  const fade = smooth(0, 0.4, t) * (1 - smooth(57.6, 60, t));
+  const fade = smooth(0, 0.4, t) * (1 - smooth(147.4, DUR, t));
   const l = (dry.L[i] + wl[i] * 0.55) * fade;
   const r = (dry.R[i] + wr[i] * 0.55) * fade;
   L[i] = Math.tanh(l * 1.6) / 1.6;

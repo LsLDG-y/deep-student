@@ -7,7 +7,7 @@ export const FPS = 60;
  * 产品弹簧（springAt）按真实时间求值，保持与应用一致的手感。
  */
 export const PACE = 2;
-export const SCRIPT_S = 30;
+export const SCRIPT_S = 75;
 export const DURATION_S = SCRIPT_S * PACE;
 export const WIDTH = 1920;
 export const HEIGHT = 1080;

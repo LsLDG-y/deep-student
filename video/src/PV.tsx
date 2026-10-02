@@ -4,6 +4,8 @@ import './global.css';
 import { Soundtrack } from './audio/Soundtrack';
 import { prog, useTime } from './lib/time';
 import { Supers } from './overlays/Supers';
+import { DAY } from './scenes/day/beats';
+import { SceneDay } from './scenes/day/SceneDay';
 import { FN } from './scenes/finale/beats';
 import { EndCard } from './scenes/finale/EndCard';
 import { KnowledgeTerrain } from './scenes/finale/KnowledgeTerrain';
@@ -12,6 +14,7 @@ import { Archive3D } from './scenes/retrieval/Archive3D';
 import { FREEZE, MIN0, MIN1, minimizeAt } from './scenes/review/handoff';
 import { WK, SceneReview } from './scenes/review/SceneReview';
 import { SceneClassic } from './scenes/SceneClassic';
+import { SceneYou } from './scenes/you/SceneYou';
 import { brand } from './theme';
 import { PaperGrid } from './ui/brand';
 import { useFontsReady } from './ui/tex';
@@ -39,6 +42,8 @@ export const PV = () => {
     <AbsoluteFill style={{ background: brand.paper, overflow: 'hidden' }}>
       <PaperGrid />
       {t >= FN.kb0 && t < FN.fade1 ? <KnowledgeTerrain t={t} /> : null}
+      {t >= DAY.start && t < DAY.end + 0.6 ? <SceneDay t={t} /> : null}
+      <SceneYou t={t} />
       {t >= WK.night0 && t < WK.out1 ? <SceneReview t={t} /> : null}
       {t < MIN1 ? (
         <Minimize t={t}>
