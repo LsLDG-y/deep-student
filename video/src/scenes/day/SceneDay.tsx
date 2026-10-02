@@ -203,7 +203,6 @@ const DRAG_IN = (() => {
 const examState = (t: number): ExamState => {
   const [stage, since] = EXAM_STAGES.reduce((cur, s) => (t >= s[1] ? s : cur), EXAM_STAGES[0]);
   const pressAtT = EXAM_CLICKS.find(([, c]) => Math.abs(t - c) < 0.08)?.[1];
-  const elapsed = Math.max(0, Math.floor((t - DAY.examQ7) * PACE));
   const aiK = prog(t, AI_STREAM[0], AI_STREAM[1]);
   return {
     stage,
@@ -220,7 +219,6 @@ const examState = (t: number): ExamState => {
       EXAM_SCROLL[0] * ease.inOutCubic(prog(t, ...EXAM_SCROLL1)) + (EXAM_SCROLL[1] - EXAM_SCROLL[0]) * ease.inOutCubic(prog(t, ...EXAM_SCROLL2)),
     ai: t < AI_THINK ? 'idle' : t < AI_STREAM[0] ? 'thinking' : aiK < 1 ? 'stream' : 'done',
     aiK: t < AI_STREAM[0] ? prog(t, AI_THINK, AI_STREAM[0]) : aiK,
-    timer: `00:${String(elapsed).padStart(2, '0')}`,
   };
 };
 
@@ -255,20 +253,20 @@ const DAY_CAM: CamKey[] = [
   [28.65, FULL, ease.inOutCubic],
   [DAY.examOpen + 0.1, FULL, ease.linear],
   // 06：窗口 + 右侧桌面（试卷从屏幕右缘拖进来）→ 推进识别导入 → 题库全貌 → 做题（取景含屏幕顶部，提示在那里）→ 推近 AI 解析
-  [DAY.examNew - 0.12, { x: 900, y: 556, zoom: 1.05 }, ease.inOutCubic],
-  [DAY.examGrab + 0.05, { x: 930, y: 556, zoom: 1.05 }, ease.linear],
-  [DAY.examDrop + 0.22, { x: 852, y: 566, zoom: 1.2 }, ease.inOutCubic],
-  [DAY.examParse + 0.1, { x: 852, y: 566, zoom: 1.2 }, ease.linear],
-  [DAY.examParse + 0.5, { x: 852, y: 548, zoom: 1.25 }, ease.inOutCubic],
-  [DAY.examParsed - 0.02, { x: 852, y: 552, zoom: 1.25 }, ease.linear],
-  [DAY.examParsed + 0.2, { x: 852, y: 520, zoom: 1.27 }, ease.inOutCubic],
-  [DAY.examView - 0.02, { x: 852, y: 522, zoom: 1.27 }, ease.linear],
-  [DAY.examView + 0.24, { x: 760, y: 520, zoom: 1.1 }, ease.inOutCubic],
-  [DAY.examQ7 - 0.02, { x: 760, y: 520, zoom: 1.1 }, ease.linear],
-  [DAY.examQ7 + 0.26, { x: 800, y: 450, zoom: 1.2 }, ease.inOutCubic],
-  [TOAST_AT + TOAST_DUR - 0.25, { x: 800, y: 455, zoom: 1.2 }, ease.linear],
-  [TOAST_AT + TOAST_DUR + 0.3, { x: 720, y: 640, zoom: 1.42 }, ease.inOutCubic],
-  [DAY.essayLaunch - 0.62, { x: 728, y: 648, zoom: 1.44 }, ease.linear],
+  [DAY.examNew - 0.12, { x: 800, y: 500, zoom: 1.15 }, ease.inOutCubic],
+  [DAY.examGrab + 0.05, { x: 860, y: 500, zoom: 1.15 }, ease.linear],
+  [DAY.examDrop + 0.22, { x: 672, y: 470, zoom: 1.55 }, ease.inOutCubic],
+  [DAY.examParse + 0.1, { x: 672, y: 470, zoom: 1.55 }, ease.linear],
+  [DAY.examParse + 0.5, { x: 672, y: 462, zoom: 1.6 }, ease.inOutCubic],
+  [DAY.examParsed - 0.02, { x: 672, y: 462, zoom: 1.6 }, ease.linear],
+  [DAY.examParsed + 0.2, { x: 672, y: 440, zoom: 1.65 }, ease.inOutCubic],
+  [DAY.examView - 0.02, { x: 672, y: 442, zoom: 1.65 }, ease.linear],
+  [DAY.examView + 0.24, { x: 686, y: 466, zoom: 1.4 }, ease.inOutCubic],
+  [DAY.examQ7 - 0.02, { x: 686, y: 466, zoom: 1.4 }, ease.linear],
+  [DAY.examQ7 + 0.26, { x: 722, y: 406, zoom: 1.33 }, ease.inOutCubic],
+  [TOAST_AT + TOAST_DUR - 0.25, { x: 722, y: 406, zoom: 1.33 }, ease.linear],
+  [TOAST_AT + TOAST_DUR + 0.3, { x: 672, y: 606, zoom: 1.75 }, ease.inOutCubic],
+  [DAY.essayLaunch - 0.62, { x: 676, y: 610, zoom: 1.77 }, ease.linear],
   [DAY.essayLaunch - 0.25, FULL, ease.inOutCubic],
   [DAY.essayOpen + 0.1, FULL, ease.linear],
   [DAY.essayGrade - 0.3, { x: 1040, y: 470, zoom: 1.08 }, ease.inOutCubic],
