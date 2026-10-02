@@ -30,15 +30,24 @@ export const DAY = {
   examSubmit: 34.28, // 提交答案 → 判错
   examAI: 34.98, // 滚到结果面板底部，点「AI 解析」
   examOut: 37.8,
-  // 07 写作与精读
+  // 07 写作与精读（作文批改级联落在 1 号槽、翻译落在 3 号槽，打开都是「选择一个项目」空态）
   essayLaunch: 37.86, // 双击桌面「作文批改」
   essayOpen: 38.0,
-  essayGrade: 38.95, // 点「开始批改」
-  essayScore: 39.75, // 分数环滚动
-  essayPolish: 41.2, // 切到逐句润色
+  essayNew: 38.3, // 点「＋ 新建作文批改」→ 新作文
+  essayPaste: 38.56, // 点进输入框，⌘V 粘贴作文
+  essayGrade: 38.85, // 点「开始批改」→ 准备中
+  essayStream: 39.0, // 首个 chunk：批注逐字流出 → 润色段 → 评分段
+  essayDone: 40.15, // 流完：分数卡插在视口上方，视口停在正文开头
+  essayScoreUp: 40.24, // 往上滚到分数卡
+  essayRadar: 40.78, // 往下滚露出分项雷达
+  essayPolish: 41.25, // 点「润色提升」
   translateLaunch: 42.71, // 双击桌面「翻译」
   translateOpen: 42.85,
-  translateRun: 43.55, // 译文逐段流出
+  translateNew: 43.13, // 点「＋ 新建翻译」→ 引导条滑入
+  translatePaste: 43.38, // 点进原文框，⌘V 粘贴
+  translateRun: 43.62, // 点「翻译」
+  translateStream: 43.72, // 首个 chunk：译文流出
+  translateDone: 44.95, // 流完自动保存：引导条消失、「已保存」
   showDesk2: 45.45, // 再次「显示桌面」，收起 07 的窗口
   writingOut: 45.85,
   // 08 调研

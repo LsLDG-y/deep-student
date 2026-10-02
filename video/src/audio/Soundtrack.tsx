@@ -3,7 +3,9 @@ import { FPS, PACE } from '../lib/time';
 import { DAY, DBL } from '../scenes/day/beats';
 import { FN } from '../scenes/finale/beats';
 import { YOU } from '../scenes/you/SceneYou';
+import { ESSAY_STREAM } from '../ui/essay';
 import { EXAM_PARSE_MARKS } from '../ui/exam';
+import { TRANS_LEN, TRANS_PARAS } from '../ui/translate';
 import { STEPS } from '../ui/research';
 import { GROW, majorRingTimes } from '../scenes/finale/terrain';
 import { MM } from '../scenes/organize/MindmapView';
@@ -22,6 +24,9 @@ type Cue = [time: number, sfx: Sfx, volume: number];
 const PROMPT_LEN = [...'讲透这一节：画导图、出卡片'].length;
 /** 06 解析进度（0–1）→ 脚本秒，与 SceneDay 的 examState.parse 同一区间。 */
 const parseT = (k: number) => DAY.examParse + 0.03 + (DAY.examParsed - 0.02 - DAY.examParse - 0.03) * k;
+/** 07 流式位置 → 脚本秒，与 SceneDay 的 essayState.stream / transState.run 同一区间。 */
+const essayStreamT = (raw: number) => DAY.essayStream + ((DAY.essayDone - 0.03 - DAY.essayStream) * raw) / ESSAY_STREAM.total;
+const transStreamT = (c: number) => DAY.translateStream + ((DAY.translateDone - 0.02 - DAY.translateStream) * c) / TRANS_LEN;
 const RATING_NOTE: Record<number, Sfx> = { 1: 'note-low', 2: 'note-mid', 3: 'note-mid', 4: 'note-high' };
 const REVEAL_NOTES: Sfx[] = ['note-low', 'note-mid', 'note-high', 'note-top'];
 const CURVE_NOTES: Sfx[] = ['note-low', 'note-mid', 'note-high'];
@@ -102,19 +107,29 @@ const CUES: Cue[] = [
   [DAY.examSubmit + 0.04, 'note-low', 0.26],
   [DAY.examSubmit + 0.07, 'pop', 0.16],
   [DAY.examAI, 'click', 0.3],
-  // 07 写作与精读：双击「作文批改」→ 开始批改 → 批注逐条 → 分数 → 润色 → 双击「翻译」→ 翻译逐段
+  // 07 写作与精读：双击「作文批改」→ 新建 → 粘贴 → 开始批改 → 批注逐条闭合 → 流完 → 分数卡 → 润色提升；
+  // 双击「翻译」→ 新建 → 粘贴 → 翻译 → 逐段流出 → 保存
   [DAY.essayLaunch, 'click', 0.26],
   [DAY.essayLaunch + DBL, 'click', 0.26],
   [DAY.essayOpen + 0.02, 'pop', 0.24],
+  [DAY.essayNew, 'click', 0.3],
+  [DAY.essayPaste, 'click', 0.3],
+  [DAY.essayPaste + 0.04, 'tick', 0.16],
   [DAY.essayGrade, 'click', 0.33],
-  ...Array.from({ length: 7 }, (_, i): Cue => [DAY.essayGrade + 0.15 + i * 0.22, 'tick', 0.1]),
-  [DAY.essayScore + 0.55, 'note-high', 0.24],
-  [DAY.essayPolish, 'flip', 0.24],
+  ...ESSAY_STREAM.marks.map((raw): Cue => [essayStreamT(raw), 'tick', 0.1]),
+  [DAY.essayDone, 'note-mid', 0.22],
+  [DAY.essayScoreUp + 0.2, 'note-high', 0.22],
+  [DAY.essayPolish, 'click', 0.33],
+  [DAY.essayPolish + 0.02, 'flip', 0.2],
   [DAY.translateLaunch, 'click', 0.26],
   [DAY.translateLaunch + DBL, 'click', 0.26],
   [DAY.translateOpen + 0.02, 'pop', 0.24],
+  [DAY.translateNew, 'click', 0.3],
+  [DAY.translatePaste, 'click', 0.3],
+  [DAY.translatePaste + 0.04, 'tick', 0.16],
   [DAY.translateRun, 'click', 0.33],
-  ...Array.from({ length: 4 }, (_, i): Cue => [DAY.translateRun + 0.1 + i * 0.4, 'tick', 0.12]),
+  ...TRANS_PARAS.map((c): Cue => [transStreamT(c), 'tick', 0.12]),
+  [DAY.translateDone + 0.02, 'note-mid', 0.2],
   [DAY.showDesk2, 'click', 0.26],
   [DAY.showDesk2 + DBL, 'click', 0.26],
   [DAY.showDesk2 + DBL + 0.03, 'whoosh-down', 0.2],

@@ -98,6 +98,8 @@ export const brand = {
 
 export const font = {
   ui: '"PingFang SC", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Microsoft YaHei", sans-serif',
+  /** 主应用正文实际生效的字体栈（:lang(zh) → --font-family-cn，表单元素 inherit）：西文走系统字体，中文回落苹方 */
+  sys: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',
   display: '"SF Pro Display", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif',
   serif: '"Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif',
   mono: '"SF Mono", ui-monospace, Menlo, monospace',

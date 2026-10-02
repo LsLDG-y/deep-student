@@ -2,6 +2,7 @@ import anki from '@app/locales/zh-CN/anki.json';
 import chatV2 from '@app/locales/zh-CN/chatV2.json';
 import common from '@app/locales/zh-CN/common.json';
 import dragDrop from '@app/locales/zh-CN/drag_drop.json';
+import essayGrading from '@app/locales/zh-CN/essay_grading.json';
 import examSheet from '@app/locales/zh-CN/exam_sheet.json';
 import flashcards from '@app/locales/zh-CN/flashcards.json';
 import generativeUi from '@app/locales/zh-CN/generativeUi.json';
@@ -12,6 +13,7 @@ import settings from '@app/locales/zh-CN/settings.json';
 import sidebar from '@app/locales/zh-CN/sidebar.json';
 import stats from '@app/locales/zh-CN/stats.json';
 import todo from '@app/locales/zh-CN/todo.json';
+import translation from '@app/locales/zh-CN/translation.json';
 import workbench from '@app/locales/zh-CN/workbench.json';
 
 const NS = {
@@ -19,6 +21,7 @@ const NS = {
   chatV2,
   common,
   drag_drop: dragDrop,
+  essay_grading: essayGrading,
   exam_sheet: examSheet,
   flashcards,
   generativeUi,
@@ -29,6 +32,7 @@ const NS = {
   sidebar,
   stats,
   todo,
+  translation,
   workbench,
 } as const;
 type Ns = keyof typeof NS;
@@ -385,5 +389,99 @@ export const S = {
       aiRunning: tr('practice', 'editor.aiAnalyzing'),
       cancel: tr('common', 'cancel'),
     },
+  },
+  res: {
+    search: tr('workbench', 'resourceHome.search'),
+    all: tr('common', 'all'),
+    recent: tr('workbench', 'resourceHome.recent'),
+    itemCount: (n: number) => tr('workbench', 'resourceHome.itemCount', { count: n }),
+    empty: tr('workbench', 'resourceHome.empty'),
+    needSelection: tr('workbench', 'resourceHome.settingsNeedSelection'),
+    selectTitle: tr('workbench', 'resourceWorkspace.selectTitle'),
+    selectHint: tr('workbench', 'resourceWorkspace.selectHint'),
+  },
+  essay: {
+    title: tr('workbench', 'apps.essay'),
+    settings: tr('workbench', 'resourceHome.essaySettings'),
+    newEssay: tr('workbench', 'resourceHome.newEssay'),
+    importImages: tr('essay_grading', 'import_images.button'),
+    round: (n: number) => tr('essay_grading', 'round.label', { number: n }),
+    topic: tr('essay_grading', 'topic.toggle_label'),
+    emptyDesc: tr('essay_grading', 'empty_state.description'),
+    pasteHint: tr('essay_grading', 'empty_state.paste_hint'),
+    dropHint: tr('essay_grading', 'empty_state.drop_hint'),
+    ocr: tr('essay_grading', 'empty_state.ocr_hint'),
+    sample: tr('essay_grading', 'workbench.sample.fill_button'),
+    stat: {
+      han: tr('essay_grading', 'stats.han_chars'),
+      en: tr('essay_grading', 'stats.english_words'),
+      para: tr('essay_grading', 'workbench.stats.paragraphs'),
+      punct: tr('essay_grading', 'stats.punctuation_total'),
+      chars: tr('essay_grading', 'stats.characters'),
+    },
+    grade: tr('essay_grading', 'actions.grade'),
+    cancel: tr('common', 'cancel'),
+    result: tr('essay_grading', 'result_section.title'),
+    waitTitle: tr('essay_grading', 'result_empty.title'),
+    waitDesc: tr('essay_grading', 'result_empty.description'),
+    waiting: tr('essay_grading', 'progress.waiting_response'),
+    lock: tr('essay_grading', 'grading_lock.hint'),
+    phase: {
+      preparing: tr('essay_grading', 'progress.phase_preparing'),
+      annotating: tr('essay_grading', 'progress.phase_annotating'),
+      polishing: tr('essay_grading', 'progress.phase_polishing'),
+    },
+    generated: (n: number) => tr('essay_grading', 'progress.chars_generated', { count: n }),
+    tab: {
+      overview: tr('essay_grading', 'sections.tab_overview'),
+      details: tr('essay_grading', 'sections.tab_details'),
+      polish: tr('essay_grading', 'sections.tab_polish'),
+    },
+    filter: {
+      all: tr('essay_grading', 'legend.filter_all'),
+      errors: tr('essay_grading', 'legend.filter_errors'),
+      suggestions: tr('essay_grading', 'legend.filter_suggestions'),
+      highlights: tr('essay_grading', 'legend.filter_highlights'),
+    },
+    expand: tr('essay_grading', 'legend.expand'),
+    mistakes: tr('essay_grading', 'mistakes.label'),
+    cards: tr('essay_grading', 'make_cards.label'),
+    afterGrading: tr('essay_grading', 'make_cards.disabled_grading'),
+    total: tr('essay_grading', 'score.total'),
+    pass: tr('essay_grading', 'score.grade.pass'),
+    dims: tr('essay_grading', 'score.dimensions'),
+    polishDesc: tr('essay_grading', 'sections.polish_desc'),
+    hideDiff: tr('essay_grading', 'result_ui.polish_hide_diff'),
+    original: tr('essay_grading', 'sections.original'),
+    polished: tr('essay_grading', 'sections.polished'),
+    copy: tr('common', 'copy'),
+  },
+  trans: {
+    title: tr('workbench', 'apps.translation'),
+    settings: tr('workbench', 'resourceHome.translationSettings'),
+    newTranslation: tr('workbench', 'resourceHome.newTranslation'),
+    hint: tr('translation', 'contentView.empty_hint'),
+    en: tr('translation', 'languages.en'),
+    zh: tr('translation', 'languages.zh-CN'),
+    auto: tr('translation', 'workbench.toolbar.auto_translate'),
+    sync: tr('translation', 'sync_scroll'),
+    source: tr('translation', 'source_section.title'),
+    target: tr('translation', 'target_section.title'),
+    placeholder: tr('translation', 'source_section.placeholder'),
+    resultPlaceholder: tr('translation', 'target_section.placeholder'),
+    samples: tr('translation', 'workbench_core.samples_label'),
+    sampleEn: tr('translation', 'workbench_core.sample_en'),
+    sampleZh: tr('translation', 'workbench_core.sample_zh'),
+    dropHint: tr('translation', 'workbench_core.drop_hint_inline'),
+    translate: tr('translation', 'actions.translate'),
+    translating: tr('translation', 'actions.translating'),
+    cancel: tr('common', 'cancel'),
+    sc: {
+      translate: tr('translation', 'workbench_ui.shortcut_translate'),
+      swap: tr('translation', 'workbench_ui.shortcut_swap'),
+      cancel: tr('translation', 'workbench_ui.shortcut_cancel'),
+    },
+    saving: tr('translation', 'contentView.save_saving'),
+    saved: tr('translation', 'contentView.save_saved'),
   },
 };
