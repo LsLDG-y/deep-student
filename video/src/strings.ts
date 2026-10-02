@@ -3,12 +3,14 @@ import chatV2 from '@app/locales/zh-CN/chatV2.json';
 import common from '@app/locales/zh-CN/common.json';
 import flashcards from '@app/locales/zh-CN/flashcards.json';
 import generativeUi from '@app/locales/zh-CN/generativeUi.json';
+import learningHub from '@app/locales/zh-CN/learningHub.json';
 import mindmap from '@app/locales/zh-CN/mindmap.json';
 import sidebar from '@app/locales/zh-CN/sidebar.json';
 import stats from '@app/locales/zh-CN/stats.json';
+import todo from '@app/locales/zh-CN/todo.json';
 import workbench from '@app/locales/zh-CN/workbench.json';
 
-const NS = { anki, chatV2, common, flashcards, generativeUi, mindmap, sidebar, stats, workbench } as const;
+const NS = { anki, chatV2, common, flashcards, generativeUi, learningHub, mindmap, sidebar, stats, todo, workbench } as const;
 type Ns = keyof typeof NS;
 
 /**
@@ -176,5 +178,67 @@ export const S = {
     aiDashboard: tr('workbench', 'apps.aiDashboard'),
     sectionApps: tr('workbench', 'appsPanel.sectionApps'),
     sectionCommands: tr('workbench', 'appsPanel.sectionCommands'),
+  },
+  /** 学习桌面外壳：菜单栏 / Dock / 桌面快捷方式 / 小组件 */
+  desk: {
+    appName: tr('workbench', 'menubar.appName'),
+    windowMenu: tr('workbench', 'menubar.windowMenu'),
+    dockApps: tr('workbench', 'dock.apps'),
+    agentDock: tr('workbench', 'agentControlCenter.title'),
+    shortcut: {
+      note: tr('learningHub', 'resourceType.note'),
+      exam: tr('learningHub', 'resourceType.exam'),
+      essay: tr('learningHub', 'resourceType.essay'),
+      translation: tr('learningHub', 'resourceType.translation'),
+      mindmap: tr('learningHub', 'resourceType.mindmap'),
+    },
+    agendaPending: (n: number) => tr('workbench', 'agenda.pendingCount', { count: n }),
+    agendaOpen: tr('workbench', 'agenda.openTodo'),
+    agendaMore: (n: number) => tr('workbench', 'agenda.more', { count: n }),
+    agendaClear: tr('workbench', 'agenda.clear'),
+    briefing: tr('generativeUi', 'workbench.briefing_label'),
+    dueTitle: tr('generativeUi', 'workbench.briefing.due_flashcards_title'),
+    dueTrend: tr('generativeUi', 'workbench.briefing.due_trend_due'),
+    progressTitle: tr('generativeUi', 'workbench.briefing.progress_title'),
+    startReview: tr('generativeUi', 'workbench.briefing.start_review'),
+    openQbank: tr('generativeUi', 'workbench.briefing.open_qbank'),
+  },
+  todo: {
+    searchLists: tr('todo', 'actions.searchLists'),
+    search: tr('todo', 'actions.search'),
+    smartViews: tr('todo', 'sections.smartViews'),
+    lists: tr('todo', 'sections.lists'),
+    views: {
+      inbox: tr('todo', 'views.inbox'),
+      today: tr('todo', 'views.today'),
+      upcoming: tr('todo', 'views.upcoming'),
+      matrix: tr('todo', 'views.matrix'),
+      overdue: tr('todo', 'views.overdue'),
+      completed: tr('todo', 'views.completed'),
+    },
+    automation: tr('todo', 'automation.title'),
+    trash: tr('todo', 'trash.title'),
+    quickAdd: tr('todo', 'actions.quickAddPlaceholder'),
+    pending: tr('todo', 'stats.pending'),
+    pomodoroLoad: (n: number) => tr('todo', 'stats.pomodoroLoad', { count: n }),
+    progress: (done: number, total: number) => tr('todo', 'stats.progressTitle', { done, total }),
+    priorityFilter: tr('todo', 'filters.priority'),
+    sortManual: tr('todo', 'sort.manual'),
+    showCompleted: tr('todo', 'filters.showCompleted'),
+    select: tr('todo', 'bulk.selectMode'),
+    reviewTitle: (n: number) => tr('todo', 'reviewLink.title', { count: n }),
+    reviewCards: (n: number) => tr('todo', 'reviewLink.cards', { count: n }),
+    reviewAction: tr('todo', 'reviewLink.action'),
+    today: tr('todo', 'dates.today'),
+    priority: { high: tr('todo', 'priority.high'), medium: tr('todo', 'priority.medium'), low: tr('todo', 'priority.low') },
+    startFocus: tr('todo', 'actions.startFocusSession'),
+    pomoIdle: tr('todo', 'pomodoro.modes.idle'),
+    pomoFocusing: tr('todo', 'pomodoro.modes.focusing'),
+    pomoStart: tr('todo', 'pomodoro.controls.start'),
+    pomoPause: tr('todo', 'pomodoro.controls.pause'),
+    minutes: tr('todo', 'pomodoro.settings.minutesUnit'),
+    pomoToday: tr('todo', 'pomodoro.stats.todayLabel'),
+    pomoStats: tr('workbench', 'pomodoro.today.statsButton'),
+    pomoUnit: tr('todo', 'pomodoro.stats.pomodoroUnit'),
   },
 };

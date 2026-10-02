@@ -38,8 +38,8 @@ export const SUPERS: Super[] = [
   { s: 20.0, e: 22.3, text: '越薄弱的，越早再见', kind: 'feature', tone: 'dark' },
   // 第二幕：第二天，白天的学习桌面
   { s: 24.05, e: 25.75, text: '不止一份资料。', kind: 'title', pos: { left: 0, right: 0, top: 380 }, align: 'center', scrim: false },
-  { s: 26.5, e: 28.5, text: '今天要复习的、要做的，一屏看清', kind: 'feature' },
-  { s: 28.65, e: 29.85, text: '开一个番茄钟，进入专注', kind: 'feature' },
+  { s: 25.6, e: 27.3, text: '今天要复习的、要做的，一屏看清', kind: 'feature' },
+  { s: 27.5, e: 28.9, text: '开一个番茄钟，进入专注', kind: 'feature' },
   { s: 30.0, e: 30.9, text: '06 检验', kind: 'chapter' },
   { s: 30.95, e: 33.0, text: '试卷拖进来，题目集就有了', kind: 'feature' },
   { s: 33.6, e: 35.6, text: '答错的题，AI 讲清楚错在哪', kind: 'feature' },

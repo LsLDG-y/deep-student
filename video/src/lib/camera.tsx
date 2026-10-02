@@ -35,6 +35,14 @@ export const camAt = (t: number, frames: CamKey[]): Cam => {
   return full[full.length - 1][1];
 };
 
+/** 2D 桌面镜头：取景框不越出 1920×1080 的桌面（否则边缘会露出桌面外的底色）。 */
+export const clampCam = (c: Cam): Cam => {
+  if (c.zoom <= 1) return { ...c, x: WIDTH / 2, y: HEIGHT / 2 };
+  const hw = WIDTH / 2 / c.zoom;
+  const hh = HEIGHT / 2 / c.zoom;
+  return { ...c, x: clamp(c.x, hw, WIDTH - hw), y: clamp(c.y, hh, HEIGHT - hh) };
+};
+
 /** 世界坐标 → 屏幕坐标（仅在无旋转时精确，交互镜头都保持零旋转）。 */
 export const project = (cam: Cam, wx: number, wy: number) => ({
   x: WIDTH / 2 + (wx - cam.x) * cam.zoom,

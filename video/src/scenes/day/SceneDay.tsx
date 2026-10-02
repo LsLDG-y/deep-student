@@ -1,34 +1,134 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { AbsoluteFill } from 'remotion';
-import { camAt, CameraView, project, type CamKey } from '../../lib/camera';
-import { springSheet } from '../../lib/motion';
-import { clamp, ease, prog, springAt } from '../../lib/time';
+import { camAt, CameraView, clampCam, project, type CamKey } from '../../lib/camera';
+import { ease, PACE, prog } from '../../lib/time';
+import { S } from '../../strings';
 import { dark, light, type Tokens } from '../../theme';
 import { Pupil, pathAt } from '../../ui/brand';
+import { agendaOpenCenter, AgendaWidget, BriefingWidget, DesktopShortcuts, shortcutCenter, type ShortcutId } from '../../ui/desk';
 import { essayGradeCenter, ESSAY_H, ESSAY_W, EssayView, type EssayState } from '../../ui/essay';
 import { EXAM_DROP, EXAM_H, EXAM_W, ExamView, examOptionCenter, examStartCenter, FileChip, type ExamState } from '../../ui/exam';
 import { CHAT_H, CHAT_W, HUB_H, HUB_W, HubIndexView, NOTE_H, NOTE_W, NoteView, ResearchChat, type ResearchState } from '../../ui/research';
+import { POMO_RECT, PomodoroWindowBody, pomoTitle, TODO_H, TODO_ITEMS, TODO_W, TodoApp, todoPlayCenter, todoRowCenter, TodoToolbar, type TodoState } from '../../ui/todo';
 import { transButtonCenter, TRANS_H, TRANS_W, TranslateView, type TransState } from '../../ui/translate';
-import { focusButtonCenter, TODAY_H, TODAY_W, TodayView } from '../../ui/today';
-import { Dock, dockIconCenter, MenuBar, Wallpaper, WbWindow } from '../../ui/workbench';
-import { nightMenubar, NIGHT_RUNNING } from '../review/SceneReview';
-import { DAY, wallDrift } from './beats';
+import { APP_NAMES, Dock, dockBounceAt, dockIconCenter, type DockBadge, GENIE_S, IND_S, MenuBar, menuClock, TIP_DELAY_S, TIP_FADE_S, Wallpaper, WbWindow, winLife, type Rect } from '../../ui/workbench';
+import { nightDock, nightMenubar } from '../review/SceneReview';
+import { DAY, DBL, wallDrift } from './beats';
 
 /**
- * 第二幕「第二天」：夜里复习完的工作台迎来清晨，之后每章从 Dock 打开一个应用。
- * 桌面（壁纸 / 菜单栏 / Dock）全程常驻，窗口在其上开合；镜头是 2D 推拉（与夜里那段同一套）。
+ * 第二幕「第二天」：夜里复习完的学习桌面迎来清晨，之后按产品里真实的路径打开应用：
+ * 日程小组件「待办 →」→ 待办「今日」→ 开始专注 → 双击桌面「显示桌面」→ 双击桌面快捷方式打开题目集 / 作文批改 / 翻译
+ * → 再次「显示桌面」→ Dock 还原对话 → 调研建出的笔记 → Dock 打开资源库。
+ * 桌面（壁纸 / 快捷方式 / 小组件 / 菜单栏 / Dock）全程常驻，窗口在其上开合；镜头是 2D 推拉。
  */
-type Rect = { x: number; y: number; w: number; h: number };
-
-export const TODAY_RECT: Rect = { x: (1920 - TODAY_W) / 2, y: 150, w: TODAY_W, h: TODAY_H };
+export const TODO_RECT: Rect = { x: 48, y: 88, w: TODO_W, h: TODO_H };
 export const EXAM_RECT: Rect = { x: (1920 - EXAM_W) / 2, y: 128, w: EXAM_W, h: EXAM_H };
 const inWin = (r: Rect, p: { x: number; y: number }) => ({ x: r.x + p.x, y: r.y + 38 + p.y });
 
 export const ESSAY_RECT: Rect = { x: (1920 - ESSAY_W) / 2, y: 126, w: ESSAY_W, h: ESSAY_H };
 export const TRANS_RECT: Rect = { x: 420, y: 176, w: TRANS_W, h: TRANS_H };
+export const CHAT_RECT: Rect = { x: 230, y: 118, w: CHAT_W, h: CHAT_H };
+export const NOTE_RECT: Rect = { x: 1130, y: 150, w: NOTE_W, h: NOTE_H };
+export const HUB_RECT: Rect = { x: (1920 - HUB_W) / 2, y: 196, w: HUB_W, h: HUB_H };
+const DL_BTN = { x: CHAT_W - 126, y: 322 };
 
 const pressAt = (t: number, at: number, w = 0.08) => Math.max(0, 1 - Math.abs(t - at) / w);
 const hoverAt = (t: number, at: number) => (t >= at - 0.16 && t < at + 0.02 ? 1 : 0);
+
+/** 「显示桌面」：第二击后窗口开始 genie。 */
+const SHOW_MIN = DAY.showDesk + DBL + 0.02;
+const SHOW_MIN2 = DAY.showDesk2 + DBL + 0.02;
+/** Dock 图标点按时刻（还原对话 / 打开资源库）。 */
+const CHAT_CLICK = DAY.researchOpen - 0.02;
+const HUB_CLICK = DAY.hubIndex - 0.02;
+
+// ── 桌面状态 ─────────────────────────────────────────
+/** 有窗口的应用（含最小化），按最早开窗保序。番茄钟在 07 的时间跳转处已结束（会话结束即收起投射窗口）。 */
+const runningAt = (t: number): string[] => {
+  const r = [...nightDock(DAY.start).running];
+  if (t >= DAY.todayOpen) r.push('todo');
+  if (t >= DAY.todayFocus && t < DAY.essayOpen) r.push('pomodoro');
+  if (t >= DAY.examOpen) r.push('exam');
+  if (t >= DAY.essayOpen) r.push('essay');
+  if (t >= DAY.translateOpen) r.push('translation');
+  if (t >= DAY.researchNote) r.push('notes');
+  if (t >= DAY.hubIndex) r.push('files');
+  return r;
+};
+const FIRST_OPEN: Record<string, number> = {
+  todo: DAY.todayOpen,
+  pomodoro: DAY.todayFocus,
+  exam: DAY.examOpen,
+  essay: DAY.essayOpen,
+  translation: DAY.translateOpen,
+  notes: DAY.researchNote,
+  files: DAY.hubIndex,
+};
+
+/** 闪卡到期数：清晨 12 张；07 的时间跳转之后「复习到期卡片」已完成。 */
+const dueAt = (t: number) => (t < DAY.clock ? nightMenubar(t).due : t < DAY.essayOpen ? 12 : 0);
+/** 今日待办完成数（简报的「已完成 n/4」与日程列表随章节推进）。 */
+const doneAt = (t: number) => (t < DAY.essayOpen ? 0 : t < DAY.researchOpen ? 2 : 3);
+
+const focusLeft = (t: number) => {
+  const left = Math.max(0, 25 * 60 - Math.floor((t - DAY.todayFocus) * PACE));
+  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+};
+
+/** 菜单栏：时钟翻页前与夜里那段逐帧一致；白天随焦点窗口切换应用名、随章节走时间。 */
+const dayMenubar = (t: number) => {
+  if (t < DAY.clock) return { ...nightMenubar(t), pomo: null as string | null };
+  const app =
+    t < DAY.todayOpen
+      ? S.desk.appName
+      : t < SHOW_MIN
+        ? APP_NAMES.todo
+        : t < DAY.examOpen
+          ? S.desk.appName
+          : t < DAY.essayOpen
+            ? APP_NAMES.exam
+            : t < DAY.translateOpen
+              ? APP_NAMES.essay
+              : t < SHOW_MIN2
+                ? APP_NAMES.translation
+                : t < DAY.researchOpen
+                  ? S.desk.appName
+                  : t < DAY.researchNote
+                    ? APP_NAMES.chat
+                    : t < DAY.paperSend
+                      ? APP_NAMES.notes
+                      : t < DAY.hubIndex
+                        ? APP_NAMES.chat
+                        : APP_NAMES.files;
+  const clock = t < DAY.essayOpen ? menuClock(3, 7, 30) : t < DAY.translateOpen ? menuClock(3, 14, 10) : t < DAY.researchOpen ? menuClock(3, 15, 40) : menuClock(3, 20, 5);
+  const pomo = t >= DAY.todayFocus && t < DAY.essayOpen ? focusLeft(t) : null;
+  return { app, clock, due: dueAt(t), pomo };
+};
+
+/** 有可见窗口时小组件淡到 0.55（280ms ease-out）。 */
+const dimAt = (t: number) => {
+  const on = (a: number) => prog(t, a, a + 0.14, ease.wbOut);
+  const off = (a: number) => prog(t, a, a + 0.14, ease.wbOut);
+  return Math.max(on(DAY.todayOpen) * (1 - off(SHOW_MIN + GENIE_S)), on(DAY.examOpen) * (1 - off(SHOW_MIN2 + GENIE_S)), on(DAY.researchOpen));
+};
+
+const night = (t: number) => 1 - prog(t, DAY.dawn0, DAY.dawn1, ease.inOutCubic);
+const themeK = (t: number) => prog(t, DAY.theme0, DAY.theme1, ease.inOutCubic);
+
+// ── 各段内容状态 ─────────────────────────────────────
+const TODO_ROW_IN = 26.78;
+const TODO_ROW_OUT = 27.92;
+const todoState = (t: number): TodoState => ({
+  view: 'today',
+  navHover: 0,
+  navPress: 0,
+  rowHover: prog(t, TODO_ROW_IN, TODO_ROW_IN + 0.03) * (1 - prog(t, TODO_ROW_OUT, TODO_ROW_OUT + 0.03)),
+  playHover: t >= DAY.todayFocus - 0.2 && t < TODO_ROW_OUT ? 1 : 0,
+  playPress: pressAt(t, DAY.todayFocus),
+  focusing: t >= DAY.todayFocus,
+  remaining: t >= DAY.todayFocus ? focusLeft(t) : '25:00',
+  ring: t >= DAY.todayFocus ? ((t - DAY.todayFocus) * PACE) / 1500 : 0,
+});
 
 const essayState = (t: number): EssayState => ({
   gradeHover: hoverAt(t, DAY.essayGrade),
@@ -40,15 +140,10 @@ const essayState = (t: number): EssayState => ({
 });
 
 const transState = (t: number): TransState => ({
-  run: prog(t, DAY.translateRun + 0.06, DAY.writingOut - 0.55),
+  run: prog(t, DAY.translateRun + 0.06, DAY.showDesk2 - 0.2),
   press: pressAt(t, DAY.translateRun),
-  scroll: ease.inOutCubic(prog(t, DAY.translateRun + 1.0, DAY.writingOut - 0.1)),
+  scroll: ease.inOutCubic(prog(t, DAY.translateRun + 1.0, DAY.showDesk2 - 0.05)),
 });
-
-export const CHAT_RECT: Rect = { x: 230, y: 118, w: CHAT_W, h: CHAT_H };
-export const NOTE_RECT: Rect = { x: 1130, y: 150, w: NOTE_W, h: NOTE_H };
-export const HUB_RECT: Rect = { x: (1920 - HUB_W) / 2, y: 196, w: HUB_W, h: HUB_H };
-const DL_BTN = { x: CHAT_W - 126, y: 322 };
 
 const researchState = (t: number): ResearchState => ({
   sent: prog(t, DAY.researchSend, DAY.researchSend + 0.2, ease.wbOut),
@@ -98,68 +193,23 @@ const chipPose = (t: number) => {
   };
 };
 
-const night = (t: number) => 1 - prog(t, DAY.dawn0, DAY.dawn1, ease.inOutCubic);
-const themeK = (t: number) => prog(t, DAY.theme0, DAY.theme1, ease.inOutCubic);
-
-/** 窗口从 Dock 图标弹开、关闭时缩回去（与夜里闪卡窗口同一套弹簧）。 */
-const winAnim = (t: number, rect: Rect, icon: string, openAt: number, closeAt?: number) => {
-  const open = springAt(t, openAt, springSheet);
-  const close = closeAt === undefined ? 0 : prog(t, closeAt, closeAt + 0.3, ease.inCubic);
-  const shown = open * (1 - close);
-  const c = dockIconCenter(icon);
-  const cx = rect.x + rect.w / 2;
-  const cy = rect.y + rect.h / 2;
-  const style: CSSProperties = {
-    opacity: clamp(shown * 3),
-    transform: `translate(${(c.x - cx) * (1 - shown)}px, ${(c.y - cy) * (1 - shown)}px) scale(${0.34 + 0.66 * shown})`,
-    transformOrigin: '50% 50%',
-  };
-  return { shown, style };
-};
-
-const dockBounce = (t: number, at: number) => (t >= at && t < at + 0.16 ? Math.sin(((t - at) / 0.16) * Math.PI) * 16 : 0);
-
-/** 菜单栏：时钟翻页前与夜里那段逐帧一致；白天随章节切换前台应用、走时间、番茄钟倒计时。 */
-const dayMenubar = (t: number) => {
-  if (t < DAY.clock) return nightMenubar(t);
-  const app =
-    t < DAY.todayOpen
-      ? 'DeepStudent'
-      : t < DAY.examOpen
-        ? '待办'
-        : t < DAY.essayOpen
-          ? '题目集'
-          : t < DAY.translateOpen
-            ? '作文批改'
-            : t < DAY.researchOpen
-              ? '翻译'
-              : t < DAY.researchNote
-                ? '对话'
-                : t < DAY.paperSend
-                  ? '笔记'
-                  : t < DAY.hubIndex
-                    ? '对话'
-                    : '资源库';
-  const clock = t < DAY.examOpen ? '周六 07:30' : t < DAY.essayOpen ? '周六 09:05' : t < DAY.translateOpen ? '周六 14:10' : t < DAY.researchOpen ? '周六 15:40' : '周六 20:05';
-  let focus = '25:00';
-  if (t >= DAY.todayFocus) {
-    const left = Math.max(0, 25 * 60 - Math.floor((t - DAY.todayFocus) * 2));
-    focus = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
-  }
-  return { app, due: t < DAY.examMastery ? 12 : 13, clock, focus };
-};
-
+// ── 镜头 ──────────────────────────────────────────────
+const FULL = { x: 960, y: 540, zoom: 1 };
 const DAY_CAM: CamKey[] = [
-  [DAY.start, { x: 960, y: 540, zoom: 1 }],
+  [DAY.start, FULL],
   [DAY.dawn1, { x: 960, y: 540, zoom: 1.015 }, ease.linear],
-  [DAY.todayOpen - 0.05, { x: 960, y: 540, zoom: 1.015 }, ease.linear],
-  [DAY.todayOpen + 0.55, { x: 960, y: 500, zoom: 1.1 }, ease.inOutCubic],
-  [DAY.todayFocus - 0.4, { x: 990, y: 498, zoom: 1.12 }, ease.linear],
-  [DAY.todayFocus + 0.05, { x: 1150, y: 560, zoom: 1.3 }, ease.inOutCubic],
-  // 每次去 Dock 打开下一个应用之前，镜头先退到能看见 Dock 的全景
-  [DAY.todayOut - 0.35, { x: 1150, y: 560, zoom: 1.32 }, ease.linear],
-  [DAY.examOpen - 0.25, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
-  [DAY.examOpen + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
+  [25.25, { x: 960, y: 540, zoom: 1.015 }, ease.linear],
+  // 推到右列小组件：今天的日程与到期卡片
+  [25.8, { x: 1193, y: 430, zoom: 1.32 }, ease.inOutCubic],
+  [DAY.todayOpen + 0.05, { x: 1193, y: 430, zoom: 1.32 }, ease.linear],
+  // 转到待办窗口（今日视图）
+  [26.6, { x: 768, y: 470, zoom: 1.25 }, ease.inOutCubic],
+  [27.2, { x: 790, y: 470, zoom: 1.27 }, ease.linear],
+  [DAY.todayFocus + 0.15, { x: 760, y: 520, zoom: 1.34 }, ease.inOutCubic],
+  [28.2, { x: 760, y: 520, zoom: 1.35 }, ease.linear],
+  // 退到全景：菜单栏 ⏱、Dock 上的番茄钟与红点
+  [28.65, FULL, ease.inOutCubic],
+  [DAY.examOpen + 0.1, FULL, ease.linear],
   [EXAM_GRAB, { x: 900, y: 560, zoom: 1.02 }, ease.inOutCubic],
   [DAY.examDrop + 0.25, { x: 990, y: 520, zoom: 1.1 }, ease.inOutCubic],
   [DAY.examParsed, { x: 1000, y: 516, zoom: 1.12 }, ease.linear],
@@ -167,23 +217,23 @@ const DAY_CAM: CamKey[] = [
   [DAY.examExplain + 0.5, { x: 920, y: 520, zoom: 1.24 }, ease.inOutCubic],
   [DAY.examMastery - 0.05, { x: 930, y: 560, zoom: 1.22 }, ease.linear],
   [DAY.examMastery + 0.5, { x: 1010, y: 520, zoom: 1.1 }, ease.inOutCubic],
-  [DAY.essayOpen - 0.6, { x: 1010, y: 520, zoom: 1.12 }, ease.linear],
-  [DAY.essayOpen - 0.2, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
-  [DAY.essayOpen + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
+  [DAY.essayLaunch - 0.65, { x: 1010, y: 520, zoom: 1.12 }, ease.linear],
+  [DAY.essayLaunch - 0.25, FULL, ease.inOutCubic],
+  [DAY.essayOpen + 0.1, FULL, ease.linear],
   [DAY.essayGrade - 0.3, { x: 1040, y: 470, zoom: 1.08 }, ease.inOutCubic],
   [DAY.essayGrade + 0.45, { x: 780, y: 500, zoom: 1.24 }, ease.inOutCubic],
   [DAY.essayScore + 0.1, { x: 820, y: 520, zoom: 1.24 }, ease.linear],
   [DAY.essayScore + 0.6, { x: 990, y: 520, zoom: 1.1 }, ease.inOutCubic],
   [DAY.essayPolish - 0.05, { x: 1000, y: 520, zoom: 1.1 }, ease.linear],
   [DAY.essayPolish + 0.45, { x: 1300, y: 500, zoom: 1.3 }, ease.inOutCubic],
-  [DAY.translateOpen - 0.6, { x: 1310, y: 520, zoom: 1.32 }, ease.linear],
-  [DAY.translateOpen - 0.2, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
-  [DAY.translateOpen + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
+  [DAY.translateLaunch - 0.75, { x: 1310, y: 520, zoom: 1.32 }, ease.linear],
+  [DAY.translateLaunch - 0.3, FULL, ease.inOutCubic],
+  [DAY.translateOpen + 0.1, FULL, ease.linear],
   [DAY.translateOpen + 0.5, { x: 1040, y: 556, zoom: 1.04 }, ease.inOutCubic],
   [DAY.translateRun + 0.35, { x: 1040, y: 540, zoom: 1.18 }, ease.inOutCubic],
-  [DAY.researchOpen - 0.65, { x: 1040, y: 580, zoom: 1.22 }, ease.linear],
-  [DAY.researchOpen - 0.2, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
-  [DAY.researchOpen + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
+  [DAY.showDesk2 - 0.45, { x: 1040, y: 580, zoom: 1.22 }, ease.linear],
+  [DAY.showDesk2 - 0.1, FULL, ease.inOutCubic],
+  [DAY.researchOpen + 0.1, FULL, ease.linear],
   [DAY.researchSend - 0.15, { x: 760, y: 540, zoom: 1.12 }, ease.inOutCubic],
   [DAY.researchSteps + 0.35, { x: 740, y: 470, zoom: 1.24 }, ease.inOutCubic],
   [DAY.researchNote - 0.1, { x: 760, y: 500, zoom: 1.24 }, ease.linear],
@@ -191,38 +241,46 @@ const DAY_CAM: CamKey[] = [
   [DAY.paperSend - 0.05, { x: 1290, y: 520, zoom: 1.18 }, ease.linear],
   [DAY.paperSend + 0.45, { x: 740, y: 540, zoom: 1.18 }, ease.inOutCubic],
   [DAY.paperDownload + 0.3, { x: 820, y: 500, zoom: 1.26 }, ease.inOutCubic],
-  [DAY.hubIndex - 0.25, { x: 960, y: 556, zoom: 1.0 }, ease.inOutCubic],
-  [DAY.hubIndex + 0.1, { x: 960, y: 556, zoom: 1.0 }, ease.linear],
+  [DAY.hubIndex - 0.3, FULL, ease.inOutCubic],
+  [DAY.hubIndex + 0.1, FULL, ease.linear],
   [DAY.hubIndex + 0.55, { x: 960, y: 520, zoom: 1.12 }, ease.inOutCubic],
   [DAY.end - 0.3, { x: 1000, y: 500, zoom: 1.22 }, ease.linear],
   [DAY.end + 0.4, { x: 1000, y: 500, zoom: 1.12 }, ease.inOutCubic],
 ];
 
-/** 每次从 Dock 打开应用：瞳点先移到图标上，悬停出气泡，按下压暗，图标弹跳，窗口弹开。 */
-const LAUNCH_LEAD = 0.55;
+// ── 瞳点 ──────────────────────────────────────────────
+const AGENDA_BTN = agendaOpenCenter();
+const ROW = { x: TODO_RECT.x + todoRowCenter().x, y: TODO_RECT.y + todoRowCenter().y };
+const PLAY = { x: TODO_RECT.x + todoPlayCenter().x, y: TODO_RECT.y + todoPlayCenter().y };
+/** 桌面空白处（双击「显示桌面」）：待办窗口与右列小组件之间 / 07 两个窗口左下方。 */
+const DESK_SPOT = { x: 1250, y: 820 };
+const DESK_SPOT2 = { x: 200, y: 800 };
+const SC = (id: ShortcutId) => shortcutCenter(id);
+const AGENDA_CLICK = DAY.todayOpen - 0.02;
 
 const PUPIL_PATH: Array<[number, number, number]> = (() => {
-  const todo = dockIconCenter('todo');
-  const f = focusButtonCenter();
-  const fx = TODAY_RECT.x + f.x;
-  const fy = TODAY_RECT.y + 38 + f.y;
   const drop = inWin(EXAM_RECT, EXAM_DROP);
   const start = inWin(EXAM_RECT, examStartCenter());
   const optA = inWin(EXAM_RECT, examOptionCenter(0));
-  const icon = (id: string) => dockIconCenter(id);
-  const approach = (id: string, at: number): Array<[number, number, number]> => [
-    [at - LAUNCH_LEAD, icon(id).x + 150, icon(id).y - 200],
-    [at - 0.08, icon(id).x, icon(id).y],
-  ];
   const grade = { x: ESSAY_RECT.x + essayGradeCenter().x, y: ESSAY_RECT.y + 38 + essayGradeCenter().y };
   const run = { x: TRANS_RECT.x + transButtonCenter().x, y: TRANS_RECT.y + 38 + transButtonCenter().y };
   const dl = { x: CHAT_RECT.x + DL_BTN.x, y: CHAT_RECT.y + 38 + DL_BTN.y };
+  const chatIcon = dockIconCenter('chat', runningAt(CHAT_CLICK));
+  const filesIcon = dockIconCenter('files', runningAt(HUB_CLICK));
   return [
-    ...approach('todo', DAY.todayOpen),
-    [DAY.todayOpen + 0.5, todo.x + 40, todo.y - 220],
-    [DAY.todayFocus - 0.08, fx, fy],
-    [DAY.todayFocus + 0.3, fx + 6, fy + 2],
-    ...approach('exam', DAY.examOpen),
+    // 今日：日程小组件「待办 →」→ 第 2 行 → ▷ 开始专注 → 双击桌面空白 → 双击「题目集」
+    [25.45, AGENDA_BTN.x + 140, AGENDA_BTN.y + 170],
+    [AGENDA_CLICK - 0.05, AGENDA_BTN.x, AGENDA_BTN.y],
+    [AGENDA_CLICK + 0.1, AGENDA_BTN.x, AGENDA_BTN.y],
+    [TODO_ROW_IN, ROW.x, ROW.y],
+    [27.0, ROW.x + 40, ROW.y + 4],
+    [DAY.todayFocus - 0.05, PLAY.x, PLAY.y],
+    [DAY.todayFocus + 0.4, PLAY.x + 40, PLAY.y + 60],
+    [DAY.showDesk - 0.1, DESK_SPOT.x, DESK_SPOT.y],
+    [DAY.showDesk + 0.12, DESK_SPOT.x, DESK_SPOT.y],
+    [DAY.examLaunch - 0.06, SC('exam').x, SC('exam').y],
+    [DAY.examLaunch + DBL + 0.06, SC('exam').x, SC('exam').y],
+    // 06：把桌面上的试卷拖进题目集 → 开始练习 → 选 A
     [EXAM_GRAB - 0.04, CHIP_HOME.x + 40, CHIP_HOME.y + 24],
     [DAY.examDrop - 0.04, drop.x - 110, drop.y - 6],
     [DAY.examParsed - 0.3, drop.x + 60, drop.y + 40],
@@ -230,95 +288,157 @@ const PUPIL_PATH: Array<[number, number, number]> = (() => {
     [DAY.examStart + 0.25, start.x + 10, start.y - 20],
     [DAY.examPick - 0.07, optA.x, optA.y],
     [DAY.examPick + 0.35, optA.x + 40, optA.y + 120],
-    ...approach('essay', DAY.essayOpen),
+    // 07：双击「作文批改」→ 开始批改；双击「翻译」→ 翻译
+    [DAY.essayLaunch - 0.45, SC('essay').x + 170, SC('essay').y + 120],
+    [DAY.essayLaunch - 0.06, SC('essay').x, SC('essay').y],
+    [DAY.essayLaunch + DBL + 0.06, SC('essay').x, SC('essay').y],
     [DAY.essayGrade - 0.06, grade.x, grade.y],
     [DAY.essayGrade + 0.4, grade.x - 240, grade.y + 280],
-    ...approach('translation', DAY.translateOpen),
+    [DAY.translateLaunch - 0.4, SC('translation').x + 200, SC('translation').y + 110],
+    [DAY.translateLaunch - 0.06, SC('translation').x, SC('translation').y],
+    [DAY.translateLaunch + DBL + 0.06, SC('translation').x, SC('translation').y],
     [DAY.translateRun - 0.06, run.x, run.y],
     [DAY.translateRun + 0.4, run.x - 240, run.y + 220],
-    ...approach('chat', DAY.researchOpen),
+    // 显示桌面 → Dock「对话」还原
+    [DAY.showDesk2 - 0.3, DESK_SPOT2.x + 160, DESK_SPOT2.y - 90],
+    [DAY.showDesk2 - 0.04, DESK_SPOT2.x, DESK_SPOT2.y],
+    [DAY.showDesk2 + DBL + 0.05, DESK_SPOT2.x, DESK_SPOT2.y],
+    [CHAT_CLICK - 0.06, chatIcon.x, chatIcon.y],
+    [CHAT_CLICK + 0.12, chatIcon.x, chatIcon.y],
     [DAY.researchOpen + 0.35, CHAT_RECT.x + CHAT_W / 2, CHAT_RECT.y + CHAT_H - 120],
     [DAY.paperDownload - 0.5, dl.x - 220, dl.y + 160],
     [DAY.paperDownload - 0.06, dl.x, dl.y],
     [DAY.paperDownload + 0.3, dl.x - 60, dl.y + 120],
-    ...approach('files', DAY.hubIndex),
-    [DAY.hubIndex + 0.4, icon('files').x - 80, icon('files').y - 260],
+    [HUB_CLICK - 0.45, filesIcon.x + 150, filesIcon.y - 200],
+    [HUB_CLICK - 0.06, filesIcon.x, filesIcon.y],
+    [HUB_CLICK + 0.12, filesIcon.x, filesIcon.y],
+    [DAY.hubIndex + 0.45, filesIcon.x - 80, filesIcon.y - 260],
   ];
 })();
 
-const LAUNCHES: Array<[string, number]> = [
-  ['todo', DAY.todayOpen],
-  ['exam', DAY.examOpen],
-  ['essay', DAY.essayOpen],
-  ['translation', DAY.translateOpen],
-  ['chat', DAY.researchOpen],
-  ['files', DAY.hubIndex],
+const dbl = (at: number) => [at, at + DBL];
+const CLICKS = [
+  AGENDA_CLICK,
+  DAY.todayFocus,
+  ...dbl(DAY.showDesk),
+  ...dbl(DAY.examLaunch),
+  DAY.examStart,
+  DAY.examPick,
+  ...dbl(DAY.essayLaunch),
+  DAY.essayGrade,
+  ...dbl(DAY.translateLaunch),
+  DAY.translateRun,
+  ...dbl(DAY.showDesk2),
+  CHAT_CLICK,
+  DAY.paperDownload,
+  HUB_CLICK,
 ];
-const CLICKS = [...LAUNCHES.map(([, at]) => at - 0.05), DAY.todayFocus, DAY.examStart, DAY.examPick, DAY.essayGrade, DAY.translateRun, DAY.paperDownload];
+
+/** 瞳点可见区间：各段动作前后淡入淡出。 */
+const PUPIL_SHOW: Array<[number, number]> = [
+  [25.45, DAY.examLaunch + DBL + 0.3],
+  [EXAM_GRAB - 0.3, DAY.examPick + 0.5],
+  [DAY.essayLaunch - 0.45, DAY.essayGrade + 0.5],
+  [DAY.translateLaunch - 0.4, DAY.translateRun + 0.5],
+  [DAY.showDesk2 - 0.3, DAY.researchOpen + 0.45],
+  [DAY.paperDownload - 0.55, DAY.paperDownload + 0.5],
+  [HUB_CLICK - 0.45, DAY.hubIndex + 0.5],
+];
+const pupilOpacity = (t: number) => Math.max(0, ...PUPIL_SHOW.map(([a, b]) => Math.min(prog(t, a, a + 0.12), 1 - prog(t, b - 0.14, b))));
+
+/** 双击桌面快捷方式：第一击选中（焦点底 + 标签高亮），每击按下时插画缩到 0.94；窗口打开后焦点移走。 */
+const shortcutState = (t: number) => {
+  for (const [id, at, open] of [
+    ['exam', DAY.examLaunch, DAY.examOpen],
+    ['essay', DAY.essayLaunch, DAY.essayOpen],
+    ['translation', DAY.translateLaunch, DAY.translateOpen],
+  ] as Array<[ShortcutId, number, number]>) {
+    if (t >= at - 0.03 && t < open + 0.02) {
+      return { selected: { id, k: t >= at ? 1 : 0 }, pressed: { id, k: Math.max(pressAt(t, at, 0.04), pressAt(t, at + DBL, 0.04)) } };
+    }
+  }
+  return {};
+};
 
 const dockTipAt = (t: number) => {
-  for (const [id, at] of LAUNCHES) {
+  for (const [id, at] of [
+    ['chat', CHAT_CLICK],
+    ['files', HUB_CLICK],
+  ] as Array<[string, number]>) {
     const h0 = at - 0.36;
-    if (t >= h0 && t < at + 0.1) return { id, k: prog(t, h0 + 0.175, h0 + 0.24, ease.wbOut) * (1 - prog(t, at - 0.02, at + 0.06)) };
+    if (t >= h0 && t < at + 0.2) return { id, k: prog(t, h0 + TIP_DELAY_S, h0 + TIP_DELAY_S + TIP_FADE_S, ease.wbOut) * (1 - prog(t, at + 0.1, at + 0.16)) };
   }
   return undefined;
 };
 
-/** 瞳点可见区间：各段动作前后淡入淡出。 */
-const PUPIL_SHOW: Array<[number, number]> = [
-  [DAY.todayOpen - LAUNCH_LEAD, DAY.todayOut],
-  [DAY.examOpen - LAUNCH_LEAD, DAY.examPick + 0.5],
-  [DAY.essayOpen - LAUNCH_LEAD, DAY.essayGrade + 0.5],
-  [DAY.translateOpen - LAUNCH_LEAD, DAY.translateRun + 0.5],
-  [DAY.researchOpen - LAUNCH_LEAD, DAY.researchOpen + 0.45],
-  [DAY.paperDownload - 0.55, DAY.paperDownload + 0.5],
-  [DAY.hubIndex - LAUNCH_LEAD, DAY.hubIndex + 0.5],
-];
-const pupilOpacity = (t: number) => Math.max(0, ...PUPIL_SHOW.map(([a, b]) => Math.min(prog(t, a, a + 0.12), 1 - prog(t, b - 0.14, b))));
-
-const Desktop = ({ t, running, bounce }: { t: number; running: string[]; bounce: Record<string, number> }) => {
+const Desktop = ({ t }: { t: number }) => {
   const k = themeK(t);
   const bar = dayMenubar(t);
-  const tip = dockTipAt(t);
-  const press = Object.fromEntries(LAUNCHES.map(([id, at]) => [id, pressAt(t, at - 0.05, 0.07)]));
+  const dim = dimAt(t);
+  const sc = shortcutState(t);
+  const done = doneAt(t);
+  const pending = TODO_ITEMS.slice(t < DAY.essayOpen ? 0 : t < DAY.researchOpen ? 2 : 3);
+  const day = t < DAY.clock ? 2 : 3;
+  const agendaPress = pressAt(t, AGENDA_CLICK, 0.06);
   const layer = (tk: Tokens, opacity: number, children: ReactNode) => (opacity > 0.001 ? <div style={{ position: 'absolute', inset: 0, opacity }}>{children}</div> : null);
+  const widgets = (tk: Tokens) => (
+    <>
+      <AgendaWidget tk={tk} dim={dim} day={day} items={pending} openPress={agendaPress} />
+      <BriefingWidget tk={tk} dim={dim} due={bar.due} done={day === 2 ? 2 : done} total={day === 2 ? 2 : 4} />
+    </>
+  );
   return (
     <>
       <Wallpaper drift={wallDrift(t)} night={night(t)} />
-      {layer(dark, 1 - k, <MenuBar tk={dark} app={bar.app} due={bar.due} clock={bar.clock} focus={bar.focus} />)}
-      {layer(light, k, <MenuBar tk={light} app={bar.app} due={bar.due} clock={bar.clock} focus={bar.focus} />)}
-      {layer(dark, 1 - k, <Dock tk={dark} running={running} bounce={bounce} tip={tip} press={press} />)}
-      {layer(light, k, <Dock tk={light} running={running} bounce={bounce} tip={tip} press={press} />)}
+      <DesktopShortcuts tk={k > 0.5 ? light : dark} selected={sc.selected} pressed={sc.pressed} />
+      {layer(dark, 1 - k, widgets(dark))}
+      {layer(light, k, widgets(light))}
+    </>
+  );
+};
+
+const Chrome = ({ t, running }: { t: number; running: string[] }) => {
+  const k = themeK(t);
+  const bar = dayMenubar(t);
+  const badges: Record<string, DockBadge> = {};
+  if (bar.due > 0) badges.flashcards = { kind: 'count', value: bar.due };
+  if (bar.pomo) badges.pomodoro = { kind: 'dot' };
+  const indicator = Object.fromEntries(Object.entries(FIRST_OPEN).map(([id, at]) => [id, (t - at) / IND_S]));
+  const bounce = { todo: dockBounceAt(t, DAY.todayOpen), files: dockBounceAt(t, DAY.hubIndex) };
+  const tip = dockTipAt(t);
+  const press = { chat: pressAt(t, CHAT_CLICK, 0.07), files: pressAt(t, HUB_CLICK, 0.07) };
+  const layer = (tk: Tokens, opacity: number, children: ReactNode) => (opacity > 0.001 ? <div style={{ position: 'absolute', inset: 0, opacity }}>{children}</div> : null);
+  const both = (tk: Tokens) => (
+    <>
+      <MenuBar tk={tk} app={bar.app} clock={bar.clock} due={bar.due} pomo={bar.pomo} />
+      <Dock tk={tk} running={running} bounce={bounce} tip={tip} press={press} badges={badges} indicator={indicator} />
+    </>
+  );
+  return (
+    <>
+      {layer(dark, 1 - k, both(dark))}
+      {layer(light, k, both(light))}
     </>
   );
 };
 
 export const SceneDay = ({ t }: { t: number }) => {
   const tk = light;
-  const cam = camAt(t, DAY_CAM);
-  const today = winAnim(t, TODAY_RECT, 'todo', DAY.todayOpen, DAY.todayOut);
-  const exam = winAnim(t, EXAM_RECT, 'exam', DAY.examOpen, DAY.examOut);
-  const essay = winAnim(t, ESSAY_RECT, 'essay', DAY.essayOpen, DAY.writingOut);
-  const trans = winAnim(t, TRANS_RECT, 'translation', DAY.translateOpen, DAY.writingOut + 0.04);
-  const chat = winAnim(t, CHAT_RECT, 'chat', DAY.researchOpen);
-  const note = winAnim(t, NOTE_RECT, 'notes', DAY.researchNote);
-  const hub = winAnim(t, HUB_RECT, 'files', DAY.hubIndex);
-  const opened: Array<[string, number]> = [
-    ['todo', DAY.todayOpen],
-    ['exam', DAY.examOpen],
-    ['essay', DAY.essayOpen],
-    ['translation', DAY.translateOpen],
-    ['chat', DAY.researchOpen],
-    ['notes', DAY.researchNote],
-    ['files', DAY.hubIndex],
-  ];
-  const exit = prog(t, DAY.end - 0.3, DAY.end + 0.2, ease.inOutCubic);
-  const running = [...NIGHT_RUNNING, ...opened.filter(([, at]) => t >= at).map(([id]) => id)];
-  const bounce = Object.fromEntries(opened.map(([id, at]) => [id, dockBounce(t, at - 0.12)]));
-  const focusHover = t >= DAY.todayFocus - 0.14 && t < DAY.todayFocus + 0.02 ? 1 : 0;
-  const focusPress = Math.max(0, 1 - Math.abs(t - DAY.todayFocus) / 0.08);
-  const chip = chipPose(t);
+  const cam = clampCam(camAt(t, DAY_CAM));
+  const running = runningAt(t);
+  const icon = (id: string, at: number) => dockIconCenter(id, runningAt(at));
 
+  const todo = winLife(t, TODO_RECT, { openAt: DAY.todayOpen, openFrom: icon('todo', DAY.todayOpen), minimizeAt: SHOW_MIN, minimizeTo: icon('todo', SHOW_MIN) });
+  const pomoWin = winLife(t, POMO_RECT, { openAt: SHOW_MIN, minimizeAt: SHOW_MIN, minimizeTo: icon('pomodoro', SHOW_MIN) });
+  const exam = winLife(t, EXAM_RECT, { openAt: DAY.examOpen, minimizeAt: SHOW_MIN2, minimizeTo: icon('exam', SHOW_MIN2) });
+  const essay = winLife(t, ESSAY_RECT, { openAt: DAY.essayOpen, minimizeAt: SHOW_MIN2, minimizeTo: icon('essay', SHOW_MIN2) });
+  const trans = winLife(t, TRANS_RECT, { openAt: DAY.translateOpen, minimizeAt: SHOW_MIN2, minimizeTo: icon('translation', SHOW_MIN2) });
+  const chat = winLife(t, CHAT_RECT, { restoreAt: DAY.researchOpen, restoreFrom: icon('chat', DAY.researchOpen) });
+  const note = winLife(t, NOTE_RECT, { openAt: DAY.researchNote });
+  const hub = winLife(t, HUB_RECT, { openAt: DAY.hubIndex, openFrom: icon('files', DAY.hubIndex) });
+
+  const exit = prog(t, DAY.end - 0.3, DAY.end + 0.2, ease.inOutCubic);
+  const chip = chipPose(t);
   const pw = pathAt(t, PUPIL_PATH);
   const ps = project(cam, pw.x, pw.y);
   const pOpacity = pupilOpacity(t);
@@ -327,45 +447,48 @@ export const SceneDay = ({ t }: { t: number }) => {
     <AbsoluteFill style={{ opacity: 1 - exit, transform: `scale(${1 - 0.04 * exit})` }}>
       <CameraView cam={cam}>
         <div style={{ position: 'absolute', left: 0, top: 0, width: 1920, height: 1080 }}>
-          <Desktop t={t} running={running} bounce={bounce} />
-          {today.shown > 0.001 ? (
-            <WbWindow tk={tk} rect={TODAY_RECT} title="今日" style={today.style}>
-              <TodayView tk={tk} t={t} open={clamp((t - DAY.todayOpen) / 0.9)} focusAt={DAY.todayFocus} focusHover={focusHover} focusPress={focusPress} todoDone={[0, 0, 0, 0]} />
+          <Desktop t={t} />
+          {pomoWin.visible ? (
+            <WbWindow tk={tk} rect={POMO_RECT} title={pomoTitle} focused={false} style={pomoWin.style}>
+              <PomodoroWindowBody tk={tk} remaining={focusLeft(t)} ring={((t - DAY.todayFocus) * PACE) / 1500} />
             </WbWindow>
           ) : null}
-          {exam.shown > 0.001 ? (
-            <WbWindow tk={tk} rect={EXAM_RECT} title="题目集工作台" style={exam.style}>
+          {todo.visible ? (
+            <WbWindow tk={tk} rect={TODO_RECT} focused={t < SHOW_MIN} toolbar={<TodoToolbar tk={tk} view="today" />} style={todo.style}>
+              <TodoApp tk={tk} s={todoState(t)} />
+            </WbWindow>
+          ) : null}
+          {exam.visible ? (
+            <WbWindow tk={tk} rect={EXAM_RECT} title={APP_NAMES.exam} focused={t < DAY.essayOpen} style={exam.style}>
               <ExamView tk={tk} s={examState(t)} />
             </WbWindow>
           ) : null}
-          {essay.shown > 0.001 ? (
-            <WbWindow tk={tk} rect={ESSAY_RECT} title="作文批改" focused={t < DAY.translateOpen} style={essay.style}>
+          {essay.visible ? (
+            <WbWindow tk={tk} rect={ESSAY_RECT} title={APP_NAMES.essay} focused={t < DAY.translateOpen} style={essay.style}>
               <EssayView tk={tk} s={essayState(t)} />
             </WbWindow>
           ) : null}
-          {trans.shown > 0.001 ? (
-            <WbWindow tk={tk} rect={TRANS_RECT} title="翻译工作台" style={trans.style}>
+          {trans.visible ? (
+            <WbWindow tk={tk} rect={TRANS_RECT} title={APP_NAMES.translation} focused={t < SHOW_MIN2} style={trans.style}>
               <TranslateView tk={tk} s={transState(t)} />
             </WbWindow>
           ) : null}
           {(() => {
-            const chatWin =
-              chat.shown > 0.001 ? (
-                <WbWindow key="chat" tk={tk} rect={CHAT_RECT} title="对话" focused={t < DAY.researchNote || (t >= DAY.paperSend && t < DAY.hubIndex)} style={chat.style}>
-                  <ResearchChat tk={tk} s={researchState(t)} t={t} />
-                </WbWindow>
-              ) : null;
-            const noteWin =
-              note.shown > 0.001 ? (
-                <WbWindow key="note" tk={tk} rect={NOTE_RECT} title="笔记" focused={t < DAY.paperSend} style={note.style}>
-                  <NoteView tk={tk} k={prog(t, DAY.researchNote + 0.15, DAY.researchNote + 0.75)} />
-                </WbWindow>
-              ) : null;
+            const chatWin = chat.visible ? (
+              <WbWindow key="chat" tk={tk} rect={CHAT_RECT} title={APP_NAMES.chat} focused={t < DAY.researchNote || (t >= DAY.paperSend && t < DAY.hubIndex)} style={chat.style}>
+                <ResearchChat tk={tk} s={researchState(t)} t={t} />
+              </WbWindow>
+            ) : null;
+            const noteWin = note.visible ? (
+              <WbWindow key="note" tk={tk} rect={NOTE_RECT} title={APP_NAMES.notes} focused={t < DAY.paperSend} style={note.style}>
+                <NoteView tk={tk} k={prog(t, DAY.researchNote + 0.15, DAY.researchNote + 0.75)} />
+              </WbWindow>
+            ) : null;
             // 焦点回到对话时，对话窗口提到最前
             return t >= DAY.paperSend ? [noteWin, chatWin] : [chatWin, noteWin];
           })()}
-          {hub.shown > 0.001 ? (
-            <WbWindow tk={tk} rect={HUB_RECT} title="资源库" style={hub.style}>
+          {hub.visible ? (
+            <WbWindow tk={tk} rect={HUB_RECT} title={APP_NAMES.files} style={hub.style}>
               <HubIndexView tk={tk} k={prog(t, DAY.hubIndex + 0.3, DAY.end - 0.35)} />
             </WbWindow>
           ) : null}
@@ -374,6 +497,7 @@ export const SceneDay = ({ t }: { t: number }) => {
               <FileChip tk={tk} lift={chip.lift} />
             </div>
           ) : null}
+          <Chrome t={t} running={running} />
         </div>
       </CameraView>
       <Pupil x={ps.x} y={ps.y} t={t} opacity={pOpacity} clicks={CLICKS} />

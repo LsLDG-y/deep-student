@@ -1,6 +1,8 @@
 /**
  * 第二幕「第二天」：白天的学习桌面（亮色工作台）。单位为脚本秒（成片 0:46–1:48）。
  * 起点 23.0 = 夜里复习那段的 WK.out1，两边在这一帧的桌面完全一致。
+ * 打开应用的路径都是产品里真实存在的：日程小组件的「待办 →」、桌面快捷方式双击、Dock 图标、
+ * 双击桌面空白处「显示桌面」（showDesktop.ts：可见窗口一起最小化）。
  */
 export const DAY = {
   start: 23.0,
@@ -11,9 +13,10 @@ export const DAY = {
   theme1: 24.3,
   clock: 23.95, // 菜单栏时钟翻到第二天
   // 今日
-  todayOpen: 25.75, // 「今日」窗口从 Dock 弹开
-  todayFocus: 28.55, // 点「开始专注」
-  todayOut: 29.7, // 「今日」窗口让位
+  todayOpen: 26.0, // 点日程小组件「待办 →」：待办从 Dock 图标长出，直接进「今日」视图
+  todayFocus: 27.45, // 第 2 行「▷ 开始专注」
+  showDesk: 29.0, // 双击桌面空白处：待办与番茄钟窗口一起 genie 进 Dock
+  examLaunch: 29.86, // 双击桌面「题目集」
   // 06 检验
   examOpen: 30.0,
   examDrop: 31.0, // 试卷落进题目集
@@ -24,23 +27,29 @@ export const DAY = {
   examMastery: 35.85, // 知识点掌握度更新
   examOut: 37.8,
   // 07 写作与精读
+  essayLaunch: 37.86, // 双击桌面「作文批改」
   essayOpen: 38.0,
   essayGrade: 38.95, // 点「开始批改」
   essayScore: 39.75, // 分数环滚动
   essayPolish: 41.2, // 切到逐句润色
+  translateLaunch: 42.71, // 双击桌面「翻译」
   translateOpen: 42.85,
   translateRun: 43.55, // 译文逐段流出
+  showDesk2: 45.45, // 再次「显示桌面」，收起 07 的窗口
   writingOut: 45.85,
   // 08 调研
-  researchOpen: 46.0,
+  researchOpen: 46.0, // 点 Dock「对话」：最小化着的对话窗口还原
   researchSend: 46.95, // 发出调研请求
   researchSteps: 47.45, // 步骤逐条打勾
   researchNote: 49.35, // 报告存为笔记
   paperSend: 50.05, // 搜论文
   paperDownload: 51.25, // 下载入库
-  hubIndex: 52.2, // 资源中心索引进度
+  hubIndex: 52.2, // 点 Dock「资源库」
   end: 54.0,
 } as const;
+
+/** 双击两下的间隔（真实约 140ms）。 */
+export const DBL = 0.07;
 
 /** 壁纸从夜里复习开始到第二幕结束一直缓慢平移，两段共用同一条曲线才能无缝交接。 */
 export const WALL_DRIFT = { t0: 16.36, t1: DAY.end } as const;

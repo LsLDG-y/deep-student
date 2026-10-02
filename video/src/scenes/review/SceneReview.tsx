@@ -1,12 +1,13 @@
 import { AbsoluteFill } from 'remotion';
-import { camAt, CameraView, project, type CamKey } from '../../lib/camera';
-import { springSheet } from '../../lib/motion';
-import { clamp, ease, lerp, PACE, prog, springAt } from '../../lib/time';
+import { camAt, CameraView, clampCam, project, type CamKey } from '../../lib/camera';
+import { clamp, ease, lerp, PACE, prog } from '../../lib/time';
 import { S } from '../../strings';
 import { dark } from '../../theme';
 import { Pupil, pathAt } from '../../ui/brand';
+import { AgendaWidget, BriefingWidget, DesktopShortcuts } from '../../ui/desk';
 import { FC, FcNav, FcSession, FcStats, rateButtonCenter, revealButtonCenter, type FlyDir, type Rating, type SessionState } from '../../ui/flashcards';
-import { Dock, dockIconCenter, MenuBar, Wallpaper, WB, WbWindow } from '../../ui/workbench';
+import { TODO_ITEMS } from '../../ui/todo';
+import { Dock, dockIconCenter, type DockBadge, GENIE_S, IND_S, MenuBar, menuClock, trafficCenter, Wallpaper, WB, WbWindow, winLife } from '../../ui/workbench';
 import { wallDrift } from '../day/beats';
 import { ANKI_CARDS } from '../practice/beats';
 import { MemoryCurves } from './MemoryCurves';
@@ -16,8 +17,7 @@ export const WK = {
   night0: 16.36, // 夜色以窗口为圆心收拢
   night1: 16.64,
   chrome: 16.54, // 菜单栏 / Dock 入场
-  bounce: 16.62, // Dock 上的闪卡图标弹跳
-  open0: 16.7, // 闪卡窗口从 Dock 弹开
+  open0: 16.7, // 闪卡窗口弹开（「复习这批」走 API 启动：图标此前不在 Dock 上，按产品回退为窗口中心弹入）
   open1: 17.0,
   cards: [
     { at: 16.98, show: 17.24, rate: 17.55, rating: 3 as Rating },
@@ -29,7 +29,8 @@ export const WK = {
   glide1: 19.84,
   curves: 19.74,
   stats: 21.24, // 窗口切到「统计」
-  out0: 22.5, // 转场到收尾
+  minimize: 22.5, // 点黄灯：闪卡窗口 genie 吸入 Dock
+  out0: 22.5, // 记忆曲线面板下沉
   out1: 23.0,
 } as const;
 
@@ -63,17 +64,23 @@ const REVIEW_CAM: CamKey[] = [
   [WK.out1 - 0.06, { x: 960, y: 540, zoom: 1.0 }, ease.inOutCubic],
 ];
 
+const dueAt = (t: number) => 12 - WK.cards.filter((c) => c.rating !== 1 && t >= c.rate + 0.02).length;
+
 /** 交接给「第二天」时的桌面状态：两边在 WK.out1 这一帧完全一致。 */
-export const nightMenubar = (t: number) => {
-  const focusSec = 18 * 60 + 24 - Math.floor((t - WK.night0) * PACE);
-  return {
-    app: t < WK.out0 + 0.3 ? S.apps.flashcards : 'DeepStudent',
-    due: 12 - WK.cards.filter((c) => c.rating !== 1 && t >= c.rate + 0.02).length,
-    clock: '周五 21:30',
-    focus: `${Math.floor(focusSec / 60)}:${String(focusSec % 60).padStart(2, '0')}`,
-  };
-};
-export const NIGHT_RUNNING = ['chat', 'flashcards'];
+export const nightMenubar = (t: number) => ({
+  app: t >= WK.open0 && t < WK.minimize ? S.apps.flashcards : S.desk.appName,
+  clock: menuClock(2, 21, 30),
+  due: dueAt(t),
+});
+
+export const nightDock = (t: number): { running: string[]; badges: Record<string, DockBadge>; indicator: Record<string, number> } => ({
+  running: t >= WK.open0 ? ['chat', 'flashcards'] : ['chat'],
+  badges: { flashcards: { kind: 'count', value: dueAt(t) } },
+  indicator: { flashcards: (t - WK.open0) / IND_S },
+});
+
+/** 有可见窗口时桌面小组件淡到 0.55（280ms ease-out）。 */
+export const nightDim = (t: number) => prog(t, WK.open0, WK.open0 + 0.14, ease.wbOut) * (1 - prog(t, WK.minimize + GENIE_S, WK.minimize + GENIE_S + 0.14, ease.wbOut));
 
 /** 当前复习会话状态（随时间推进的评分、计数、飞出、翻面）。 */
 const sessionAt = (t: number): SessionState => {
@@ -115,6 +122,8 @@ const sessionAt = (t: number): SessionState => {
   };
 };
 
+const MIN_BTN = { x: WIN_X1 + trafficCenter(1).x, y: WIN.y + trafficCenter(1).y };
+
 const REVIEW_PUPIL: Array<[number, number, number]> = (() => {
   const pts: Array<[number, number, number]> = [];
   const o = { x: WIN_X0, y: WIN.y + CONTENT_TOP };
@@ -129,55 +138,48 @@ const REVIEW_PUPIL: Array<[number, number, number]> = (() => {
     at(c.rate - 0.05, rb);
     at(c.rate + 0.08, rb);
   });
+  // 收场：瞳点回来点黄灯
+  pts.push([WK.minimize - 0.4, MIN_BTN.x + 160, MIN_BTN.y + 150]);
+  pts.push([WK.minimize - 0.05, MIN_BTN.x, MIN_BTN.y]);
+  pts.push([WK.minimize + 0.3, MIN_BTN.x + 50, MIN_BTN.y + 60]);
   return pts;
 })();
-const REVIEW_CLICKS = WK.cards.flatMap((c) => [c.show, c.rate]);
+const REVIEW_CLICKS = [...WK.cards.flatMap((c) => [c.show, c.rate]), WK.minimize];
 
 export const SceneReview = ({ t }: { t: number }) => {
   const tk = dark;
-  const cam = camAt(t, REVIEW_CAM);
+  const cam = clampCam(camAt(t, REVIEW_CAM));
   const night = prog(t, WK.night0, WK.night1, ease.inOutCubic);
-  const chrome = springAt(t, WK.chrome, { stiffness: 260, damping: 24 });
-  const bounceK = t >= WK.bounce ? Math.max(0, Math.sin(((t - WK.bounce) / 0.16) * Math.PI)) * (t < WK.bounce + 0.16 ? 1 : 0) : 0;
-  const open = springAt(t, WK.open0, springSheet);
-  const icon = dockIconCenter('flashcards');
+  const chrome = springChrome(t);
   const x = winX(t);
-  const winCx = x + WIN.w / 2;
-  const winCy = WIN.y + WIN.h / 2;
-  // 收场：闪卡窗口缩回 Dock，记忆曲线面板下沉淡出，桌面留给「第二天」
-  const close = prog(t, WK.out0, WK.out0 + 0.32, ease.inCubic);
+  const dock = nightDock(t);
+  const flash = winLife(t, { x, y: WIN.y, w: WIN.w, h: WIN.h }, { openAt: WK.open0, openFrom: null, minimizeAt: WK.minimize, minimizeTo: dockIconCenter('flashcards', dock.running) });
+  // 记忆曲线面板（片中的信息图，不是产品界面）与窗口同时下沉淡出
   const curvesOut = prog(t, WK.out0, WK.out0 + 0.26, ease.inCubic);
-  const shown = open * (1 - close);
-  const s = 0.34 + 0.66 * shown;
-  const tx = (icon.x - winCx) * (1 - shown);
-  const ty = (icon.y - winCy) * (1 - shown);
   const statsK = prog(t, WK.stats, WK.stats + 0.2, ease.brand);
   const session = sessionAt(t);
   const bar = nightMenubar(t);
+  const dim = nightDim(t);
 
   const pw = pathAt(t, REVIEW_PUPIL);
   const pScreen = project(cam, pw.x, pw.y);
-  const pOpacity = prog(t, WK.cards[0].at + 0.04, WK.cards[0].at + 0.14) * (1 - prog(t, WK.cards[2].rate + 0.12, WK.cards[2].rate + 0.22));
+  const pOpacity = Math.max(
+    prog(t, WK.cards[0].at + 0.04, WK.cards[0].at + 0.14) * (1 - prog(t, WK.cards[2].rate + 0.12, WK.cards[2].rate + 0.22)),
+    prog(t, WK.minimize - 0.4, WK.minimize - 0.28) * (1 - prog(t, WK.minimize + 0.2, WK.minimize + 0.32)),
+  );
 
   return (
     <AbsoluteFill>
       <CameraView cam={cam}>
         <div style={{ position: 'absolute', left: 0, top: 0, width: 1920, height: 1080 }}>
           <Wallpaper drift={wallDrift(t)} style={{ opacity: night }} />
-          <div style={{ opacity: clamp(chrome * 1.4), transform: `translateY(${(1 - chrome) * -WB.menubar}px)` }}>
-            <MenuBar tk={tk} app={bar.app} due={bar.due} clock={bar.clock} focus={bar.focus} />
+          <div style={{ position: 'absolute', inset: 0, opacity: night }}>
+            <DesktopShortcuts tk={tk} />
+            <AgendaWidget tk={tk} dim={dim} day={2} items={TODO_ITEMS} />
+            <BriefingWidget tk={tk} dim={dim} due={dock.badges.flashcards.kind === 'count' ? dock.badges.flashcards.value : 0} done={2} total={2} />
           </div>
-          {shown > 0.001 ? (
-            <WbWindow
-              tk={tk}
-              rect={{ x, y: WIN.y, w: WIN.w, h: WIN.h }}
-              title={S.apps.flashcards}
-              style={{
-                opacity: clamp(shown * 3),
-                transform: `translate(${tx}px, ${ty}px) scale(${s})`,
-                transformOrigin: '50% 50%',
-              }}
-            >
+          {flash.visible ? (
+            <WbWindow tk={tk} rect={{ x, y: WIN.y, w: WIN.w, h: WIN.h }} title={S.apps.flashcards} focused={t < WK.minimize} style={flash.style}>
               <FcNav tk={tk} active={statsK > 0.5 ? 'statistics' : 'today'} />
               <div style={{ position: 'absolute', left: 0, top: FC.navH, width: WIN.w, height: CONTENT_H, overflow: 'hidden' }}>
                 {statsK < 1 ? (
@@ -194,8 +196,11 @@ export const SceneReview = ({ t }: { t: number }) => {
               <MemoryCurves tk={tk} t={t} start={WK.curves} rect={CURVE_RECT} />
             </div>
           ) : null}
-          <div style={{ opacity: clamp(chrome * 1.4), transform: `translateY(${(1 - chrome) * 90}px)` }}>
-            <Dock tk={tk} running={NIGHT_RUNNING} bounce={{ flashcards: bounceK * 16 }} />
+          <div style={{ position: 'absolute', inset: 0, opacity: clamp(chrome * 1.4), transform: `translateY(${(1 - chrome) * -WB.menubar}px)` }}>
+            <MenuBar tk={tk} app={bar.app} clock={bar.clock} due={bar.due} />
+          </div>
+          <div style={{ position: 'absolute', inset: 0, opacity: clamp(chrome * 1.4), transform: `translateY(${(1 - chrome) * 90}px)` }}>
+            <Dock tk={tk} running={dock.running} badges={dock.badges} indicator={dock.indicator} />
           </div>
         </div>
       </CameraView>
@@ -203,3 +208,6 @@ export const SceneReview = ({ t }: { t: number }) => {
     </AbsoluteFill>
   );
 };
+
+/** 菜单栏 / Dock 随夜色一起入场（工作台外壳就位，不属于产品动效）。 */
+const springChrome = (t: number) => prog(t, WK.chrome, WK.chrome + 0.22, ease.wbOut);
