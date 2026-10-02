@@ -1,16 +1,36 @@
 import anki from '@app/locales/zh-CN/anki.json';
 import chatV2 from '@app/locales/zh-CN/chatV2.json';
 import common from '@app/locales/zh-CN/common.json';
+import dragDrop from '@app/locales/zh-CN/drag_drop.json';
+import examSheet from '@app/locales/zh-CN/exam_sheet.json';
 import flashcards from '@app/locales/zh-CN/flashcards.json';
 import generativeUi from '@app/locales/zh-CN/generativeUi.json';
 import learningHub from '@app/locales/zh-CN/learningHub.json';
 import mindmap from '@app/locales/zh-CN/mindmap.json';
+import practice from '@app/locales/zh-CN/practice.json';
+import settings from '@app/locales/zh-CN/settings.json';
 import sidebar from '@app/locales/zh-CN/sidebar.json';
 import stats from '@app/locales/zh-CN/stats.json';
 import todo from '@app/locales/zh-CN/todo.json';
 import workbench from '@app/locales/zh-CN/workbench.json';
 
-const NS = { anki, chatV2, common, flashcards, generativeUi, learningHub, mindmap, sidebar, stats, todo, workbench } as const;
+const NS = {
+  anki,
+  chatV2,
+  common,
+  drag_drop: dragDrop,
+  exam_sheet: examSheet,
+  flashcards,
+  generativeUi,
+  learningHub,
+  mindmap,
+  practice,
+  settings,
+  sidebar,
+  stats,
+  todo,
+  workbench,
+} as const;
 type Ns = keyof typeof NS;
 
 /**
@@ -240,5 +260,130 @@ export const S = {
     pomoToday: tr('todo', 'pomodoro.stats.todayLabel'),
     pomoStats: tr('workbench', 'pomodoro.today.statsButton'),
     pomoUnit: tr('todo', 'pomodoro.stats.pomodoroUnit'),
+  },
+  /** 题目集：ResourceAppWorkspace 左栏 + ExamContentView 工具条 + 启动台 / 识别导入 / 题库 / 做题 */
+  exam: {
+    title: tr('learningHub', 'resourceType.exam'),
+    search: tr('workbench', 'resourceHome.search'),
+    all: tr('common', 'all'),
+    recent: tr('workbench', 'resourceHome.recent'),
+    itemCount: (n: number) => tr('workbench', 'resourceHome.itemCount', { count: n }),
+    selectTitle: tr('workbench', 'resourceWorkspace.selectTitle'),
+    selectHint: tr('workbench', 'resourceWorkspace.selectHint'),
+    newExam: tr('workbench', 'resourceHome.newExam'),
+    tab: {
+      bank: tr('learningHub', 'exam.tab.questionBank'),
+      practice: tr('learningHub', 'exam.tab.practice'),
+      more: tr('learningHub', 'exam.tab.more'),
+      add: tr('learningHub', 'exam.tab.addQuestion'),
+      export: tr('learningHub', 'exam.tab.export'),
+      mastery: tr('learningHub', 'exam.shell.mastery'),
+      correctRate: tr('learningHub', 'exam.shell.correctRate'),
+    },
+    launcher: {
+      empty: tr('exam_sheet', 'questionBank.empty'),
+      choose: tr('practice', 'questionBank.emptyChoosePath'),
+      cards: [
+        [tr('exam_sheet', 'questionBank.create.title'), tr('practice', 'questionBank.emptyCreateDesc')],
+        [tr('exam_sheet', 'aiGeneration.title'), tr('exam_sheet', 'aiGeneration.launcherCardDesc')],
+        [tr('exam_sheet', 'questionBank.import'), tr('practice', 'questionBank.emptyImportDesc')],
+        [tr('exam_sheet', 'csv.import_title'), tr('practice', 'questionBank.emptyCsvDesc')],
+      ] as Array<[string, string]>,
+      dropHint: tr('practice', 'questionBank.emptyDropHint'),
+      overlay: tr('drag_drop', 'overlay.drop_files_here_with_format', {
+        formats: [tr('drag_drop', 'file_types.image'), tr('drag_drop', 'file_types.document')].join(', '),
+      }),
+      maxFiles: tr('drag_drop', 'overlay.max_files', { max: 20 }),
+    },
+    up: {
+      title: tr('exam_sheet', 'uploader.header_title'),
+      desc: tr('exam_sheet', 'uploader.header_desc'),
+      steps: [tr('exam_sheet', 'uploader.steps.select'), tr('exam_sheet', 'uploader.steps.processing'), tr('exam_sheet', 'uploader.steps.summary')],
+      drop: tr('exam_sheet', 'uploader.drop_or_click'),
+      formats: tr('exam_sheet', 'uploader.supported_formats_all'),
+      remove: tr('exam_sheet', 'uploader.remove'),
+      parseModel: tr('exam_sheet', 'uploader.parse_model'),
+      defaultModel: tr('settings', 'placeholders.use_default_model'),
+      back: tr('common', 'actions.back'),
+      parse: tr('exam_sheet', 'uploader.parse_document'),
+      manual: tr('exam_sheet', 'uploader.manual_create_link'),
+      phases: [
+        tr('exam_sheet', 'uploader.phases.preparing'),
+        tr('exam_sheet', 'uploader.phases.recognizing'),
+        tr('exam_sheet', 'uploader.phases.parsing'),
+        tr('exam_sheet', 'uploader.phases.done'),
+      ],
+      rendering: (c: number, n: number) => tr('exam_sheet', 'uploader.rendering_pages', { current: c, total: n }),
+      parsingStarted: (n: number) => tr('exam_sheet', 'uploader.parsing_started', { chunks: n }),
+      ocrPage: (c: number, n: number) => tr('exam_sheet', 'uploader.ocr_image_progress', { current: c, total: n }),
+      ocrDone: (n: number) => tr('exam_sheet', 'uploader.ocr_phase_done', { total: n }),
+      structuring: (c: number, n: number) => tr('exam_sheet', 'uploader.structuring_questions', { current: c, total: n }),
+      parsedCount: (n: number) => tr('exam_sheet', 'uploader.parsed_count', { count: n }),
+      cancel: tr('exam_sheet', 'uploader.cancel_import'),
+      pageStatus: tr('exam_sheet', 'uploader.page_status_label'),
+      parsedLabel: tr('exam_sheet', 'uploader.parsed_questions_label'),
+      waiting: tr('exam_sheet', 'uploader.waiting_ai'),
+      options: (n: number) => tr('exam_sheet', 'uploader.options_count', { count: n }),
+      answer: (a: string) => tr('exam_sheet', 'uploader.answer_prefix', { answer: a }),
+      complete: tr('exam_sheet', 'uploader.import_complete_title'),
+      total: tr('exam_sheet', 'uploader.total_questions'),
+      pages: tr('exam_sheet', 'uploader.page_count'),
+      typeDist: tr('exam_sheet', 'uploader.question_type_dist'),
+      filter: tr('exam_sheet', 'uploader.filter_questions'),
+      filterHint: tr('exam_sheet', 'uploader.filter_hint'),
+      again: tr('exam_sheet', 'uploader.continue_import'),
+      view: tr('exam_sheet', 'uploader.view_questions'),
+    },
+    type: {
+      single_choice: tr('exam_sheet', 'questionTypes.single_choice'),
+      fill_blank: tr('exam_sheet', 'questionTypes.fill_blank'),
+      short_answer: tr('exam_sheet', 'questionTypes.short_answer'),
+      calculation: tr('exam_sheet', 'questionTypes.calculation'),
+    },
+    bank: {
+      mastery: tr('practice', 'questionBank.masteredLabel'),
+      start: tr('practice', 'questionBank.startPractice'),
+      search: tr('practice', 'questionBank.searchPlaceholder'),
+      manage: tr('exam_sheet', 'questionBank.manage'),
+      all: tr('practice', 'questionBank.all'),
+      newQ: tr('practice', 'questionBank.status.new'),
+      statusNew: tr('practice', 'questionBank.statusShort.new'),
+      diff: {
+        easy: tr('practice', 'questionBank.difficultyShort.easy'),
+        medium: tr('practice', 'questionBank.difficultyShort.medium'),
+        hard: tr('practice', 'questionBank.difficultyShort.hard'),
+        very_hard: tr('practice', 'questionBank.difficultyShort.veryHard'),
+      },
+    },
+    q: {
+      sequential: tr('practice', 'editor.modeShort.sequential'),
+      total: tr('practice', 'editor.totalQuestions'),
+      mastered: tr('practice', 'questionBank.stats.mastered'),
+      review: tr('practice', 'editor.needsReview'),
+      rate: tr('exam_sheet', 'questionBank.stats.correctRate'),
+      singleChoice: tr('practice', 'editor.questionType.singleChoice'),
+      medium: tr('exam_sheet', 'questionBank.difficulty.medium'),
+      statusNew: tr('practice', 'questionBank.status.new'),
+      statusReview: tr('practice', 'questionBank.status.review'),
+      sourceImages: tr('common', 'question_bank.source_images'),
+      submit: tr('practice', 'editor.submitAnswer'),
+      hint: tr('practice', 'editor.inlineShortcutHint'),
+      hintAfter: tr('practice', 'editor.inlineShortcutHintAfterSubmit'),
+      notes: tr('practice', 'editor.myNotes'),
+      addNote: tr('practice', 'editor.clickToAdd'),
+      prev: tr('practice', 'editor.prevQuestion'),
+      next: tr('practice', 'editor.nextQuestion'),
+      correct: tr('practice', 'editor.correct'),
+      wrong: tr('practice', 'editor.wrong'),
+      answerWrong: tr('practice', 'editor.answerWrong'),
+      correctAnswer: tr('practice', 'editor.correctAnswerLabel'),
+      retry: tr('practice', 'editor.retry'),
+      viewExplanation: tr('practice', 'editor.viewExplanation'),
+      ask: tr('exam_sheet', 'followUp.askAction'),
+      similar: tr('exam_sheet', 'followUp.similarAction'),
+      ai: tr('practice', 'editor.aiAnalysis'),
+      aiRunning: tr('practice', 'editor.aiAnalyzing'),
+      cancel: tr('common', 'cancel'),
+    },
   },
 };

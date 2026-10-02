@@ -41,9 +41,10 @@ export const SUPERS: Super[] = [
   { s: 25.6, e: 27.3, text: '今天要复习的、要做的，一屏看清', kind: 'feature' },
   { s: 27.5, e: 28.9, text: '开一个番茄钟，进入专注', kind: 'feature' },
   { s: 30.0, e: 30.9, text: '06 检验', kind: 'chapter' },
-  { s: 30.95, e: 33.0, text: '试卷拖进来，题目集就有了', kind: 'feature' },
-  { s: 33.6, e: 35.6, text: '答错的题，AI 讲清楚错在哪', kind: 'feature' },
-  { s: 35.9, e: 37.85, text: '薄弱点自动回到复习里', kind: 'feature' },
+  { s: 30.95, e: 33.05, text: '试卷拖进来，题目集就有了', kind: 'feature' },
+  // 答错时后端自动建复习计划、下次复习日 = 今天（题目进复习，不是「知识点」）
+  { s: 34.5, e: 35.95, text: '答错的题，自动排进今日复习', kind: 'feature' },
+  { s: 36.05, e: 37.85, text: 'AI 讲清楚错在哪', kind: 'feature' },
   { s: 38.0, e: 38.9, text: '07 写作与精读', kind: 'chapter' },
   { s: 39.0, e: 41.0, text: '作文按考试标准逐项打分', kind: 'feature' },
   { s: 41.15, e: 42.7, text: '逐句润色，改在哪一看就懂', kind: 'feature' },

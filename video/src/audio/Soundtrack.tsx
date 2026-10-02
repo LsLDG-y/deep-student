@@ -3,6 +3,7 @@ import { FPS, PACE } from '../lib/time';
 import { DAY, DBL } from '../scenes/day/beats';
 import { FN } from '../scenes/finale/beats';
 import { YOU } from '../scenes/you/SceneYou';
+import { EXAM_PARSE_MARKS } from '../ui/exam';
 import { STEPS } from '../ui/research';
 import { GROW, majorRingTimes } from '../scenes/finale/terrain';
 import { MM } from '../scenes/organize/MindmapView';
@@ -19,6 +20,8 @@ type Sfx = 'click' | 'tick' | 'whoosh-up' | 'whoosh-down' | 'pop' | 'flip' | 'bo
 type Cue = [time: number, sfx: Sfx, volume: number];
 
 const PROMPT_LEN = [...'讲透这一节：画导图、出卡片'].length;
+/** 06 解析进度（0–1）→ 脚本秒，与 SceneDay 的 examState.parse 同一区间。 */
+const parseT = (k: number) => DAY.examParse + 0.03 + (DAY.examParsed - 0.02 - DAY.examParse - 0.03) * k;
 const RATING_NOTE: Record<number, Sfx> = { 1: 'note-low', 2: 'note-mid', 3: 'note-mid', 4: 'note-high' };
 const REVEAL_NOTES: Sfx[] = ['note-low', 'note-mid', 'note-high', 'note-top'];
 const CURVE_NOTES: Sfx[] = ['note-low', 'note-mid', 'note-high'];
@@ -84,19 +87,21 @@ const CUES: Cue[] = [
   [DAY.showDesk + DBL + 0.03, 'whoosh-down', 0.2],
   [DAY.examLaunch, 'click', 0.26],
   [DAY.examLaunch + DBL, 'click', 0.26],
-  // 06 检验：拖入试卷 → 逐题识别 → 开始练习 → 选错 → 正确答案 → 回流复习
+  // 06 检验：新建题目集 → 拖入试卷 → 解析文档（逐页识别、逐题入库）→ 查看题目 → 第 7 题 → 选 A 提交 → 判错 → AI 解析
   [DAY.examOpen + 0.02, 'pop', 0.24],
-  [DAY.examOpen + 0.5, 'tick', 0.18],
+  [DAY.examNew, 'click', 0.3],
   [DAY.examDrop, 'pop', 0.3],
-  ...Array.from({ length: 6 }, (_, i): Cue => [DAY.examDrop + 0.25 + i * 0.16, 'tick', 0.1]),
+  [DAY.examParse, 'click', 0.33],
+  ...EXAM_PARSE_MARKS.pages.map((k): Cue => [parseT(k), 'tick', 0.12]),
+  ...Array.from({ length: 6 }, (_, i): Cue => [parseT(EXAM_PARSE_MARKS.q0 + ((EXAM_PARSE_MARKS.q1 - EXAM_PARSE_MARKS.q0) * (i + 0.5)) / 6), 'tick', 0.09]),
   [DAY.examParsed, 'note-mid', 0.24],
-  [DAY.examStart, 'click', 0.33],
-  [DAY.examStart + 0.06, 'whoosh-up', 0.14],
+  [DAY.examView, 'click', 0.3],
+  [DAY.examQ7, 'click', 0.3],
   [DAY.examPick, 'click', 0.33],
-  [DAY.examPick + 0.02, 'note-low', 0.26],
-  [DAY.examPick + 0.18, 'note-high', 0.18],
-  [DAY.examMastery + 0.3, 'tick', 0.16],
-  [DAY.examMastery + 0.68, 'pop', 0.24],
+  [DAY.examSubmit, 'click', 0.33],
+  [DAY.examSubmit + 0.04, 'note-low', 0.26],
+  [DAY.examSubmit + 0.07, 'pop', 0.16],
+  [DAY.examAI, 'click', 0.3],
   // 07 写作与精读：双击「作文批改」→ 开始批改 → 批注逐条 → 分数 → 润色 → 双击「翻译」→ 翻译逐段
   [DAY.essayLaunch, 'click', 0.26],
   [DAY.essayLaunch + DBL, 'click', 0.26],

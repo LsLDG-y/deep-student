@@ -17,14 +17,18 @@ export const DAY = {
   todayFocus: 27.45, // 第 2 行「▷ 开始专注」
   showDesk: 29.0, // 双击桌面空白处：待办与番茄钟窗口一起 genie 进 Dock
   examLaunch: 29.86, // 双击桌面「题目集」
-  // 06 检验
+  // 06 检验（题目集窗口级联落在 2 号槽，打开是「选择一个项目」空态）
   examOpen: 30.0,
-  examDrop: 31.0, // 试卷落进题目集
-  examParsed: 32.25, // 识别完成，18 题入库
-  examStart: 32.75, // 开始练习
-  examPick: 33.55, // 选了一个错误选项
-  examExplain: 33.9, // AI 深度解析开始流式输出
-  examMastery: 35.85, // 知识点掌握度更新
+  examNew: 30.42, // 点「＋ 新建题目集」→ 启动台
+  examGrab: 30.66, // 试卷从屏幕右侧拖进来
+  examDrop: 31.2, // 落进启动台 → 识别导入第 1 步（文件已选好，不自动开始）
+  examParse: 31.55, // 点「解析文档」
+  examParsed: 32.9, // 导入完成
+  examView: 33.25, // 点「查看题目」→ 题库
+  examQ7: 33.6, // 点第 7 题卡片 → 做题（顺序 7/18）
+  examPick: 33.95, // 选 A
+  examSubmit: 34.28, // 提交答案 → 判错
+  examAI: 34.98, // 滚到结果面板底部，点「AI 解析」
   examOut: 37.8,
   // 07 写作与精读
   essayLaunch: 37.86, // 双击桌面「作文批改」

@@ -7,7 +7,7 @@ import { dark, light, type Tokens } from '../../theme';
 import { Pupil, pathAt } from '../../ui/brand';
 import { agendaOpenCenter, AgendaWidget, BriefingWidget, DesktopShortcuts, shortcutCenter, type ShortcutId } from '../../ui/desk';
 import { essayGradeCenter, ESSAY_H, ESSAY_W, EssayView, type EssayState } from '../../ui/essay';
-import { EXAM_DROP, EXAM_H, EXAM_W, ExamView, examOptionCenter, examStartCenter, FileChip, type ExamState } from '../../ui/exam';
+import { EXAM_DROP_RIGHT, EXAM_H, EXAM_PT, EXAM_SCROLL, EXAM_W, ExamToast, ExamView, FileChip, type ExamStage, type ExamState, type ExamTarget } from '../../ui/exam';
 import { CHAT_H, CHAT_W, HUB_H, HUB_W, HubIndexView, NOTE_H, NOTE_W, NoteView, ResearchChat, type ResearchState } from '../../ui/research';
 import { POMO_RECT, PomodoroWindowBody, pomoTitle, TODO_H, TODO_ITEMS, TODO_W, TodoApp, todoPlayCenter, todoRowCenter, TodoToolbar, type TodoState } from '../../ui/todo';
 import { transButtonCenter, TRANS_H, TRANS_W, TranslateView, type TransState } from '../../ui/translate';
@@ -22,8 +22,10 @@ import { DAY, DBL, wallDrift } from './beats';
  * 桌面（壁纸 / 快捷方式 / 小组件 / 菜单栏 / Dock）全程常驻，窗口在其上开合；镜头是 2D 推拉。
  */
 export const TODO_RECT: Rect = { x: 48, y: 88, w: TODO_W, h: TODO_H };
-export const EXAM_RECT: Rect = { x: (1920 - EXAM_W) / 2, y: 128, w: EXAM_W, h: EXAM_H };
-const inWin = (r: Rect, p: { x: number; y: number }) => ({ x: r.x + p.x, y: r.y + 38 + p.y });
+/** 级联落位（windowStore nextCascadeOrigin，最小化的窗口也占槽）：待办 0 号槽、番茄钟 1 号槽，题目集落在 2 号槽。 */
+export const EXAM_RECT: Rect = { x: 96, y: 136, w: EXAM_W, h: EXAM_H };
+/** 题目集窗口坐标（含边框与标题栏，即 DOM 取证坐标）→ 桌面坐标。 */
+const examPt = (p: { x: number; y: number }) => ({ x: EXAM_RECT.x + p.x, y: EXAM_RECT.y + p.y });
 
 export const ESSAY_RECT: Rect = { x: (1920 - ESSAY_W) / 2, y: 126, w: ESSAY_W, h: ESSAY_H };
 export const TRANS_RECT: Rect = { x: 420, y: 176, w: TRANS_W, h: TRANS_H };
@@ -156,39 +158,81 @@ const researchState = (t: number): ResearchState => ({
   dl: prog(t, DAY.paperDownload + 0.05, DAY.paperDownload + 0.62),
 });
 
-const CHIP_HOME = { x: 92, y: 690 };
-const EXAM_GRAB = DAY.examOpen + 0.5;
+// 06：判错后先滚出「AI 解析」按钮，流式输出时再往下滚一次；「已加入今日复习」是修正版提示
+const EXAM_SCROLL1: [number, number] = [DAY.examSubmit + 0.24, DAY.examSubmit + 0.48];
+const EXAM_SCROLL2: [number, number] = [DAY.examAI + 0.77, DAY.examAI + 1.17];
+const AI_THINK = DAY.examAI + 0.02;
+const AI_STREAM: [number, number] = [DAY.examAI + 0.14, DAY.examAI + 1.95];
+const TOAST_AT = DAY.examSubmit + 0.05;
+const TOAST_DUR = 1.8;
+
+const EXAM_CLICKS: Array<[ExamTarget, number]> = [
+  ['new', DAY.examNew],
+  ['parse', DAY.examParse],
+  ['view', DAY.examView],
+  ['q7', DAY.examQ7],
+  ['optA', DAY.examPick],
+  ['submit', DAY.examSubmit],
+  ['ai', DAY.examAI],
+];
+const EXAM_STAGES: Array<[ExamStage, number]> = [
+  ['home', DAY.examOpen],
+  ['launcher', DAY.examNew + 0.02],
+  ['upload', DAY.examDrop + 0.02],
+  ['parsing', DAY.examParse + 0.02],
+  ['summary', DAY.examParsed],
+  ['grid', DAY.examView + 0.02],
+  ['practice', DAY.examQ7 + 0.02],
+];
+
+/** 试卷从屏幕右侧拖进启动台（从 Finder 拖入的文件，不是桌面上的东西）；瞳点就是拖拽指针。 */
+const CHIP_FROM = { x: 1990, y: 610 };
+const chipPath = (): Array<[number, number, number]> => {
+  const to = examPt(EXAM_PT.drop);
+  return [
+    [DAY.examGrab, CHIP_FROM.x, CHIP_FROM.y],
+    [DAY.examDrop - 0.04, to.x, to.y],
+  ];
+};
+/** 指针越过启动台右边界（dragenter）的时刻 */
+const DRAG_IN = (() => {
+  for (let t = DAY.examGrab; t < DAY.examDrop; t += 0.004) if (pathAt(t, chipPath()).x < EXAM_RECT.x + EXAM_DROP_RIGHT) return t;
+  return DAY.examDrop;
+})();
 
 const examState = (t: number): ExamState => {
-  const left = 45 * 60 - 24 - Math.max(0, Math.floor((t - DAY.examStart) * 2));
+  const [stage, since] = EXAM_STAGES.reduce((cur, s) => (t >= s[1] ? s : cur), EXAM_STAGES[0]);
+  const pressAtT = EXAM_CLICKS.find(([, c]) => Math.abs(t - c) < 0.08)?.[1];
+  const elapsed = Math.max(0, Math.floor((t - DAY.examQ7) * PACE));
+  const aiK = prog(t, AI_STREAM[0], AI_STREAM[1]);
   return {
-    ocr: prog(t, DAY.examDrop, DAY.examParsed - 0.15),
-    listed: 18 * prog(t, DAY.examDrop + 0.2, DAY.examParsed - 0.05),
-    parsed: prog(t, DAY.examParsed - 0.15, DAY.examParsed + 0.05),
-    startHover: t >= DAY.examStart - 0.16 && t < DAY.examStart + 0.02 ? 1 : 0,
-    startPress: Math.max(0, 1 - Math.abs(t - DAY.examStart) / 0.08),
-    practice: prog(t, DAY.examStart + 0.05, DAY.examStart + 0.3, ease.wbOut),
-    pick: prog(t, DAY.examPick, DAY.examPick + 0.1),
-    reveal: prog(t, DAY.examPick + 0.16, DAY.examPick + 0.3),
-    explain: prog(t, DAY.examExplain, DAY.examMastery - 0.4),
-    mastery: prog(t, DAY.examMastery, DAY.examMastery + 0.75),
-    toast: prog(t, DAY.examMastery + 0.65, DAY.examOut - 0.2),
-    timer: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`,
-    dropHover: t >= DAY.examDrop - 0.22 && t < DAY.examDrop ? 1 : 0,
+    stage,
+    enter: stage === 'home' ? 1 : prog(t, since, since + 0.05),
+    created: t >= DAY.examNew + 0.02,
+    renamed: prog(t, DAY.examParsed + 0.06, DAY.examParsed + 0.16),
+    drag: t < DAY.examDrop + 0.02 ? prog(t, DRAG_IN, DRAG_IN + 0.04) : 0,
+    hover: EXAM_CLICKS.find(([, c]) => t >= c - 0.09 && t < c + 0.05)?.[0] ?? null,
+    press: pressAtT === undefined ? 0 : pressAt(t, pressAtT),
+    parse: prog(t, DAY.examParse + 0.03, DAY.examParsed - 0.02),
+    picked: t >= DAY.examPick + 0.01,
+    submitted: prog(t, DAY.examSubmit + 0.03, DAY.examSubmit + 0.1),
+    scroll:
+      EXAM_SCROLL[0] * ease.inOutCubic(prog(t, ...EXAM_SCROLL1)) + (EXAM_SCROLL[1] - EXAM_SCROLL[0]) * ease.inOutCubic(prog(t, ...EXAM_SCROLL2)),
+    ai: t < AI_THINK ? 'idle' : t < AI_STREAM[0] ? 'thinking' : aiK < 1 ? 'stream' : 'done',
+    aiK: t < AI_STREAM[0] ? prog(t, AI_THINK, AI_STREAM[0]) : aiK,
+    timer: `00:${String(elapsed).padStart(2, '0')}`,
   };
 };
 
-/** 试卷文件：先出现在桌面上，被瞳点拖进题目集的投放区。 */
+/** 瞳点捏住文件卡片左上角附近；落下时缩小淡出。 */
+const CHIP_GRIP = { x: 34, y: 26 };
 const chipPose = (t: number) => {
-  const drop = inWin(EXAM_RECT, EXAM_DROP);
-  const k = prog(t, EXAM_GRAB, DAY.examDrop - 0.04, ease.inOutCubic);
-  const lift = prog(t, EXAM_GRAB - 0.04, EXAM_GRAB + 0.08) * (1 - prog(t, DAY.examDrop - 0.06, DAY.examDrop + 0.04));
-  const arc = Math.sin(k * Math.PI) * 60;
+  const p = pathAt(t, chipPath());
   return {
-    x: CHIP_HOME.x + (drop.x - 150 - CHIP_HOME.x) * k,
-    y: CHIP_HOME.y + (drop.y - 30 - CHIP_HOME.y) * k - arc,
-    lift,
-    opacity: prog(t, DAY.examOpen + 0.2, DAY.examOpen + 0.35) * (1 - prog(t, DAY.examDrop, DAY.examDrop + 0.12)),
+    x: p.x - CHIP_GRIP.x,
+    y: p.y - CHIP_GRIP.y,
+    lift: 1 - prog(t, DAY.examDrop - 0.06, DAY.examDrop + 0.04),
+    opacity: (t >= DAY.examGrab - 0.02 ? 1 : 0) * (1 - prog(t, DAY.examDrop, DAY.examDrop + 0.12)),
     scale: 1 - 0.3 * prog(t, DAY.examDrop - 0.02, DAY.examDrop + 0.12),
   };
 };
@@ -210,14 +254,21 @@ const DAY_CAM: CamKey[] = [
   // 退到全景：菜单栏 ⏱、Dock 上的番茄钟与红点
   [28.65, FULL, ease.inOutCubic],
   [DAY.examOpen + 0.1, FULL, ease.linear],
-  [EXAM_GRAB, { x: 900, y: 560, zoom: 1.02 }, ease.inOutCubic],
-  [DAY.examDrop + 0.25, { x: 990, y: 520, zoom: 1.1 }, ease.inOutCubic],
-  [DAY.examParsed, { x: 1000, y: 516, zoom: 1.12 }, ease.linear],
-  [DAY.examStart + 0.3, { x: 920, y: 470, zoom: 1.24 }, ease.inOutCubic],
-  [DAY.examExplain + 0.5, { x: 920, y: 520, zoom: 1.24 }, ease.inOutCubic],
-  [DAY.examMastery - 0.05, { x: 930, y: 560, zoom: 1.22 }, ease.linear],
-  [DAY.examMastery + 0.5, { x: 1010, y: 520, zoom: 1.1 }, ease.inOutCubic],
-  [DAY.essayLaunch - 0.65, { x: 1010, y: 520, zoom: 1.12 }, ease.linear],
+  // 06：窗口 + 右侧桌面（试卷从屏幕右缘拖进来）→ 推进识别导入 → 题库全貌 → 做题（取景含屏幕顶部，提示在那里）→ 推近 AI 解析
+  [DAY.examNew - 0.12, { x: 900, y: 556, zoom: 1.05 }, ease.inOutCubic],
+  [DAY.examGrab + 0.05, { x: 930, y: 556, zoom: 1.05 }, ease.linear],
+  [DAY.examDrop + 0.22, { x: 852, y: 566, zoom: 1.2 }, ease.inOutCubic],
+  [DAY.examParse + 0.1, { x: 852, y: 566, zoom: 1.2 }, ease.linear],
+  [DAY.examParse + 0.5, { x: 852, y: 548, zoom: 1.25 }, ease.inOutCubic],
+  [DAY.examParsed - 0.02, { x: 852, y: 552, zoom: 1.25 }, ease.linear],
+  [DAY.examParsed + 0.2, { x: 852, y: 520, zoom: 1.27 }, ease.inOutCubic],
+  [DAY.examView - 0.02, { x: 852, y: 522, zoom: 1.27 }, ease.linear],
+  [DAY.examView + 0.24, { x: 760, y: 520, zoom: 1.1 }, ease.inOutCubic],
+  [DAY.examQ7 - 0.02, { x: 760, y: 520, zoom: 1.1 }, ease.linear],
+  [DAY.examQ7 + 0.26, { x: 800, y: 450, zoom: 1.2 }, ease.inOutCubic],
+  [TOAST_AT + TOAST_DUR - 0.25, { x: 800, y: 455, zoom: 1.2 }, ease.linear],
+  [TOAST_AT + TOAST_DUR + 0.3, { x: 720, y: 640, zoom: 1.42 }, ease.inOutCubic],
+  [DAY.essayLaunch - 0.62, { x: 728, y: 648, zoom: 1.44 }, ease.linear],
   [DAY.essayLaunch - 0.25, FULL, ease.inOutCubic],
   [DAY.essayOpen + 0.1, FULL, ease.linear],
   [DAY.essayGrade - 0.3, { x: 1040, y: 470, zoom: 1.08 }, ease.inOutCubic],
@@ -259,9 +310,7 @@ const SC = (id: ShortcutId) => shortcutCenter(id);
 const AGENDA_CLICK = DAY.todayOpen - 0.02;
 
 const PUPIL_PATH: Array<[number, number, number]> = (() => {
-  const drop = inWin(EXAM_RECT, EXAM_DROP);
-  const start = inWin(EXAM_RECT, examStartCenter());
-  const optA = inWin(EXAM_RECT, examOptionCenter(0));
+  const ex = Object.fromEntries(Object.entries(EXAM_PT).map(([k, p]) => [k, examPt(p)])) as Record<keyof typeof EXAM_PT, { x: number; y: number }>;
   const grade = { x: ESSAY_RECT.x + essayGradeCenter().x, y: ESSAY_RECT.y + 38 + essayGradeCenter().y };
   const run = { x: TRANS_RECT.x + transButtonCenter().x, y: TRANS_RECT.y + 38 + transButtonCenter().y };
   const dl = { x: CHAT_RECT.x + DL_BTN.x, y: CHAT_RECT.y + 38 + DL_BTN.y };
@@ -280,14 +329,28 @@ const PUPIL_PATH: Array<[number, number, number]> = (() => {
     [DAY.showDesk + 0.12, DESK_SPOT.x, DESK_SPOT.y],
     [DAY.examLaunch - 0.06, SC('exam').x, SC('exam').y],
     [DAY.examLaunch + DBL + 0.06, SC('exam').x, SC('exam').y],
-    // 06：把桌面上的试卷拖进题目集 → 开始练习 → 选 A
-    [EXAM_GRAB - 0.04, CHIP_HOME.x + 40, CHIP_HOME.y + 24],
-    [DAY.examDrop - 0.04, drop.x - 110, drop.y - 6],
-    [DAY.examParsed - 0.3, drop.x + 60, drop.y + 40],
-    [DAY.examStart - 0.06, start.x, start.y],
-    [DAY.examStart + 0.25, start.x + 10, start.y - 20],
-    [DAY.examPick - 0.07, optA.x, optA.y],
-    [DAY.examPick + 0.35, optA.x + 40, optA.y + 120],
+    // 06：新建题目集 →（隐去，从屏幕右缘拖着试卷进来）→ 解析文档 → 查看题目 → 第 7 题 → A → 提交 → 滚动 → AI 解析
+    [DAY.examNew - 0.07, ex.newExam.x, ex.newExam.y],
+    [DAY.examNew + 0.2, ex.newExam.x + 4, ex.newExam.y + 3],
+    ...chipPath(),
+    [DAY.examDrop + 0.1, ex.drop.x + 6, ex.drop.y + 4],
+    [DAY.examParse - 0.07, ex.parse.x, ex.parse.y],
+    [DAY.examParse + 0.06, ex.parse.x, ex.parse.y],
+    [DAY.examParsed - 0.3, ex.parse.x + 255, ex.parse.y - 260],
+    [DAY.examView - 0.07, ex.view.x, ex.view.y],
+    [DAY.examView + 0.06, ex.view.x, ex.view.y],
+    [DAY.examQ7 - 0.07, ex.q7.x, ex.q7.y],
+    [DAY.examQ7 + 0.06, ex.q7.x, ex.q7.y],
+    [DAY.examPick - 0.07, ex.optA.x, ex.optA.y],
+    [DAY.examPick + 0.05, ex.optA.x, ex.optA.y],
+    [DAY.examSubmit - 0.07, ex.submit.x, ex.submit.y],
+    [DAY.examSubmit + 0.06, ex.submit.x, ex.submit.y],
+    [EXAM_SCROLL1[0] - 0.02, ex.wheel.x, ex.wheel.y],
+    [EXAM_SCROLL1[1] + 0.02, ex.wheel.x, ex.wheel.y],
+    [DAY.examAI - 0.07, ex.ai.x, ex.ai.y - EXAM_SCROLL[0]],
+    [DAY.examAI + 0.06, ex.ai.x, ex.ai.y - EXAM_SCROLL[0]],
+    [EXAM_SCROLL2[0] - 0.05, ex.aside.x, ex.aside.y - 40],
+    [EXAM_SCROLL2[1] + 0.3, ex.aside.x + 10, ex.aside.y - 25],
     // 07：双击「作文批改」→ 开始批改；双击「翻译」→ 翻译
     [DAY.essayLaunch - 0.45, SC('essay').x + 170, SC('essay').y + 120],
     [DAY.essayLaunch - 0.06, SC('essay').x, SC('essay').y],
@@ -322,8 +385,7 @@ const CLICKS = [
   DAY.todayFocus,
   ...dbl(DAY.showDesk),
   ...dbl(DAY.examLaunch),
-  DAY.examStart,
-  DAY.examPick,
+  ...EXAM_CLICKS.map(([, c]) => c),
   ...dbl(DAY.essayLaunch),
   DAY.essayGrade,
   ...dbl(DAY.translateLaunch),
@@ -336,8 +398,8 @@ const CLICKS = [
 
 /** 瞳点可见区间：各段动作前后淡入淡出。 */
 const PUPIL_SHOW: Array<[number, number]> = [
-  [25.45, DAY.examLaunch + DBL + 0.3],
-  [EXAM_GRAB - 0.3, DAY.examPick + 0.5],
+  [25.45, DAY.examNew + 0.2],
+  [DAY.examGrab, EXAM_SCROLL2[1] + 0.35],
   [DAY.essayLaunch - 0.45, DAY.essayGrade + 0.5],
   [DAY.translateLaunch - 0.4, DAY.translateRun + 0.5],
   [DAY.showDesk2 - 0.3, DAY.researchOpen + 0.45],
@@ -493,11 +555,12 @@ export const SceneDay = ({ t }: { t: number }) => {
             </WbWindow>
           ) : null}
           {chip.opacity > 0.001 ? (
-            <div style={{ position: 'absolute', left: chip.x, top: chip.y, opacity: chip.opacity, transform: `scale(${chip.scale})`, transformOrigin: '30% 50%' }}>
+            <div style={{ position: 'absolute', left: chip.x, top: chip.y, opacity: chip.opacity, transform: `scale(${chip.scale})`, transformOrigin: `${CHIP_GRIP.x}px ${CHIP_GRIP.y}px` }}>
               <FileChip tk={tk} lift={chip.lift} />
             </div>
           ) : null}
           <Chrome t={t} running={running} />
+          <ExamToast tk={tk} life={t - TOAST_AT} dur={TOAST_DUR} />
         </div>
       </CameraView>
       <Pupil x={ps.x} y={ps.y} t={t} opacity={pOpacity} clicks={CLICKS} />
