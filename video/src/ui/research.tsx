@@ -95,9 +95,10 @@ const PANEL_LINE = 'rgba(224, 224, 224, 0.574)';
 
 export const RESEARCH_Q = '调研：大模型现在怎样辅助数学证明？整理成一篇笔记';
 export const PAPER_Q = '再找 2026 年 LLM 数学推理的论文，下载最相关的一篇';
+export const NOTE_Q = '打开这篇笔记，把主要发现改精炼些';
 const SLASH_DONE = '/research-mode ';
 export const SESSION_TITLE = '大模型辅助数学证明';
-const NOTE_TITLE = '大模型辅助数学证明：现状与方法';
+export const NOTE_TITLE = '大模型辅助数学证明：现状与方法';
 const TODO_TITLE = '大模型辅助数学证明调研';
 const PAPER = 'Process-Supervised Language Models for Formal Theorem Proving';
 
@@ -128,6 +129,12 @@ export type ResearchTL = {
   done: number;
   collapse: number;
   title: number;
+  /** 改笔记：点进输入框 → 打字 → 发送 → 工具（加载技能 / 打开、观察、读取、替换笔记）→ 笔记窗里直改落地 */
+  focus3: number;
+  n0: number;
+  n1: number;
+  send3: number;
+  edit: number;
   focus2: number;
   f0: number;
   f1: number;
@@ -830,10 +837,12 @@ export const ResearchChat = ({ tk, t, tl }: { tk: Tokens; t: number; tl: Researc
   const colK = grow(t, tl.collapse + 0.02, 0.08);
   const panelH = (panelBaseH + (PANEL_FULL - panelBaseH) * fullK) * panelIn * (1 - colK);
   const streaming1 = t >= tl.send && t < tl.done;
-  const streaming2 = t >= tl.send2 && t < tl.saved + 0.3;
+  const streaming3 = t >= tl.send3 && t < tl.edit + 0.26;
+  const streaming2 = t >= tl.send2 && t < tl.saved + 0.2;
 
   // 输入框
   const draft1 = t < tl.type0 ? '' : t < tl.tab ? typed('/res', t, tl.type0, tl.type0 + 0.12) : SLASH_DONE + typed(RESEARCH_Q, t, tl.q0, tl.q1);
+  const draft3 = typed(NOTE_Q, t, tl.n0, tl.n1);
   const draft2 = typed(PAPER_Q, t, tl.f0, tl.f1);
   const blink = Math.floor(t * PACE * 2) % 2 === 0;
   const slashK = t >= tl.type0 && t < tl.tab ? clamp((t - tl.type0) / 0.12) : 0;
@@ -845,7 +854,7 @@ export const ResearchChat = ({ tk, t, tl }: { tk: Tokens; t: number; tl: Researc
     t < tl.send + 0.01
       ? OLD_SESSIONS.map(([title, time]) => ({ title, time }))
       : [
-          { title: titled >= 0.5 ? SESSION_TITLE : '未命名会话', time: '刚刚', active: true, streaming: streaming1 || streaming2, enter: rowIn },
+          { title: titled >= 0.5 ? SESSION_TITLE : '未命名会话', time: '刚刚', active: true, streaming: streaming1 || streaming3 || streaming2, enter: rowIn },
           ...OLD_SESSIONS.map(([title, time]) => ({ title, time })),
         ];
 
@@ -937,13 +946,30 @@ export const ResearchChat = ({ tk, t, tl }: { tk: Tokens; t: number; tl: Researc
   // 末块高度含到输入区的留白：来源行在流式中是末块（图标顶距面板 46.8），完成后接页脚（页脚按钮顶距输入区 45）
   if (nSources > 0) add(srcAt, t >= tl.done ? 39.6 : 46.8, (y) => <SourcesRow y={y} n={nSources} searching={searching} />);
   add(tl.done, 45, (y) => <AssistantFooter y={y} />);
-  // 追问
-  add(tl.send2 + 0.02, 127.4, (y) => <UserBubble y={y + 15} text={PAPER_Q} />);
-  add(tl.send2 + 0.07, 39.7, (y) => <ThinkRow y={y} />);
-  const toolsDone = tl.send2 + 0.43;
-  add(tl.send2 + 0.11, 36.5, (y) => <ToolRow y={y - 1.5} label="已调用 2 个工具" w={113.7} icon={SquaresFour} group done={t >= toolsDone} />);
-  const L0 = toolsDone + 0.02;
-  const intro = typed('在 arXiv 上找到 3 篇 2026 年的相关论文：', t, L0, L0 + 0.05);
+  // 改笔记：canvas-note 技能要求先用 workbench-tools 打开并聚焦笔记再改（可见笔记演示），
+  // 工作台工具 + note_read + note_replace 收成一组；note_replace 在笔记窗里直写落地时这组完成
+  add(tl.send3 + 0.02, 127.4, (y) => <UserBubble y={y + 15} text={NOTE_Q} time="20:06" />);
+  add(tl.send3 + 0.06, 39.7, (y) => <ThinkRow y={y} />);
+  add(tl.send3 + 0.1, 36.5, (y) => <ToolRow y={y - 1.5} label="加载技能组" w={80} icon={Wrench} done={t >= tl.send3 + 0.16} ms="186ms" />);
+  add(tl.send3 + 0.19, 36.5, (y) => <ToolRow y={y - 1.5} label="已调用 4 个工具" w={113.7} icon={SquaresFour} group done={t >= tl.edit + 0.02} />);
+  const noteAt = tl.edit + 0.06;
+  const note1 = '已把「主要发现」改成三条短句，笔记已经自动保存。';
+  const note2 = '不满意可以点笔记顶部的「撤销本次修改」恢复原文。';
+  const noteN = Math.round((note1.length + note2.length) * clamp((t - noteAt) / 0.16));
+  add(noteAt, 78.1, (y) => (
+    <>
+      <P y={y} text={note1.slice(0, noteN)} />
+      <P y={y + 27.5} text={note2.slice(0, Math.max(0, noteN - note1.length))} />
+    </>
+  ));
+  add(noteAt + 0.2, 45, (y) => <AssistantFooter y={y} time="20:06" />);
+  // 追问（片中节奏压缩：工具 → 论文列表 → 下载卡 → 收尾都比原来紧）
+  add(tl.send2 + 0.02, 127.4, (y) => <UserBubble y={y + 15} text={PAPER_Q} time="20:07" />);
+  add(tl.send2 + 0.05, 39.7, (y) => <ThinkRow y={y} />);
+  const toolsDone = tl.send2 + 0.26;
+  add(tl.send2 + 0.08, 36.5, (y) => <ToolRow y={y - 1.5} label="已调用 2 个工具" w={113.7} icon={SquaresFour} group done={t >= toolsDone} />);
+  const L0 = toolsDone + 0.01;
+  const intro = typed('在 arXiv 上找到 3 篇 2026 年的相关论文：', t, L0, L0 + 0.04);
   add(L0, 49.4, (y) => <P y={y} text={intro} />);
   const items: Array<[string, string[]]> = [
     [PAPER, ['（2026-', '03）']],
@@ -951,9 +977,9 @@ export const ResearchChat = ({ tk, t, tl }: { tk: Tokens; t: number; tl: Researc
     ['Lean-Augmented Retrieval for Undergraduate Analysis Proofs', ['（2026-07）']],
   ];
   items.forEach(([title, rest], i) => {
-    const a = L0 + 0.06 + i * 0.065;
+    const a = L0 + 0.04 + i * 0.04;
     const full = title.length + rest.join('').length;
-    const n = Math.round(full * clamp((t - a) / 0.06));
+    const n = Math.round(full * clamp((t - a) / 0.04));
     const tt = title.slice(0, n);
     const r = rest.join('').slice(0, Math.max(0, n - title.length));
     const lines: ReactNode[] =
@@ -962,20 +988,20 @@ export const ResearchChat = ({ tk, t, tl }: { tk: Tokens; t: number; tl: Researc
         : [<><b style={{ fontWeight: 600 }}>{tt}</b>{r}</>];
     add(a, i === 0 ? 58 : i === 1 ? 30.5 : 40.1, (y) => <Li y={y} n={i + 1} lines={lines} />, 0.03);
   });
-  const p2At = L0 + 0.06 + 3 * 0.065;
-  add(p2At, 47.1, (y) => <P y={y} text={typed('第 1 篇和你的调研主题最相关，我把它下载到资料库。', t, p2At, p2At + 0.05)} />, 0.03);
+  const p2At = L0 + 0.04 + 3 * 0.04;
+  add(p2At, 47.1, (y) => <P y={y} text={typed('第 1 篇和你的调研主题最相关，我把它下载到资料库。', t, p2At, p2At + 0.03)} />, 0.03);
   add(tl.save, 117.1, (y) => <PaperCard y={y} k={clamp((t - tl.save) / (tl.saved - tl.save))} t={t} />);
-  const finAt = tl.saved + 0.04;
+  const finAt = tl.saved + 0.03;
   const fin1 = `已下载并保存到学习资源：《Process-Supervised Language Models for Formal`;
   const fin2 = 'Theorem Proving》。文本提取和索引已经完成，之后在对话里就能检索到它。';
-  const finN = Math.round((fin1.length + fin2.length) * clamp((t - finAt) / 0.2));
+  const finN = Math.round((fin1.length + fin2.length) * clamp((t - finAt) / 0.14));
   add(finAt, 78.1, (y) => (
     <>
       <P y={y} text={fin1.slice(0, finN)} />
       <P y={y + 27.5} text={fin2.slice(0, Math.max(0, finN - fin1.length))} />
     </>
   ));
-  add(finAt + 0.24, 45, (y) => <AssistantFooter y={y} />);
+  add(finAt + 0.17, 45, (y) => <AssistantFooter y={y} time="20:07" />);
 
   // 贴底：内容底不越过输入区（ask 卡 / 任务面板 / 收起条 / 输入框）
   const barK = colK;
@@ -997,10 +1023,15 @@ export const ResearchChat = ({ tk, t, tl }: { tk: Tokens; t: number; tl: Researc
     y += b.h;
   });
 
-  const composerMode = streaming1 || streaming2 ? 'stop' : (t < tl.send ? draft1 : draft2) ? 'ready' : 'idle';
-  const sendPress = Math.max(0, 1 - Math.abs(t - tl.send) / 0.06, 1 - Math.abs(t - tl.send2) / 0.06);
+  const draftNow = t < tl.send ? draft1 : t < tl.send3 ? (t >= tl.n0 ? draft3 : '') : t < tl.send2 && t >= tl.f0 ? draft2 : '';
+  const composerMode = streaming1 || streaming3 || streaming2 ? 'stop' : draftNow ? 'ready' : 'idle';
+  const sendPress = Math.max(0, 1 - Math.abs(t - tl.send) / 0.06, 1 - Math.abs(t - tl.send3) / 0.06, 1 - Math.abs(t - tl.send2) / 0.06);
   const focused1 = t >= tl.focus && t < tl.send;
+  const focused3 = t >= tl.focus3 && t < tl.send3;
   const focused2 = t >= tl.focus2 && t < tl.send2;
+  const focusedDock = focused3 || focused2;
+  const dockDraft = t < tl.send3 ? (t >= tl.n0 ? draft3 : '') : t < tl.send2 && t >= tl.f0 ? draft2 : '';
+  const dockTyping = focused3 ? t >= tl.n0 : t >= tl.f0;
   const hover: 'opt' | 'submit' | null = t >= tl.pick - 0.08 && t < tl.pick + 0.04 ? 'opt' : t >= tl.submit - 0.08 && t < tl.submit + 0.04 ? 'submit' : null;
   const collapseHover = t >= tl.collapse - 0.08 && t < tl.collapse + 0.04 ? 1 : 0;
 
@@ -1039,11 +1070,11 @@ export const ResearchChat = ({ tk, t, tl }: { tk: Tokens; t: number; tl: Researc
           {askK < 0.99 ? (
             <div style={{ position: 'absolute', inset: 0, opacity: 1 - askK }}>
               <DockComposer
-                text={t < tl.send2 && t >= tl.f0 ? draft2 : ''}
-                caret={focused2 && (blink || draft2.length > 0)}
+                text={t >= tl.send ? dockDraft : ''}
+                caret={focusedDock && (blink || dockDraft.length > 0)}
                 mode={composerMode}
                 press={sendPress}
-                hint={focused2 && t < tl.f0}
+                hint={focusedDock && !dockTyping}
               />
             </div>
           ) : null}

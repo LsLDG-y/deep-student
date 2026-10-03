@@ -52,8 +52,10 @@ export const SUPERS: Super[] = [
   { s: 43.75, e: 45.4, text: '整篇翻译，逐段对照精读', kind: 'feature' },
   { s: 46.0, e: 46.9, text: '08 调研', kind: 'chapter' },
   { s: 47.0, e: 49.5, text: '一句话，交给它去查、去读、去写', kind: 'feature' },
-  { s: 50.1, e: 52.2, text: '论文搜到、下好、读进资料库', kind: 'feature' },
-  { s: 52.35, e: 53.85, text: '导入即索引，下次提问就能引用', kind: 'feature' },
+  // 笔记窗 clean 时 AI 直接改、改动处渐隐高亮，顶部留「撤销本次修改」
+  { s: 49.95, e: 51.15, text: 'AI 当面改笔记，不满意一键撤销', kind: 'feature' },
+  { s: 51.4, e: 52.75, text: '论文搜到、下好、读进资料库', kind: 'feature' },
+  { s: 52.95, e: 53.85, text: '导入即索引，下次提问就能引用', kind: 'feature' },
   // 第三幕：越用越懂你
   { s: 54.15, e: 55.55, text: '越用，越懂你。', kind: 'title', pos: { left: 0, right: 0, top: 380 }, align: 'center', scrim: false },
   { s: 55.6, e: 56.45, text: '09 懂你', kind: 'chapter' },

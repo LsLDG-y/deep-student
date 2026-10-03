@@ -137,7 +137,8 @@ const CUES: Cue[] = [
   [DAY.showDesk2, 'click', 0.26],
   [DAY.showDesk2 + DBL, 'click', 0.26],
   [DAY.showDesk2 + DBL + 0.03, 'whoosh-down', 0.2],
-  // 08 调研：Dock 还原对话 → 点进输入框打 /res → 发出 → 选深度、提交 → 6 步逐条打勾 → 任务完成 → 收起面板 → 追问 → 论文已保存 → Dock 打开资源库 → 知识库索引
+  // 08 调研：Dock 还原对话 → 点进输入框打 /res → 发出 → 选深度、提交 → 6 步逐条打勾 → 任务完成 → 收起面板 →
+  // 让 AI 改笔记（笔记窗弹入 → 直改落地）→ 点回对话 → 追问 → 论文已保存 → Dock 打开资源库 → 知识库索引
   [DAY.researchOpen - 0.02, 'click', 0.3],
   [DAY.researchOpen + 0.02, 'whoosh-up', 0.2],
   [DAY.researchType - 0.06, 'click', 0.22],
@@ -149,7 +150,13 @@ const CUES: Cue[] = [
   ...STEPS.map((_, i): Cue => [researchStepDone(i), 'tick', 0.16]),
   [DAY.researchDone + 0.02, 'pop', 0.26],
   [DAY.researchCollapse, 'click', 0.26],
-  [DAY.paperType - 0.04, 'click', 0.2],
+  [DAY.noteType - 0.04, 'click', 0.2],
+  [DAY.noteSend, 'click', 0.26],
+  [DAY.noteSend + 0.02, 'whoosh-up', 0.16],
+  [DAY.noteOpen, 'whoosh-up', 0.22],
+  [DAY.noteOpen + 0.02, 'pop', 0.26],
+  [DAY.noteEdit, 'note-high', 0.24],
+  [DAY.chatBack, 'click', 0.24],
   [DAY.paperSend, 'click', 0.26],
   [DAY.paperSend + 0.02, 'whoosh-up', 0.16],
   [DAY.paperSaved, 'note-mid', 0.22],

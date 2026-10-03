@@ -332,20 +332,47 @@ globalThis.__vMcpCfg = [
   ['filesystem', 'filesystem', '', ['read_file', 'write_file', 'list_directory', 'search_files', 'get_file_info']],
 ];
 // 夜里复习（FC=1）：对话「复习这批」→ 闪卡 batch 会话。enqueue 按请求顺序回 state，
-// 预览按 FSRS-5 默认参数 + 学习步 1m / 10m 的新卡首评（1m / 6m / 10m / 16d）
+// 新卡首评按产品调度器（rs-fsrs 1.2 默认参数、学习步）：重来 1m / 困难 5m / 良好 10m / 简单 15d，
+// 首评后稳定性 = w0..w3（0.4072 / 1.1829 / 3.1262 / 15.4722 天）
+const __vFcFirst = { 1: [60e3, 0, 1, 0.4072], 2: [300e3, 0, 1, 1.1829], 3: [600e3, 0, 1, 3.1262], 4: [15 * 86400e3, 15, 2, 15.4722] };
+// 记忆曲线「最近复习」里排在本次三张之后的两张老卡（昨晚复习过的错题本）
+const __vFcOld = [
+  { id: 'st_old_lhopital', front: '洛必达法则使用前要先确认什么？', state: 2, stability: 24.23, difficulty: 5.27, ago: 0.93, dueIn: 23, reps: 5, lapses: 1, rating: 3 },
+  { id: 'st_old_taylor', front: 'eˣ 在 x = 0 处的三阶麦克劳林展开是什么？', state: 2, stability: 47.79, difficulty: 5.18, ago: 0.95, dueIn: 47, reps: 4, lapses: 0, rating: 3 },
+];
 function __vFcPre(cmd, args) {
   const now = Date.now();
   const card = (id) => (globalThis.__vFcCards || []).find((c) => c.id === id);
+  const rated = (globalThis.__vFcRated ||= []);
+  const memory = () => [
+    ...rated.slice().reverse().map((r) => {
+      const [ms, , state, stability] = __vFcFirst[r.rating];
+      return { cardStateId: r.id, ankiCardId: r.id.replace(/^st_/, ''), deckId: 'deck_default', front: card(r.id.replace(/^st_/, ''))?.front ?? '', extraFields: {}, state, stability, difficulty: 5, lastReviewMs: r.at, dueMs: r.at + ms, reps: 1, lapses: 0, lastRating: r.rating };
+    }),
+    ...__vFcOld.map((c) => ({ cardStateId: c.id, ankiCardId: c.id.slice(3), deckId: 'deck_default', front: c.front, extraFields: {}, state: c.state, stability: c.stability, difficulty: c.difficulty, lastReviewMs: now - c.ago * 86400e3, dueMs: now + c.dueIn * 86400e3, reps: c.reps, lapses: c.lapses, lastRating: c.rating })),
+  ];
   switch (cmd) {
     case 'fsrs_enqueue_cards':
       return { states: (args?.ankiCardIds ?? []).map((id) => ({ id: 'st_' + id, ankiCardId: id, front: card(id)?.front ?? '', back: card(id)?.back ?? '', templateId: 'tpl_demo_basic', state: 0, lastReviewMs: null, suspended: false, tags: [], images: [] })) };
     case 'fsrs_get_scheduler_config': return { learnAheadMinutes: 20, dailyNewLimit: 20, dailyReviewLimit: 200 };
-    case 'fsrs_preview_intervals': return { previews: [[1, 60e3, 0], [2, 360e3, 0], [3, 600e3, 0], [4, 16 * 86400e3, 16]].map(([rating, ms, d]) => ({ rating, dueMs: now + ms, scheduledDays: d, intervalMs: ms })) };
+    case 'fsrs_preview_intervals': return { previews: [1, 2, 3, 4].map((rating) => ({ rating, dueMs: now + __vFcFirst[rating][0], scheduledDays: __vFcFirst[rating][1], intervalMs: __vFcFirst[rating][0] })) };
     case 'fsrs_rate': {
-      const ms = { 1: 60e3, 2: 360e3, 3: 600e3, 4: 16 * 86400e3 }[args?.rating] ?? 600e3;
-      return { logId: 'log_' + now + '_' + Math.random().toString(36).slice(2, 6), dueMs: now + ms, scheduledDays: args?.rating === 4 ? 16 : 0, cardState: { state: args?.rating === 4 ? 2 : 1, lastReviewMs: now, suspended: false } };
+      const [ms, days, state] = __vFcFirst[args?.rating] ?? __vFcFirst[3];
+      rated.push({ id: args?.cardStateId, rating: args?.rating ?? 3, at: now });
+      return { logId: 'log_' + now + '_' + Math.random().toString(36).slice(2, 6), dueMs: now + ms, scheduledDays: days, cardState: { state, lastReviewMs: now, suspended: false } };
     }
-    case 'fsrs_undo_last_review': return { ok: true };
+    case 'fsrs_undo_last_review': rated.pop(); return { ok: true };
+    // 386 张老卡（平均可提取率 0.931）+ 本次评过的新卡；近 30 天真实保留率按复习记录的 8% 重来率
+    case 'fsrs_get_memory_overview': {
+      const recent = memory().slice(0, Math.min(20, Math.max(1, args?.recentLimit ?? 5)));
+      const fresh = rated.map((r) => (1 + (19 / 81) * Math.max(0, now - r.at) / 86400e3 / __vFcFirst[r.rating][3]) ** -0.5);
+      return { generatedAtMs: now, desiredRetention: 0.9, curve: { decay: -0.5, factor: 19 / 81 }, recent, memorizedCount: 386 + rated.length, averageRetrievability: (386 * 0.931 + fresh.reduce((a, b) => a + b, 0)) / (386 + rated.length), trueRetention: { windowDays: 30, reviews: 1162, passed: 1066 } };
+    }
+    case 'fsrs_get_card_memory_history': {
+      const m = memory().find((c) => c.cardStateId === args?.cardStateId);
+      if (!m) throw new Error('fsrs card state not found');
+      return { generatedAtMs: now, desiredRetention: 0.9, curve: { decay: -0.5, factor: 19 / 81 }, card: m, reviews: [{ logId: 'log_' + m.cardStateId, reviewMs: m.lastReviewMs, rating: m.lastRating, stateBefore: 0, stateAfter: m.state, stabilityAfter: m.stability, difficultyAfter: m.difficulty, dueAfterMs: m.dueMs }] };
+    }
     // 复习完三张之后（良好 / 简单 / 重来）：386 张老卡 + 12 张新卡，新 9、学习中 2+2、复习中 384+1
     case 'fsrs_get_stats': return { total: 398, due: 9, newCount: 9, learning: 4, review: 385, relearning: 0, suspended: 0, reviewsToday: 3, backlog: 0, backlogReview: 0, backlogNew: 0, learningWaiting: 2 };
     case 'fsrs_get_due': return (globalThis.__vFcCards || []).slice(3).map((c) => ({ id: 'st_' + c.id, ankiCardId: c.id, front: c.front, back: c.back, templateId: 'tpl_demo_basic', state: 0, lastReviewMs: null, suspended: false, tags: [], images: [] }));
@@ -372,6 +399,51 @@ function __vPre(cmd, args) {
   // 演示 mock 缺省返回 null，AgentTaskPanel 有产物后会读 entries.length / downloads.length（真后端返回空页 / 空数组）
   if (cmd === 'chat_v2_list_runtime_directory') return { rootId: args?.rootId ?? 'workspace', relativePath: args?.relativePath ?? '', entries: [], nextCursor: null, truncated: false, scanned: 0 };
   if (cmd === 'browser_list_task_downloads') return [];
+  // 笔记窗的 InsightsSection 读 insights.length，演示 mock 缺省 null 会让整扇笔记窗崩掉（真后端返回空数组）
+  if (cmd === 'insight_list') return [];
+  // 笔记窗：调研笔记的元数据与正文、文件树、按类型列表（演示 mock 缺省 null：文件树报「nodes is not iterable」、正文停在空态）
+  if (cmd === 'dstu_folder_get_tree' || cmd === 'dstu_folder_list') return [];
+  if (cmd === 'notes_list_tags') return [];
+  // 编辑器宿主：注册 / 心跳拿不到参与者状态会把编辑器判失效（「笔记已更新，正在刷新正文」）；审阅 / 草稿持久化读空表
+  if (cmd === 'notes_editor_register' || cmd === 'notes_editor_heartbeat') return { participant_id: args?.participantId ?? 'p_v_note', expires_at: Date.now() + 3600e3, active_lease: null };
+  if (cmd === 'notes_state_list') return [];
+  // 接受 AI 建议要先拿编辑租约（单窗口：立即 ready、无人等待）
+  if (cmd === 'notes_editor_begin') {
+    globalThis.__vLease = { token: 'lease_v_' + Date.now(), operation_id: args?.operationId, owner_id: args?.participantId, phase: 'ready', expires_at: Math.floor(Date.now() / 1000) + 600, notes: (args?.noteIds ?? []).map((id) => ({ note_id: id, updated_at: new Date().toISOString() })), waiting_for: [] };
+    return globalThis.__vLease;
+  }
+  if (cmd === 'notes_editor_lease_status' || cmd === 'notes_editor_finish') return globalThis.__vLease ? { ...globalThis.__vLease, notes: globalThis.__vLease.notes.map((n) => ({ ...n, updated_at: new Date().toISOString() })) } : null;
+  if (cmd === 'notes_editor_freeze_ack' || cmd === 'notes_editor_release' || cmd === 'notes_editor_refresh_ack' || cmd === 'notes_editor_unregister') return null;
+  if (cmd === 'notes_state_put' || cmd === 'notes_state_delete') {
+    const r = args?.request ?? {};
+    return { note_id: r.note_id, type: r.type, key: r.key, revision: (r.expected_revision ?? 0) + 1, value: r.value ?? null, deleted: cmd === 'notes_state_delete' };
+  }
+  if (cmd === 'notes_get_format') return { note_id: args?.noteId, content_format: 'markdown-legacy', format_version: 1, serializer_version: 'markdown-v1', required_capabilities: [] };
+  if (cmd === 'dstu_list' && (args?.options?.typeFilter === 'note' || args?.options?.typeFilter === 'mindmap')) {
+    const N = (id, type, name, at) => ({ id, path: '/' + id, name, type, sourceId: id, resourceId: 'res_' + id, createdAt: Date.parse(at), updatedAt: Date.parse(at), metadata: {} });
+    const all = [
+      N('note_v_research', 'note', '大模型辅助数学证明：现状与方法', '2026-10-03T20:05:30'),
+      N('note_demo_mvt', 'note', '中值定理证明套路', '2026-10-02T21:30:00'),
+      N('note_v_err', 'note', '高数错题本（8 月）', '2026-08-28T19:20:00'),
+      N('mm_v_mvt', 'mindmap', '微分中值定理', '2026-10-02T21:40:00'),
+    ];
+    return all.filter((n) => n.type === args.options.typeFilter);
+  }
+  if (cmd === 'notes_update' && args?.note?.id === 'note_v_research') {
+    globalThis.__vNoteBody = args.note.content_md;
+    const at = new Date().toISOString();
+    return { id: 'note_v_research', title: '大模型辅助数学证明：现状与方法', content_md: args.note.content_md, tags: [], created_at: '2026-10-03T12:05:30.000Z', updated_at: at, is_favorite: false };
+  }
+  if (cmd === 'dstu_update' && args?.path === '/note_v_research') {
+    globalThis.__vNoteBody = args.content;
+    const at = Date.parse('2026-10-03T20:05:30');
+    return { id: 'note_v_research', path: '/note_v_research', name: '大模型辅助数学证明：现状与方法', type: 'note', sourceId: 'note_v_research', resourceId: 'res_note_v_research', createdAt: at, updatedAt: Date.now(), metadata: {} };
+  }
+  if ((cmd === 'dstu_get' || cmd === 'dstu_get_content') && args?.path === '/note_v_research') {
+    if (cmd === 'dstu_get_content') return globalThis.__vNoteBody ?? globalThis.__vNoteMd ?? '';
+    const at = Date.parse('2026-10-03T20:05:30');
+    return { id: 'note_v_research', path: '/note_v_research', name: '大模型辅助数学证明：现状与方法', type: 'note', sourceId: 'note_v_research', resourceId: 'res_note_v_research', createdAt: at, updatedAt: at, metadata: {} };
+  }
   // 资源库「全部文件」根目录：与知识库索引里的 9 份资料一致（演示 mock 缺省返回空文件夹）
   if (cmd === 'dstu_list' && args?.path === '/' && !args?.options?.typeFilter && !args?.options?.isFavorite) {
     const now = Date.parse('2026-10-03T20:06:00');
@@ -530,6 +602,7 @@ const RESEARCH_FIXTURE = String.raw`
   };
   const C = 'completed', R = 'running';
   const NOTE_MD = '## 📋 调研概述\n- **调研时间**：2026 年 10 月\n- **调研范围**：大模型在数学证明中的三种用法——形式化证明、过程监督与自我验证、检索增强\n\n## 🔍 主要发现\n1. 形式化证明成为主流路线：模型负责搜索证明路径，Lean 等证明助手逐步验证，结论可机器检查 [搜索-1][搜索-2]\n2. 过程监督比只看最终答案更可靠：对推理链逐步打分，竞赛题准确率与可解释性同时提升 [搜索-3]\n3. 检索增强适合本科分析学：先检索可用的定理与引理，再组织证明 [知识库-1]\n\n## 📊 详细分析\n### 形式化证明\n把定理翻译成 Lean / Isabelle 代码，证明助手负责验证每一步，模型只需提出下一步策略……\n\n### 过程监督与自我验证\n奖励模型对每一步推理打分，配合自我验证在生成后回查……\n\n## 💡 结论与建议\n- 学习中值定理一类证明时，可以先让模型给出证明骨架，再逐步核对每一步的条件\n- 形式化工具适合检查自己的证明是否遗漏条件\n\n## 📚 参考来源\n- Lean Mathlib 文档\n- 2026 年 arXiv 相关论文 3 篇\n- 本地笔记《中值定理证明套路》';
+  globalThis.__vNoteMd = NOTE_MD;
   const PAPER = 'Process-Supervised Language Models for Formal Theorem Proving';
   const research = [
     { type: 'thinking', status: 'success', streaming: true, content: '用户要调研大模型怎样辅助数学证明，并整理成笔记。按调研模式，先加载检索、任务清单、笔记和提问这几组工具，再确认调研深度。' },
@@ -652,21 +725,36 @@ await page.route('**/src/demo/main.tsx*', async (route) => {
   const res = await route.fetch();
   let body = await res.text();
   // CLASSIC=1：保留演示壳默认的经典布局（第一幕取证）
-  if (!process.env.CLASSIC) body = body.replace(/localStorage\.setItem\(WORKBENCH_KEY,\s*["']false["']\)/, 'localStorage.setItem(WORKBENCH_KEY, "true")');
+  // 4d29f3aeb 起写成 `desktop ? 'true' : 'false'`（?desktop=1 学习桌面），两种写法都改成常开
+  if (!process.env.CLASSIC) {
+    body = body
+      .replace(/localStorage\.setItem\(WORKBENCH_KEY,\s*["']false["']\)/, 'localStorage.setItem(WORKBENCH_KEY, "true")')
+      .replace(/localStorage\.setItem\(WORKBENCH_KEY,\s*desktop\s*\?\s*["']true["']\s*:\s*["']false["']\)/, 'localStorage.setItem(WORKBENCH_KEY, "true")');
+  }
   // 不自动播放剧本、不自动跳到剧本会话（否则一开机就弹出对话窗口）
   if (!process.env.AUTOPLAY) {
-    body = body.replace(/installDemoAutoPlay\(\{\s*waitForActivation:[^}]*\}\)/, 'installDemoAutoPlay({ waitForActivation: true })');
-    if (!process.env.NAV) body = body.replace(/let navigated = false;/, 'let navigated = true;');
+    body = body
+      .replace(/installDemoAutoPlay\(\{\s*waitForActivation:[^}]*\}\)/, 'installDemoAutoPlay({ waitForActivation: true })')
+      .replace(/\{\s*waitForActivation:\s*window\.parent !== window\s*\}/, '{ waitForActivation: true }');
+    if (!process.env.NAV) {
+      body = body
+        .replace(/let navigated = false;/, 'let navigated = true;')
+        .replace(/if \(initialScene\) requestChatSessionNavigation\(initialScene\);/, 'let navigated = true; void navigated;');
+    }
   }
   // 取证脚本手动触发自动播放（activate / continueScene），控制截图时机
   body = body.replace(/(const autoPlay = installDemoAutoPlay\([^;]*\);)/, '$1 window.__vAutoPlay = autoPlay;');
-  console.log('[patch main]', body.includes('waitForActivation: true'), body.includes('let navigated = true;'), body.includes('window.__vAutoPlay'));
+  console.log('[patch main]', /WORKBENCH_KEY, "true"/.test(body) || !!process.env.CLASSIC, body.includes('waitForActivation: true'), body.includes('let navigated = true;') || !!process.env.NAV, body.includes('window.__vAutoPlay'));
   await route.fulfill({ response: res, body });
 });
 await page.route('**/src/demo/mockIpc.ts*', async (route) => {
   const res = await route.fetch();
   let body = await res.text();
-  if (!process.env.CLASSIC) body = body.replace(/(["']desktop\.workbenchMode["']\s*:\s*)["']false["']/, '$1"true"');
+  if (!process.env.CLASSIC) {
+    body = body
+      .replace(/(["']desktop\.workbenchMode["']\s*:\s*)["']false["']/, '$1"true"')
+      .replace(/(["']desktop\.workbenchMode["']\s*:\s*)desktop\s*\?\s*["']true["']\s*:\s*["']false["']/, '$1"true"');
+  }
   body = body.replace("case 'todo_list_today':", "case '__v_todo_list_today':").replace("case 'todo_list_reminders':", "case '__v_todo_list_reminders':");
   body = body.replace(/default:\s*\n(\s*)if \(cmd\.startsWith\('qbank_'\)\)/, "default:\n$1if (cmd.startsWith('todo_') || cmd.startsWith('pomodoro_') || cmd === 'fsrs_get_stats') return __vMock(cmd, args);\n$1if (cmd.startsWith('qbank_'))");
   body = body.replace(/(const args = [^;]+;\s*)switch\s*\(cmd\)\s*\{/, '$1{ const __r = __vPre(cmd, args); if (__r !== __VSKIP) return __r; }\nswitch (cmd) {');
@@ -758,7 +846,8 @@ await tryDo('dismiss tour', async () => {
 await page.mouse.move(960, 600);
 await page.waitForTimeout(800);
 
-const dock = (id) => page.locator(`[data-testid="wb-dock-item-${id}"] button`).first();
+// Dock 项里不一定有 <button>（现版整项可点），点项本身
+const dock = (id) => page.locator(`[data-testid="wb-dock-item-${id}"]`).first();
 const shortcut = (name) => page.locator(`.wb-desk-icon[aria-label="${name}"]`).first();
 
 if (scenario === 'probe') {
@@ -1082,6 +1171,15 @@ if (scenario === 'probe') {
     }));
   }
 } else if (scenario === 'research') {
+  // 08 笔记段：对话里让 AI 把「主要发现」改精炼 → builtin-note_replace → 笔记窗审阅；取证时直接派发同一个 canvas:ai-edit-request
+  // 编辑器序列化时可能把 [ 转义成 \[，搜索用正则兼容
+  const NOTE_EDIT = {
+    noteId: 'note_v_research',
+    operation: 'replace',
+    isRegex: true,
+    search: String.raw`1\. 形式化证明成为主流路线[\s\S]*?知识库-1\\?\]`,
+    replace: '1. 形式化证明：模型提出思路，Lean 逐步验证，结论可机器检查 [搜索-1][搜索-2]\n2. 过程监督：给推理链逐步打分，比只看最终答案更可靠 [搜索-3]\n3. 检索增强：先找可用的定理与引理，再组织证明 [知识库-1]',
+  };
   // RESEARCH=1 NAV=1 SCENE=demo-v-research：4s 兜底导航打开对话窗口（默认 1080×720）→ 手动 activate 打字发送 → 定时截窗口
   const fs = await import('node:fs');
   const PFX = process.env.PFX ?? 'ra';
@@ -1135,6 +1233,7 @@ if (scenario === 'probe') {
       if (kind === 'title') await tryDo(a, () => win.locator(`[title="${arg}"]`).last().click({ timeout: 4000 }));
       if (kind === 'aria') await tryDo(a, () => win.locator(`[aria-label="${arg}"]`).last().click({ timeout: 4000 }));
       if (kind === 'text') await tryDo(a, () => win.getByText(arg, { exact: true }).last().click({ timeout: 4000 }));
+      if (kind === 'textf') await tryDo(a, () => win.getByText(arg, { exact: true }).first().click({ timeout: 4000 }));
       if (kind === 'css') await tryDo(a, () => win.locator(arg).last().click({ timeout: 4000 }));
       if (kind === 'hover') await tryDo(a, () => win.getByText(arg, { exact: false }).last().hover({ timeout: 4000 }));
       if (kind === 'wheel') await tryDo(a, async () => { const b = await win.boundingBox(); await page.mouse.move(b.x + b.width * 0.6, b.y + 200); await page.mouse.wheel(0, Number(arg)); });
@@ -1147,6 +1246,48 @@ if (scenario === 'probe') {
       // 菜单 / 子菜单 / 弹层渲染在页面级浮层里，窗口内的 text: / probe: 够不着
       if (kind === 'ptext') await tryDo(a, () => page.getByText(arg, { exact: true }).last().click({ timeout: 4000 }));
       if (kind === 'pprobe') await probe(arg, win, '[role="menu"], [data-radix-popper-content-wrapper], [role="dialog"]');
+      // 从对话里另开的窗口（笔记窗等）：最后挂载的那扇
+      if (kind === 'wshot') await winShot(arg, newest());
+      if (kind === 'wwheel') await tryDo(a, async () => { const b = await newest().boundingBox(); await page.mouse.move(b.x + b.width * 0.62, b.y + b.height * 0.6); await page.mouse.wheel(0, Number(arg)); });
+      if (kind === 'wprobe') await probe(arg, newest());
+      if (kind === 'wtext') await tryDo(a, () => newest().getByText(arg, { exact: true }).last().click({ timeout: 4000 }));
+      if (kind === 'waria') await tryDo(a, () => newest().locator(`[aria-label="${arg}"]`).last().click({ timeout: 4000 }));
+      if (kind === 'full') await shot(arg);
+      if (kind === 'aiedit') console.log('[aiedit]', await page.evaluate((d) => { window.dispatchEvent(new CustomEvent('canvas:ai-edit-request', { detail: { ...d, requestId: 'v-edit-' + Date.now() } })); return 'sent'; }, NOTE_EDIT));
+      // 产品真实链路（AI 当面改）：演示壳把 AgentBridge 换成了空桩 → 手动 start 应用里那份 stageManager，
+      // 发与后端 canvas_executor 同形的 apply_ops（note_replace，label 同 build_note_agent_op）；笔记窗 clean →
+      // noteDriver 直写 + agentFlashChange + notes:agent-applied。不 await，边跑边截图
+      if (kind === 'agentedit') console.log('[agentedit]', await page.evaluate(async (d) => {
+        try {
+          const url = performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/features/workbench/agent/stageManager.ts')) ?? '/src/features/workbench/agent/stageManager.ts';
+          const { stageManager } = await import(url);
+          stageManager.start();
+          await new Promise((r) => setTimeout(r, 300));
+          window.__vAgentT0 = performance.now();
+          window.__vAgentEdit = stageManager.handleBridgeRequest({
+            correlationId: 'v-corr-' + Date.now(),
+            command: 'apply_ops',
+            args: { target: { typeId: 'note', resourceId: d.noteId }, ops: [{ kind: 'note_replace', anchor: { position: 'end' }, payload: { search: d.search, replace: d.replace, isRegex: true }, destructive: true, label: `替换笔记内容（模式长度 ${[...d.search].length}）` }], destructive: true },
+            timeoutMs: 60000,
+            runId: 'v-run-' + Date.now(),
+            sessionId: 'sess_v_research',
+          }).then((r) => { window.__vAgentEditResult = { ...r, ms: Math.round(performance.now() - window.__vAgentT0) }; return r; });
+          return 'sent ' + url;
+        } catch (e) {
+          return 'ERR ' + String(e?.stack ?? e).slice(0, 400);
+        }
+      }, NOTE_EDIT));
+      if (kind === 'agentresult') console.log('[agentresult]', await page.evaluate(() => JSON.stringify(window.__vAgentEditResult ?? null).slice(0, 800)));
+      // wburst:<前缀>,<张数>,<间隔ms>：连拍最后挂载的窗口，记下距 agentedit 发出的毫秒数
+      if (kind === 'wburst') {
+        const [pfx, n, ms] = arg.split(',');
+        for (let i = 0; i < Number(n); i++) {
+          const dt = await page.evaluate(() => Math.round(performance.now() - (window.__vAgentT0 ?? 0)));
+          await winShot(`${pfx}-${String(i).padStart(2, '0')}`, newest());
+          console.log(`[burst] ${pfx}-${String(i).padStart(2, '0')} t+${dt}ms`);
+          await page.waitForTimeout(Number(ms));
+        }
+      }
       if (kind === 'eval') console.log('[eval]', await page.evaluate(arg));
     }
   };

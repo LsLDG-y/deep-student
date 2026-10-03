@@ -60,14 +60,19 @@ export const DAY = {
   researchSubmit: 47.7, // 点「提交」
   researchSteps: 47.84, // 任务面板出现，6 步逐条打勾
   researchDone: 49.12, // 6/6：产物 / 变更 / 任务完成（面板不会自动收起）
-  researchCollapse: 49.36, // 点 ^ 收起面板，露出回答
-  researchTitle: 49.52, // 首轮结束自动起名：侧栏与窗口标题一起变
-  paperType: 49.68, // 点进输入框打追问
-  paperSend: 50.05, // 发出追问 → arXiv 结果
-  paperSave: 50.86, // 论文下载卡：解析地址 → 下载中 → 去重 / 存储 / 文本提取 / 建立索引
-  paperSaved: 51.56, // 已保存 1/1 篇完成
-  hubIndex: 52.2, // 点 Dock「资源库」：打开「全部文件」
-  hubKb: 52.78, // 点侧栏「知识库索引」
+  researchCollapse: 49.32, // 点 ^ 收起面板，露出回答
+  researchTitle: 49.46, // 首轮结束自动起名：侧栏与窗口标题一起变
+  noteType: 49.56, // 点进输入框打「打开这篇笔记，把主要发现改精炼些」
+  noteSend: 49.88, // 发出 → 加载技能组（canvas-note + workbench-tools）→ 打开 / 观察 / 读取 / 替换笔记
+  noteOpen: 50.1, // workbench_open_app：笔记窗从中心弹入（笔记不在 Dock 固定区），级联 1 号槽
+  noteEdit: 50.4, // note_replace：笔记窗 clean → 前端直写；AgentStrip、改动段落蓝色渐隐、「AI 刚修改了这篇笔记」撤销条
+  chatBack: 51.26, // 点对话窗露出来的那截输入框：对话窗回到最前、输入框聚焦
+  paperType: 51.32, // 打追问
+  paperSend: 51.66, // 发出追问 → arXiv 结果
+  paperSave: 52.12, // 论文下载卡：解析地址 → 下载中 → 去重 / 存储 / 文本提取 / 建立索引
+  paperSaved: 52.54, // 已保存 1/1 篇完成
+  hubIndex: 52.94, // 点 Dock「资源库」：打开「全部文件」
+  hubKb: 53.4, // 点侧栏「知识库索引」
   end: 54.0,
 } as const;
 
