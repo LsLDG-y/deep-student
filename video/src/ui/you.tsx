@@ -1,31 +1,25 @@
 import {
   ArrowCounterClockwise,
-  BookOpenText,
   Brain,
-  Cards,
   CaretLeft,
   CaretRight,
-  ChatsCircle,
   CheckCircle,
   Copy,
   DotsThree,
-  FileText,
   GitBranch,
-  Globe,
   Lightning,
+  LinkSimple,
   MagnifyingGlass,
-  NotePencil,
-  PencilSimple,
+  Package,
+  Pencil,
   PlugsConnected,
   Plus,
   Square,
-  Target,
   Trash,
-  TreeStructure,
   Wrench,
 } from '@phosphor-icons/react';
 import { lobeIconData } from '@app/utils/lobeIconData';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { clamp, ease, PACE, prog } from '../lib/time';
 import { font, type Tokens } from '../theme';
 import { ChatSidebar, DockComposer, FG, LINE_SOFT, MUTED, PRI, T, UserBubble, type SidebarRow } from './research';
@@ -85,55 +79,127 @@ export const MemoryPanel = ({ tk, k, answer }: { tk: Tokens; k: number; answer: 
   </div>
 );
 
-// ── 技能管理 ──────────────────────────────────────────
-export const SKILL_W = 1180;
-export const SKILL_H = 540;
-const SKILLS: Array<[string, string, ReactNode]> = [
-  ['调研模式', '多步拆解、联网与本地检索、写成报告', <Globe key="0" size={17} />],
-  ['深度学者', '围绕一个主题持续追问与整理', <Brain key="1" size={17} />],
-  ['导师模式', '苏格拉底式提问，引导你自己想通', <ChatsCircle key="2" size={17} />],
-  ['ChatAnki 制卡', '对话里一句话批量生成闪卡', <Cards key="3" size={17} />],
-  ['智能题库', '出题、判分、变式题与掌握度', <Target key="4" size={17} />],
-  ['思维导图', '一句话生成导图，多轮编辑', <TreeStructure key="5" size={17} />],
-  ['文献综述助手', '检索、精读、按主题汇总文献', <BookOpenText key="6" size={17} />],
-  ['学术搜索', 'arXiv / OpenAlex 搜索与下载', <MagnifyingGlass key="7" size={17} />],
-  ['作文批改', '多场景评分、批注与润色', <PencilSimple key="8" size={17} />],
-  ['试卷分析', '识别试卷、统计知识点分布', <FileText key="9" size={17} />],
-  ['智能笔记', '在画布笔记里整理与改写', <NotePencil key="10" size={17} />],
-  ['记忆管理', '查看与编辑 AI 记住的内容', <Lightning key="11" size={17} />],
-];
+// ── 技能管理（system/skills 应用，SkillsManagementPage + SkillsList） ──────
+/** 技能管理窗默认 980×680；几何取自 probe-ysk（窗口坐标），卡片文案为技能注册表的中文描述。 */
+export const SKILL_W = 980;
+export const SKILL_H = 680;
+const SK_MUTED6 = 'rgba(101, 105, 114, 0.6)';
+const SK_LINE = 'rgba(224, 224, 224, 0.55)';
+const SK_CHIP_FG = 'rgb(59, 63, 69)';
 
-export const SkillsPanel = ({ tk, k }: { tk: Tokens; k: number }) => {
-  const count = Math.round(58 * ease.outCubic(clamp(k * 1.3)));
+/** 标题栏：「所有技能 / 55 个」…「＋ 新建技能」| ⋯（titlebar 内坐标 = 窗口坐标 − 1）。 */
+export const SkillsToolbar = () => {
+  const tb = (x: number, y: number): CSSProperties => ({ position: 'absolute', left: x - 1, top: y - 1 });
   return (
-    <div style={{ position: 'absolute', inset: 0, fontFamily: font.ui, background: tk.background, padding: '22px 26px', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 16, fontWeight: 600, color: tk.foreground }}>技能管理</span>
-        <span style={{ fontSize: 13, color: tk.mutedFg, fontVariantNumeric: 'tabular-nums' }}>内置 {count} · 全局 6 · 项目 2</span>
-        <span style={{ flex: 1 }} />
-        <span style={{ height: 32, padding: '0 12px', borderRadius: 8, border: `1px solid ${tk.border}`, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: tk.foreground }}>
-          <Plus size={13} />
-          技能市场
-        </span>
-      </div>
-      <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
-        {SKILLS.map(([name, desc, icon], i) => {
-          const kk = clamp(k * 3 - i * 0.14);
-          return (
-            <div key={name} style={{ borderRadius: 10, border: `1px solid ${tk.border}`, background: tk.card, padding: '13px 14px', minHeight: 116, boxSizing: 'border-box', opacity: kk, transform: `translateY(${(1 - kk) * 14}px)` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: tk.mutedFg, display: 'inline-flex' }}>{icon}</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: tk.foreground }}>{name}</span>
-              </div>
-              <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.6, color: tk.mutedFg }}>{desc}</div>
-              <div style={{ marginTop: 10, fontSize: 11, color: tk.mutedFg }}>内置 · 激活时才加载工具</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <>
+      <span style={{ ...tb(80, 13), fontSize: 13, fontWeight: 600, lineHeight: '13px', color: FG }}>所有技能</span>
+      <span style={{ ...tb(139, 14), fontSize: 11, fontWeight: 500, lineHeight: '11px', color: 'rgba(101, 105, 114, 0.4)' }}>/</span>
+      <span style={{ ...tb(149.5, 14), fontSize: 11, fontWeight: 500, lineHeight: '11px', color: MUTED }}>55 个</span>
+      <Plus size={14} color={MUTED} style={tb(848.7, 12.5)} />
+      <span style={{ ...tb(868.7, 14), fontSize: 11, fontWeight: 500, lineHeight: '11px', color: MUTED }}>新建技能</span>
+      <span style={{ ...tb(934.3, 12.5), width: 1, height: 14, background: 'rgba(224, 224, 224, 0.4)' }} />
+      <DotsThree size={22} weight="bold" color={MUTED} style={tb(947, 8.5)} />
+    </>
   );
 };
+
+type SkillCard = { name: string; ver: string; desc: string; tools?: number; deps?: number };
+const SKILL_ROWS: Array<{ y: number; h: number; cards: SkillCard[] }> = [
+  {
+    y: 108,
+    h: 174.1,
+    cards: [
+      { name: '脚本化工具组合', ver: 'v1.0.0', desc: 'PTC 程序化工具组合能力：提交一段 Starlark 脚本，用 call(tool, args) 串行组合注册表白名单内工具，并可向 artifacts 写受控产物。适合多步检索/过滤/合并/生成场景，一次调用替代多轮工具往返。', tools: 1 },
+      { name: '工具包', ver: 'v1.0.0', desc: 'ToolPack 并行工具包能力，允许在一次调用中并行执行多个内置工具并汇总结果。当需要同时查询多个数据源时使用。', tools: 1 },
+      { name: '导师模式', ver: 'v2.3.0', desc: '苏格拉底式导师，通过提问与提示引导学习。' },
+    ],
+  },
+  {
+    y: 299.6,
+    h: 189.6,
+    cards: [
+      { name: '调研模式', ver: 'v2.0.0', desc: '深度调研模式，用于探索、归纳与引用。' },
+      { name: '技能安装器', ver: 'v1.3.1', desc: '从链接安装技能包：用户粘贴 GitHub 仓库/子目录链接、SKILL.md 原始链接、zip 直链或社区市场/skills.sh 页面链接时使用。社区市场使用 builtin-skill_market_search / builtin-skill_market_skill_detail 只读检索。', deps: 1, tools: 4 },
+      { name: '模板设计', ver: 'v1.3.0', desc: '设计和管理可复用的文档模板。', tools: 9 },
+    ],
+  },
+  {
+    y: 506.8,
+    h: 174.1,
+    cards: [
+      { name: '深度学者', ver: 'v3.1.0', desc: '默认学习策略：融合记忆生产/消费与轻量询问，确保个性化准确且记忆干净。', deps: 3 },
+      { name: '试卷分析', ver: 'v1.1.0', desc: '智能试卷分析助手：识别已批改试卷上的对错标记、扣分批注和勾画，提取薄弱知识点并整理为结构化问题清单，引导用户确认后逐题攻破。', deps: 1 },
+      { name: '文献综述助手', ver: 'v1.0.0', desc: '规划并撰写文献综述，整合论文与笔记。' },
+    ],
+  },
+];
+const SKILL_COL_X = [36, 344.5, 653];
+
+const Chip = ({ x, y, icon, text }: { x: number; y: number; icon: ReactNode; text: string }) => (
+  <span style={{ ...at(x, y), height: 20, padding: '0 8px', boxSizing: 'border-box', borderRadius: 999, background: 'rgb(253, 253, 253)', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 500, lineHeight: '11px', color: SK_CHIP_FG, whiteSpace: 'nowrap' }}>
+    {icon}
+    {text}
+  </span>
+);
+
+const SkillCardView = ({ x, y, h, c }: { x: number; y: number; h: number; c: SkillCard }) => {
+  const b = y + h;
+  // 依赖 + 工具同时出现时页脚折成两行（技能安装器）
+  const two = c.deps !== undefined && c.tools !== undefined;
+  const lineY = two ? b - 74 : b - 54.5;
+  const r1 = two ? b - 58.4 : b - 39;
+  const mid = two ? b - 46.7 : b - 39;
+  return (
+    <>
+      <span style={{ ...at(x, y), width: 291, height: h, boxSizing: 'border-box', borderRadius: 18, border: `1px solid ${SK_LINE}`, background: 'rgb(253, 253, 253)', boxShadow: '0 12px 24px rgba(0, 0, 0, 0.04)' }} />
+      <T x={x + 15} y={y + 15.5} size={12} weight={500} lh={15}>
+        {c.name}
+      </T>
+      <span style={{ ...at(x + 15, y + 33.3), display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, lineHeight: '16.5px', color: SK_MUTED6, whiteSpace: 'nowrap' }}>
+        {c.ver}
+        <span style={{ width: 1.8, height: 1.8, borderRadius: 9999, background: 'rgb(224, 224, 224)' }} />
+        Deep Student
+      </span>
+      <span style={{ ...at(x + 15, y + 55.5), width: 261, fontSize: 11, lineHeight: '17.875px', color: 'rgba(101, 105, 114, 0.8)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.desc}</span>
+      <span style={{ ...at(x + 15, lineY), width: 261, height: 1, background: SK_LINE }} />
+      <Chip x={x + 15} y={r1} icon={<Package size={10} />} text="内置" />
+      {c.deps !== undefined ? <Chip x={x + 72.5} y={r1} icon={<LinkSimple size={10} />} text={`${c.deps} 依赖`} /> : null}
+      {c.tools !== undefined ? <Chip x={two ? x + 15 : x + 72.5} y={two ? b - 34.9 : r1} icon={<Wrench size={10} />} text={String(c.tools)} /> : null}
+      <span style={{ ...at(x + 178.5, mid), width: 34.5, height: 20, fontSize: 11, fontWeight: 500, lineHeight: '20px', textAlign: 'center', color: SK_MUTED6 }}>停用</span>
+      <Pencil size={14} color={SK_MUTED6} style={at(x + 223.5, mid + 3)} />
+      <DotsThree size={14} color={SK_MUTED6} style={at(x + 255, mid + 3)} />
+    </>
+  );
+};
+
+/** 打开即是完整列表（卡片没有入场动画，framer-motion 只用于编辑器的 layoutId 过渡）。 */
+export const SkillsWindow = () => (
+  <div style={{ position: 'absolute', inset: 0, background: '#fff', fontFamily: font.ui, color: FG }}>
+    <span style={{ ...at(36, 46.8), width: 280, height: 28, borderRadius: 12, background: 'rgb(240, 240, 240)' }} />
+    <MagnifyingGlass size={14} color="rgba(101, 105, 114, 0.7)" style={at(46, 53.8)} />
+    <T x={67} y={51.8} size={12} lh={18} color="rgba(101, 105, 114, 0.7)">
+      搜索技能...
+    </T>
+    <span style={{ ...at(326.5, 46), width: 164.9, height: 29.5, borderRadius: 12, background: 'rgb(240, 240, 240)' }} />
+    <span style={{ ...at(329.5, 49), width: 78.8, height: 23.5, borderRadius: 10, background: 'rgb(253, 253, 253)', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.06)' }} />
+    <Lightning size={12} color={FG} style={at(339, 54.8)} />
+    <T x={356.3} y={52.5} size={11} weight={500} lh={16.5}>
+      全部
+    </T>
+    <T x={386} y={53.3} size={10} weight={700} lh={15}>
+      55
+    </T>
+    <Package size={12} color={FG} style={at(419.5, 54.8)} />
+    <T x={437} y={52.5} size={11} weight={500} lh={16.5}>
+      内置
+    </T>
+    <T x={466.8} y={53.3} size={10} weight={500} lh={15}>
+      55
+    </T>
+    <span style={{ ...at(1, 83.5), width: 978, height: 1, background: SK_LINE }} />
+    {SKILL_ROWS.map((row) => row.cards.map((c, i) => <SkillCardView key={c.name} x={SKILL_COL_X[i]} y={row.y} h={row.h} c={c} />))}
+  </div>
+);
 
 // ── MCP 工具 ──────────────────────────────────────────
 export const MCP_W = 980;

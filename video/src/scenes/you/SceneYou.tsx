@@ -3,7 +3,7 @@ import { camAt, CameraView, type CamKey } from '../../lib/camera';
 import { clamp, ease, FPS, PACE, prog } from '../../lib/time';
 import { brand, light } from '../../theme';
 import { CHAT_H, CHAT_W, ChatTitlebar } from '../../ui/research';
-import { MCP_H, MCP_W, McpPanel, MEM_H, MEM_W, MemoryPanel, MODELS_TITLE, ModelsChat, modelsDoneAt, SKILL_H, SKILL_W, SkillsPanel } from '../../ui/you';
+import { MCP_H, MCP_W, McpPanel, MEM_H, MEM_W, MemoryPanel, MODELS_TITLE, ModelsChat, modelsDoneAt, SKILL_H, SKILL_W, SkillsToolbar, SkillsWindow } from '../../ui/you';
 import { WbWindow } from '../../ui/workbench';
 
 /**
@@ -37,8 +37,8 @@ const CAM: CamKey[] = [
   [YOU.in0 - 0.1, { x: MEM_CX, y: 560, zoom: 1.08 }],
   [YOU.memory + 0.5, { x: MEM_CX, y: 560, zoom: 1.24 }, ease.outCubic],
   [YOU.skills - 0.2, { x: MEM_CX + 40, y: 560, zoom: 1.3 }, ease.linear],
-  [YOU.skills + 0.08, { x: SKILL_CX, y: 560, zoom: 1.2 }, ease.inOutCubic],
-  [YOU.mcp - 0.2, { x: SKILL_CX + 30, y: 560, zoom: 1.25 }, ease.linear],
+  [YOU.skills + 0.08, { x: SKILL_CX, y: 590, zoom: 1.14 }, ease.inOutCubic],
+  [YOU.mcp - 0.2, { x: SKILL_CX + 30, y: 590, zoom: 1.18 }, ease.linear],
   [YOU.mcp + 0.06, { x: MCP_CX, y: 560, zoom: 1.34 }, ease.inOutCubic],
   [YOU.models - 0.2, { x: MCP_CX + 30, y: 560, zoom: 1.4 }, ease.linear],
   [YOU.models + 0.08, { x: MODELS_CX + 60, y: 590, zoom: 1.12 }, ease.inOutCubic],
@@ -91,8 +91,8 @@ export const SceneYou = ({ t }: { t: number }) => {
         <WbWindow tk={tk} rect={MEM_RECT} title="记忆" style={rise(t, YOU.memory - 0.05)}>
           <MemoryPanel tk={tk} k={prog(t, YOU.memory, YOU.answer - 0.05)} answer={prog(t, YOU.answer, YOU.skills - 0.2)} />
         </WbWindow>
-        <WbWindow tk={tk} rect={SKILL_RECT} title="技能管理" style={rise(t, YOU.skills - 0.1)}>
-          <SkillsPanel tk={tk} k={prog(t, YOU.skills, YOU.mcp - 0.35)} />
+        <WbWindow tk={tk} rect={SKILL_RECT} toolbar={<SkillsToolbar />} style={rise(t, YOU.skills - 0.1)}>
+          <SkillsWindow />
         </WbWindow>
         <WbWindow tk={tk} rect={MCP_RECT} title="MCP 工具" style={rise(t, YOU.mcp - 0.1)}>
           <McpPanel tk={tk} k={prog(t, YOU.mcp, YOU.mcp + 0.3)} toggles={prog(t, YOU.mcp + 0.15, YOU.mcp + 0.6)} call={prog(t, YOU.mcp + 0.6, YOU.models - 0.2)} />
