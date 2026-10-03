@@ -68,7 +68,7 @@ export const nodeSize = (n: MMNode) => {
   return { w: textW(n.text, 14) + 12, h: 28 };
 };
 
-export type LayoutId = 'balanced' | 'logic' | 'org' | 'timeline';
+export type LayoutId = 'balanced' | 'mindRight' | 'logic' | 'org' | 'timeline';
 export type Pos = { x: number; y: number };
 type Layout = Record<string, Pos>;
 
@@ -156,6 +156,8 @@ export const LAYOUTS: Record<LayoutId, Layout> = {
     { side: 1, l1: [byId.rolle, byId.lag] },
     { side: -1, l1: [byId.cauchy, byId.taylor] },
   ]),
+  /** 思维导图(向右)：与逻辑图同位置，连线是曲线（编辑器打开这张图时的默认结构） */
+  mindRight: layoutHorizontal([{ side: 1, l1: kids('root') }]),
   logic: layoutHorizontal([{ side: 1, l1: kids('root') }]),
   org: layoutOrg(),
   timeline: layoutTimeline(),
@@ -207,7 +209,11 @@ const edgePath = (layout: LayoutId, p: Pos, ps: { w: number; h: number }, c: Pos
  * 背诵态：mask 为遮罩浮现进度（0→1），revealed[id] 为逐个揭示进度（0→1）；
  * highlight 控制揭示后浅绿高亮的保留程度（退出背诵时淡掉）。
  */
-export type ReciteState = { active: boolean; mask?: number; revealed: Record<string, number>; highlight?: number };
+export type ReciteState = { active: boolean; mask?: number; revealed: Record<string, number>; highlight?: number; whole?: boolean };
+
+/** 编辑器（右侧面板 MindMapContentView）默认主题：灰色连线、二级节点细灰框、叶子灰下划线（probe-clv-open）。 */
+const EDITOR_LINE = 'rgba(101, 105, 114, 0.4)';
+const EDITOR_INK = 'rgb(42, 45, 50)';
 
 const NodeLabel = ({ n, tk, recite }: { n: MMNode; tk: Tokens; recite?: ReciteState }) => {
   if (n.tex) return <Tex tex={n.tex} style={{ fontSize: 15 }} />;
@@ -275,6 +281,7 @@ export const MindmapGraph = ({
   recite,
   fit = 0.86,
   maxScale = Infinity,
+  theme = 'card',
 }: {
   tk: Tokens;
   from: LayoutId;
@@ -289,7 +296,10 @@ export const MindmapGraph = ({
   fit?: number;
   /** fitView 的最大缩放（对应 React Flow maxZoom），避免节点少的布局被放得过大。 */
   maxScale?: number;
+  /** card = 对话内嵌卡片的彩色分支；editor = 右侧面板编辑器的灰色默认主题 */
+  theme?: 'card' | 'editor';
 }) => {
+  const editor = theme === 'editor';
   const palette = tk.dark ? DARK_PALETTE : LIGHT_PALETTE;
   const A = LAYOUTS[from];
   const B = LAYOUTS[to];
@@ -304,7 +314,7 @@ export const MindmapGraph = ({
   // 布局形变时两种连线风格交叉淡化，避免在某一帧硬切
   const edgeStyles: Array<[LayoutId, number]> = from === to ? [[to, 1]] : [[from, 1 - k], [to, k]];
   const axisW = edgeStyles.reduce((s, [st, w]) => s + (st === 'timeline' ? w : 0), 0);
-  const edgeColor = (n: MMNode) => palette[branchOf(n) % palette.length];
+  const edgeColor = (n: MMNode) => (editor ? EDITOR_LINE : palette[branchOf(n) % palette.length]);
   return (
     <div style={{ position: 'absolute', left: 0, top: 0, width, height, overflow: 'hidden' }}>
       <div
@@ -340,7 +350,7 @@ export const MindmapGraph = ({
                         d={edgePath(st, pos(p.id), nodeSize(p), pos(n.id), nodeSize(n), n.depth)}
                         fill="none"
                         stroke={edgeColor(n)}
-                        strokeOpacity={0.85 * Math.min(1, e * 1.5) * w}
+                        strokeOpacity={(editor ? 1 : 0.85) * Math.min(1, e * 1.5) * w}
                         strokeWidth={1.5}
                         strokeLinecap="round"
                       />
@@ -384,8 +394,19 @@ export const MindmapGraph = ({
           }
           if (n.depth === 1) {
             return (
-              <div key={n.id} style={{ ...base, padding: '6px 12px', borderRadius: 4, fontSize: 15, background: tk.card, border: `1px solid ${color}` }}>
+              <div key={n.id} style={{ ...base, padding: '6px 12px', borderRadius: 4, fontSize: 15, background: editor ? '#fff' : tk.card, border: `1px solid ${editor ? 'rgb(224, 224, 224)' : color}` }}>
                 {n.text}
+              </div>
+            );
+          }
+          if (recite?.whole) {
+            // 「一键遮住要点」：整片叶子盖深色圆角条，点开时从左往右揭开
+            const rk = recite.revealed[n.id] ?? 0;
+            const cover = (recite.mask ?? 1) * (1 - rk);
+            return (
+              <div key={n.id} style={{ ...base, padding: '2px 4px 4px 4px', fontSize: 14, borderBottom: `1.5px solid ${color}`, justifyContent: 'flex-start' }}>
+                {n.tex ? <Tex tex={n.tex} style={{ fontSize: 15 }} /> : n.text}
+                {cover > 0.001 ? <span style={{ position: 'absolute', left: 0, right: 0, top: 1, bottom: 4, borderRadius: 4, background: EDITOR_INK, opacity: recite.mask ?? 1, clipPath: `inset(0 0 0 ${rk * 100}%)` }} /> : null}
               </div>
             );
           }
