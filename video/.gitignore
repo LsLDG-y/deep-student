@@ -1,5 +1,0 @@
-node_modules/
-out/
-.remotion/
-# 由 scripts/synth-score.mjs 生成（npm run audio；studio / render 前会自动生成）
-public/audio/
