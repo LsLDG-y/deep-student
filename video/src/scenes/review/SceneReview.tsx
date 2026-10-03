@@ -123,8 +123,8 @@ const sessionAt = (t: number): SessionState => {
   const rated = cs.filter((x) => t >= x.rate + 0.02);
   const learnAdds = rated.filter((x) => x.rating !== 4).length;
   const last = rated[rated.length - 1];
-  // 「点击翻面」只在指针停在卡面上时出现（opacity 160ms）
-  const hover = (k: number) => (inStage(pathAt(k, REVIEW_PUPIL)) ? 1 : 0);
+  // 「点击翻面」只在指针停在卡面上时出现（opacity 160ms）；指针入场前不算
+  const hover = (k: number) => (k >= WK.cards[0].at + 0.06 && inStage(pathAt(k, REVIEW_PUPIL)) ? 1 : 0);
   return {
     card: REVIEW[idx],
     back: t >= c.show,
