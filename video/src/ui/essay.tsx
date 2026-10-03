@@ -1,4 +1,5 @@
 import {
+  ArrowClockwise,
   ArrowRight,
   Cards,
   CaretDown,
@@ -15,6 +16,7 @@ import {
   ListChecks,
   Notebook,
   Pen,
+  PencilSimple,
   PenNib,
   Robot,
   Sparkle,
@@ -25,7 +27,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { clamp, ease } from '../lib/time';
 import { S } from '../strings';
 import { font, type Tokens } from '../theme';
-import { at, Btn, HOVER_BG, MAIN_W, MAIN_X, mix, RESOURCE_NEW_PT, ResourceHome, ResourceSidebar } from './resource';
+import { at, Btn, CollapsingSidebar, FULL_W, FULL_X, HOVER_BG, mix, RESOURCE_NEW_PT, ResourceHome, ResourceSidebar } from './resource';
 
 /**
  * 作文批改：ResourceAppWorkspace（左栏作文列表）+ EssayContentView（InputPanel 上 / ResultPanel 下）。
@@ -39,6 +41,8 @@ export const ESSAY_H = 620;
 
 const MODE_NAME = '雅思大作文';
 const MODEL_NAME = 'deepseek-v4';
+/** 摘要行里显示的是模型配置名（essay_grading_get_models 的 name） */
+const MODEL_LABEL = 'DeepSeek V4';
 const NEW_NAME = '新作文';
 const EXISTING = ['雅思大作文：远程办公的利弊', '雅思大作文：城市该不该限车'];
 /** 粘贴后的输入统计（真机 xc-4） */
@@ -108,10 +112,12 @@ export type EssayState = {
   stage: EssayStage;
   /** 视图切换淡入 0–1 */
   enter: number;
+  /** 资源列表收起进度 0–1（新建后） */
+  collapse: number;
   pasted: boolean;
   hover: EssayTarget | null;
   press: number;
-  /** 输入锁定提示条展开 0–1（grid-rows 200ms） */
+  /** 开始批改后原文收成摘要行、结果区接管 0–1 */
   lock: number;
   /** 已流出的原始字符数（含批注标签，= 后端 progress 的 char_count） */
   stream: number;
@@ -144,25 +150,38 @@ const Spin = ({ size, color, clock, style }: { size: number; color: string; cloc
   <CircleNotch size={size} color={color} style={{ ...style, transform: `rotate(${(clock * 360) % 360}deg)` }} />
 );
 
-// ── 输入区 ────────────────────────────────────────────
-const TopRows = ({ tk, locked }: { tk: Tokens; locked: number }) => (
+// ── 布局（880 宽窗口新建后资源列表自动收起，主区 877 宽；取证 probe-ey* / probe-ez*）────────
+const X0 = FULL_X;
+/** 正文 / 分数卡 / 润色卡的居中栏：max-width 728 */
+const COL = 76.5;
+const COL_W = 728;
+const LINE_X = { left: X0, width: FULL_W } as const;
+
+const PHASES = ['preparing', 'annotating', 'scoring', 'polishing', 'model_essay'] as const;
+type Phase = 'preparing' | 'annotating' | 'polishing';
+/** 产品按内容推断阶段（ResultPanel.inferGradingPhase）：<section-polish 一出现就判成润色，<score> 在它之后，所以评分阶段也显示「润色中」。 */
+const phaseOf = (stream: number): Phase => (stream <= 0 ? 'preparing' : stream > POLISH_AT ? 'polishing' : 'annotating');
+void PHASES;
+
+// ── 批改前：原文占满（模式行 / 题目参考材料 / 输入区 / 统计 / 模型行），结果折成底部占位条 ──
+const TopRows = ({ tk }: { tk: Tokens }) => (
   <>
-    <Btn style={{ ...at(287, 45), width: 130.5, height: 28, borderRadius: 5, padding: '0 0 0 13.3px', gap: 7, fontSize: 12, fontWeight: 500, color: tk.mutedFg, opacity: 1 - 0.5 * locked }}>
+    <Btn style={{ ...at(16, 45), width: 130.5, height: 28, borderRadius: 5, padding: '0 0 0 13.3px', gap: 7, fontSize: 12, fontWeight: 500, color: tk.mutedFg }}>
       <GraduationCap size={14} />
       {MODE_NAME}
       <CaretDown size={16} />
     </Btn>
-    <Btn style={{ ...at(737.2, 45.9), width: 88, height: 26.3, borderRadius: 9, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: mix(tk.mutedFg, 60), opacity: 1 - 0.5 * locked }}>
+    <Btn style={{ ...at(737.2, 45.9), width: 88, height: 26.3, borderRadius: 9, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: mix(tk.mutedFg, 60) }}>
       <ImageIcon size={14} />
       {S.essay.importImages}
     </Btn>
     <span style={{ ...at(828.7, 51.3), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 60) }}>{S.essay.round(1)}</span>
-    <span style={{ ...at(MAIN_X, 79), width: MAIN_W, height: 1, background: LINE }} />
-    <span style={{ ...at(287, 87), width: 16, height: 16, borderRadius: 3.5, background: 'rgba(240,240,240,0.6)' }} />
-    <FileText size={12} color={mix(tk.mutedFg, 70)} style={{ ...at(289, 89) }} />
-    <span style={{ ...at(310, 87.3), fontSize: 11, fontWeight: 500, lineHeight: '15.4px', color: mix(tk.mutedFg, 70) }}>{S.essay.topic}</span>
+    <span style={{ ...at(X0, 79), width: FULL_W, height: 1, background: LINE }} />
+    <span style={{ ...at(16, 87), width: 16, height: 16, borderRadius: 3.5, background: 'rgba(240,240,240,0.6)' }} />
+    <FileText size={12} color={mix(tk.mutedFg, 70)} style={{ ...at(18, 89) }} />
+    <span style={{ ...at(39, 87.3), fontSize: 11, fontWeight: 500, lineHeight: '15.4px', color: mix(tk.mutedFg, 70) }}>{S.essay.topic}</span>
     <CaretDown size={14} color={mix(tk.mutedFg, 70)} style={{ ...at(850, 88) }} />
-    <span style={{ ...at(MAIN_X, 110), width: MAIN_W, height: 1, background: LINE }} />
+    <span style={{ ...at(X0, 110), width: FULL_W, height: 1, background: LINE }} />
   </>
 );
 
@@ -173,144 +192,122 @@ const Grip = ({ tk, bottom }: { tk: Tokens; bottom: number }) => (
   </svg>
 );
 
-const PHASES = ['preparing', 'annotating', 'scoring', 'polishing', 'model_essay'] as const;
-type Phase = 'preparing' | 'annotating' | 'polishing';
-/** 产品按内容推断阶段（ResultPanel.inferGradingPhase）：<section-polish 一出现就判成润色，<score> 在它之后，所以评分阶段也显示「润色中」。 */
-const phaseOf = (stream: number): Phase => (stream <= 0 ? 'preparing' : stream > POLISH_AT ? 'polishing' : 'annotating');
+const INPUT_BOTTOM = 507.1;
 
-const LockBanner = ({ tk, k, phase, clock }: { tk: Tokens; k: number; phase: Phase; clock: number }) => {
-  const cur = PHASES.indexOf(phase);
-  return (
-    <div style={{ ...at(MAIN_X, 111), width: 605, height: 26.9 * k, overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, width: 605, height: 26.9, boxSizing: 'border-box', background: mix(tk.primary, 5), borderBottom: `1px solid ${LINE}` }}>
-        <Spin size={12} color={tk.primary} clock={clock} style={{ position: 'absolute', left: 14, top: 6.9 }} />
-        <span style={{ position: 'absolute', left: 33, top: 5.3, fontSize: 11, lineHeight: '15.4px', color: tk.mutedFg }}>{S.essay.lock}</span>
-        <span style={{ position: 'absolute', left: 521.3, top: 5.3, fontSize: 11, lineHeight: '15.4px', color: mix(tk.primary, 80) }}>{S.essay.phase[phase]}</span>
-        {PHASES.map((p, i) => (
-          <span
-            key={p}
-            style={{
-              position: 'absolute',
-              left: 559.5 + 7 * i,
-              top: 11.2,
-              width: 3.5,
-              height: 3.5,
-              borderRadius: '50%',
-              background: i < cur ? mix(tk.primary, 50) : i === cur ? tk.primary : mix(tk.mutedFg, 25),
-              transform: i === cur ? 'scale(1.25)' : undefined,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const InputArea = ({ tk, s, k }: { tk: Tokens; s: EssayState; k: number }) => {
+const InputArea = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
+  const st = S.essay.stat;
   if (!s.pasted) {
     const dim = mix(tk.mutedFg, 45);
+    const n0 = `${st.han}: 0 · ${st.en}: 0 · ${st.para}: 0 · ${st.punct}: 0 · 0 / 50,000 ${st.chars}`;
     return (
       <>
-        <span style={{ ...at(445.5, 117.5), width: 260, textAlign: 'center', fontSize: 11, lineHeight: '17.9px', color: mix(tk.mutedFg, 50) }}>{S.essay.emptyDesc}</span>
-        <ClipboardText size={12} color={dim} style={{ ...at(474.3, 164.3) }} />
-        <span style={{ ...at(489.8, 163.7), fontSize: 11, lineHeight: '13.2px', color: dim }}>{S.essay.pasteHint}</span>
-        <span style={{ ...at(573.8, 163.7), fontSize: 11, lineHeight: '13.2px', color: dim }}>·</span>
-        <UploadSimple size={12} color={dim} style={{ ...at(584.2, 164.3) }} />
-        <span style={{ ...at(599.7, 163.7), fontSize: 11, lineHeight: '13.2px', color: dim }}>{S.essay.dropHint}</span>
-        <Btn style={{ ...at(462, 187.4), width: 110, height: 26.3, borderRadius: 9, border: `1px solid ${LINE}`, padding: '0 0 0 10.5px', gap: 7, fontSize: 11, fontWeight: 500, color: mix(tk.mutedFg, 70) }}>
+        <span style={{ ...at(310, 253), width: 260, textAlign: 'center', fontSize: 12, fontWeight: 500, lineHeight: '18px', color: mix(tk.foreground, 70) }}>{S.essay.emptyTitle}</span>
+        <span style={{ ...at(310, 274.5), width: 260, textAlign: 'center', fontSize: 11, lineHeight: '17.9px', color: mix(tk.mutedFg, 50) }}>{S.essay.emptyDesc}</span>
+        <ClipboardText size={12} color={dim} style={{ ...at(323.3, 321.4) }} />
+        <span style={{ ...at(338.8, 320.8), fontSize: 11, lineHeight: '13.2px', color: dim }}>{S.essay.pasteHint}</span>
+        <span style={{ ...at(438.3, 320.8), fontSize: 11, lineHeight: '13.2px', color: dim }}>·</span>
+        <UploadSimple size={12} color={dim} style={{ ...at(448.7, 321.4) }} />
+        <span style={{ ...at(464.2, 320.8), fontSize: 11, lineHeight: '13.2px', color: dim }}>{S.essay.dropHint}</span>
+        <Btn style={{ ...at(326.5, 344.5), width: 110, height: 26.3, borderRadius: 9, border: `1px solid ${LINE}`, padding: '0 0 0 10.5px', gap: 7, fontSize: 11, fontWeight: 500, color: mix(tk.mutedFg, 70) }}>
           <ImageIcon size={14} />
           {S.essay.ocr}
         </Btn>
-        <Btn style={{ ...at(579, 187.4), width: 110, height: 26.3, borderRadius: 9, border: `1px solid ${mix(tk.primary, 25)}`, padding: '0 0 0 10.5px', gap: 7, fontSize: 11, fontWeight: 500, color: mix(tk.primary, 80) }}>
+        <Btn style={{ ...at(443.5, 344.5), width: 110, height: 26.3, borderRadius: 9, border: `1px solid ${mix(tk.primary, 25)}`, padding: '0 0 0 10.5px', gap: 7, fontSize: 11, fontWeight: 500, color: mix(tk.primary, 80) }}>
           <Sparkle size={14} />
           {S.essay.sample}
         </Btn>
-        <Grip tk={tk} bottom={198.6} />
+        <Grip tk={tk} bottom={INPUT_BOTTOM} />
+        <span style={{ ...at(X0, 513.7), width: 864 - X0, textAlign: 'right', fontSize: 11, lineHeight: '13px', color: mix(tk.mutedFg, 50), whiteSpace: 'nowrap' }}>{n0}</span>
       </>
     );
   }
-  const top = 111 + 26.9 * k;
-  const h = 82 - 16 * k;
-  const statY = 196.8 + 8.1 * k;
-  const st = S.essay.stat;
   const n = INPUT_STATS;
   return (
     <>
-      <div style={{ ...at(MAIN_X, top), width: 605, height: h, overflow: 'hidden' }}>
-        {/* 粘贴后光标停在末尾，textarea 滚到能看见最后一行（xc-4：末行只露出上半截） */}
-        <div style={{ position: 'absolute', left: 18, width: 567, bottom: h - 91.1, fontSize: 12, lineHeight: '21.6px', color: tk.foreground, whiteSpace: 'pre-wrap' }}>{ESSAY_TEXT}</div>
+      <div style={{ ...at(X0, 111), width: FULL_W, height: INPUT_BOTTOM - 111, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', left: COL - X0, top: 17.5, width: COL_W, fontSize: 12, lineHeight: '21.6px', color: tk.foreground, whiteSpace: 'pre-wrap' }}>{ESSAY_TEXT}</div>
       </div>
-      <Grip tk={tk} bottom={top + h} />
-      <span style={{ ...at(MAIN_X, statY), width: 836 + 28 * k - MAIN_X, textAlign: 'right', fontSize: 11, lineHeight: '13px', color: mix(tk.mutedFg, 50), whiteSpace: 'nowrap' }}>
+      <Grip tk={tk} bottom={INPUT_BOTTOM} />
+      <span style={{ ...at(X0, 510.9), width: 836 - X0, textAlign: 'right', fontSize: 11, lineHeight: '13px', color: mix(tk.mutedFg, 50), whiteSpace: 'nowrap' }}>
         {`${st.han}: ${n.han} · ${st.en}: ${n.en} · ${st.para}: ${n.para} · ${st.punct}: ${n.punct} · ${n.chars} / 50,000 ${st.chars}`}
       </span>
-      {k < 0.5 ? <Trash size={14} color={mix(tk.mutedFg, 50)} style={{ ...at(846.5, 196.5), opacity: 1 - 2 * k }} /> : null}
+      <Trash size={14} color={mix(tk.mutedFg, 50)} style={{ ...at(846.5, 510.6) }} />
     </>
   );
 };
 
-const ModelRow = ({ tk, s, k }: { tk: Tokens; s: EssayState; k: number }) => {
-  const top = 221 + 5.3 * k;
-  const grading = s.stage === 'grading';
+const ModelRow = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
   const hover = s.hover === 'grade';
   return (
     <>
-      <span style={{ ...at(MAIN_X, top), width: 605, height: 1, background: LINE }} />
-      <Btn style={{ ...at(287, 233.4 + 2.6 * k), width: 134.9, height: 26.3, borderRadius: 9, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: tk.mutedFg, opacity: 1 - 0.5 * k }}>
+      <span style={{ ...at(X0, 535.1), width: FULL_W, height: 1, background: LINE }} />
+      <Btn style={{ ...at(16, 547.5), width: 134.9, height: 26.3, borderRadius: 9, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: tk.mutedFg }}>
         <Robot size={14} />
         {MODEL_NAME}
         <CaretDown size={14} />
       </Btn>
-      {grading ? (
-        <Btn style={{ ...at(796, 236), width: 68, height: 26.3, borderRadius: 9, justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: tk.mutedFg }}>
-          <Spin size={14} color={tk.mutedFg} clock={s.clock} />
-          {S.essay.cancel}
-        </Btn>
-      ) : (
-        <Btn
-          style={{
-            ...at(786, 230.8),
-            width: 78,
-            height: 31.5,
-            borderRadius: 9,
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 500,
-            color: s.pasted ? tk.foreground : tk.mutedFg,
-            opacity: s.pasted ? 1 : 0.5,
-            background: hover ? HOVER_BG : 'transparent',
-            transform: `scale(${1 - 0.03 * (hover ? s.press : 0)})`,
-          }}
-        >
-          {S.essay.grade}
-        </Btn>
-      )}
-      <span style={{ ...at(MAIN_X, 271), width: MAIN_W, height: 1, background: tk.border }} />
+      <Btn
+        style={{
+          ...at(786, 544.9),
+          width: 78,
+          height: 31.5,
+          borderRadius: 9,
+          justifyContent: 'center',
+          fontSize: 12,
+          fontWeight: 500,
+          color: s.pasted ? tk.foreground : tk.mutedFg,
+          opacity: s.pasted ? 1 : 0.5,
+          background: hover ? HOVER_BG : 'transparent',
+          transform: `scale(${1 - 0.03 * (hover ? s.press : 0)})`,
+        }}
+      >
+        {S.essay.grade}
+      </Btn>
+      <span style={{ ...at(X0, 585.1), width: FULL_W, height: 1, background: 'rgba(224,224,224,0.4)' }} />
+      <Pen size={13} color={mix(tk.mutedFg, 60)} style={{ ...at(16, 596) }} />
+      <span style={{ ...at(36, 594.9), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 60) }}>{S.essay.result}</span>
+      <span style={{ ...at(821, 594.9), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 40) }}>{S.essay.waitTitle}</span>
     </>
   );
 };
 
-// ── 结果区：顶栏 / 分段 Tab / 筛选芯片 ─────────────────
-const ResultHeader = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
+const DraftPane = ({ tk, s }: { tk: Tokens; s: EssayState }) => (
+  <>
+    <TopRows tk={tk} />
+    <InputArea tk={tk} s={s} />
+    <ModelRow tk={tk} s={s} />
+  </>
+);
+
+// ── 批改开始后：原文收成一行摘要，结果标题并入分段 Tab 行 ──────────
+const SummaryLine = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
   const grading = s.stage === 'grading';
-  const phase = phaseOf(s.stream);
-  const chars = Math.floor(s.stream);
-  const icon = (x: number, I: typeof Copy) => <I key={x} size={14} color={mix(tk.mutedFg, 50)} style={{ ...at(x + 5.3, 285) }} />;
+  const btn = (x: number, w: number, icon: ReactNode, label: string, labelX: number, color: string) => (
+    <>
+      <span style={{ ...at(x, 45.9), width: w, height: 26.3, borderRadius: 9 }} />
+      {icon}
+      <span style={{ ...at(labelX, 53.5), fontSize: 11, fontWeight: 500, lineHeight: '11px', color }}>{label}</span>
+    </>
+  );
   return (
     <>
-      <Pen size={14} color={mix(tk.foreground, 70)} style={{ ...at(287, 285) }} />
-      <span style={{ ...at(308, 283.6), fontSize: 12, lineHeight: '16.8px', color: mix(tk.foreground, 70) }}>{S.essay.result}</span>
-      <span style={{ ...at(366.5, 284.3), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 60) }}>{S.essay.round(1)}</span>
+      <GraduationCap size={14} color={tk.mutedFg} style={{ ...at(16, 52) }} />
+      <span style={{ ...at(35.3, 50.6), fontSize: 12, lineHeight: '16.8px', color: mix(tk.foreground, 80) }}>{MODE_NAME}</span>
+      <Robot size={13} color={tk.mutedFg} style={{ ...at(105.8, 52.5) }} />
+      <span style={{ ...at(124, 51.3), fontSize: 11, lineHeight: '15.4px', color: tk.mutedFg }}>{MODEL_LABEL}</span>
+      <span style={{ ...at(205.3, 51.3), fontSize: 11, lineHeight: '15.4px', color: tk.mutedFg }}>{S.essay.words(INPUT_STATS.en)}</span>
       {grading ? (
         <>
-          <Spin size={12} color={mix(tk.primary, 70)} clock={s.clock} style={{ ...at(412.4, 286) }} />
-          <span style={{ ...at(429.6, 284.3), fontSize: 11, lineHeight: '15.4px', color: mix(tk.primary, 70) }}>{S.essay.phase[phase]}</span>
-          {chars > 0 ? <span style={{ ...at(467.8, 284.3), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 50), whiteSpace: 'nowrap' }}>· {S.essay.generated(chars)}</span> : null}
+          {btn(705.8, 88, <Eye key="i" size={14} color={mix(tk.mutedFg, 70)} style={{ ...at(717.3, 52) }} />, S.essay.viewOriginal, 738.3, mix(tk.mutedFg, 70))}
+          {btn(799, 66, <Spin key="i" size={14} color={tk.mutedFg} clock={s.clock} style={{ ...at(810.5, 52) }} />, S.essay.cancel, 831.5, tk.mutedFg)}
         </>
-      ) : null}
-      {grading && chars > 0 ? [icon(812.5, Copy), icon(840.5, Download)] : null}
-      {s.stage === 'done' ? [icon(784.5, Copy), icon(812.5, Notebook), icon(840.5, Download)] : null}
-      <span style={{ ...at(MAIN_X, 313), width: MAIN_W, height: 1, background: LINE }} />
+      ) : (
+        <>
+          {btn(683.8, 88, <PencilSimple key="i" size={14} color={mix(tk.mutedFg, 70)} style={{ ...at(695.3, 52) }} />, S.essay.editOriginal, 716.3, mix(tk.mutedFg, 70))}
+          {btn(777, 88, <ArrowClockwise key="i" size={14} color={mix(tk.mutedFg, 70)} style={{ ...at(788.5, 52) }} />, S.essay.regrade, 809.5, mix(tk.mutedFg, 70))}
+        </>
+      )}
+      <span style={{ ...at(X0, 79), width: FULL_W, height: 1, background: LINE }} />
     </>
   );
 };
@@ -324,57 +321,81 @@ const countsAt = (pos: number): Counts => {
   return { all: errors + suggestions + highlights, errors, suggestions, highlights };
 };
 
-const TABS_TOP = 313;
-const CHIPS_TOP = 346.9;
-const VIEW_TOP_CHIPS = 380.75;
+const TAB_Y = 87;
+const VIEW_TOP = 155;
 
+/** 分段 Tab + 右侧状态：流式中「◌ 批注中 / 润色中 · 已生成 N 字 · 第 1 轮」+ 复制 / 导出；完成后「6.5/9」总分徽标 · 第 1 轮 + 复制 / 存笔记 / 导出。 */
 const TabsRow = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
+  const grading = s.stage === 'grading';
+  const hasContent = s.stage === 'done' || s.stream > 0;
   const polishShown = s.stage === 'done' || s.stream > POLISH_AT;
-  const polishGenerating = s.stage === 'grading' && s.stream > POLISH_AT && s.stream < POLISH_END;
+  const polishGenerating = grading && s.stream > POLISH_AT && s.stream < POLISH_END;
   const tabs: Array<{ id: string; x: number; w: number; label: string; Icon: typeof FileText }> = [
-    { id: 'overview', x: 287, w: 84.3, label: S.essay.tab.overview, Icon: FileText },
-    { id: 'details', x: 374.8, w: 84.3, label: S.essay.tab.details, Icon: ListChecks },
-    ...(polishShown ? [{ id: 'polish', x: 462.5, w: polishGenerating ? 99.5 : 84.3, label: S.essay.tab.polish, Icon: Sparkle }] : []),
+    { id: 'overview', x: 16, w: 84.3, label: S.essay.tab.overview, Icon: FileText },
+    { id: 'details', x: 103.8, w: 84.3, label: S.essay.tab.details, Icon: ListChecks },
+    ...(polishShown ? [{ id: 'polish', x: 191.5, w: polishGenerating ? 99.5 : 84.3, label: S.essay.tab.polish, Icon: Sparkle }] : []),
   ];
+  const phase = phaseOf(s.stream);
+  const chars = Math.floor(s.stream);
+  const icon = (x: number, I: typeof Copy) => <I key={x} size={14} color={mix(tk.mutedFg, 50)} style={{ ...at(x + 5.3, 93) }} />;
   return (
     <>
-      {tabs.map(({ id, x, w, label, Icon }) => {
-        const active = s.tab === id;
-        const hovered = !active && id === 'polish' && s.hover === 'polish';
-        return (
-          <Btn
-            key={id}
-            style={{
-              ...at(x, 316.5),
-              width: w,
-              height: 25.9,
-              borderRadius: 5,
-              padding: '0 0 0 10.5px',
-              gap: 5.25,
-              fontSize: 11,
-              fontWeight: active ? 500 : 400,
-              color: active ? tk.primary : hovered ? tk.foreground : mix(tk.mutedFg, 60),
-              background: active ? mix(tk.primary, 10) : hovered ? HOVER_BG : 'transparent',
-              transform: `scale(${1 - 0.03 * (hovered ? s.press : 0)})`,
-            }}
-          >
-            <Icon size={14} />
-            {label}
-            {id === 'polish' && polishGenerating ? <Spin size={10} color={mix(tk.mutedFg, 50)} clock={s.clock} style={{ marginLeft: 1 }} /> : null}
-          </Btn>
-        );
-      })}
-      <span style={{ ...at(MAIN_X, CHIPS_TOP - 1), width: MAIN_W, height: 1, background: LINE_SOFT }} />
+      {hasContent
+        ? tabs.map(({ id, x, w, label, Icon }) => {
+            const active = s.tab === id;
+            const hovered = !active && id === 'polish' && s.hover === 'polish';
+            return (
+              <Btn
+                key={id}
+                style={{
+                  ...at(x, TAB_Y),
+                  width: w,
+                  height: 25.9,
+                  borderRadius: 5,
+                  padding: '0 0 0 10.5px',
+                  gap: 5.25,
+                  fontSize: 11,
+                  fontWeight: active ? 500 : 400,
+                  color: active ? tk.primary : hovered ? tk.foreground : mix(tk.mutedFg, 60),
+                  background: active ? mix(tk.primary, 10) : hovered ? HOVER_BG : 'transparent',
+                  transform: `scale(${1 - 0.03 * (hovered ? s.press : 0)})`,
+                }}
+              >
+                <Icon size={14} />
+                {label}
+                {id === 'polish' && polishGenerating ? <Spin size={10} color={mix(tk.mutedFg, 50)} clock={s.clock} style={{ marginLeft: 1 }} /> : null}
+              </Btn>
+            );
+          })
+        : null}
+      {grading ? (
+        <span style={{ position: 'absolute', right: 1078 - 805.5, top: 92.3 - 39, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, lineHeight: '15.4px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+          <Spin size={12} color={mix(tk.primary, 70)} clock={s.clock} />
+          <span style={{ color: mix(tk.primary, 70) }}>{S.essay.phase[phase]}</span>
+          {chars > 0 ? <span style={{ color: mix(tk.mutedFg, 50) }}>· {S.essay.generated(chars)}</span> : null}
+          <span style={{ marginLeft: 3, color: mix(tk.mutedFg, 60) }}>{S.essay.round(1)}</span>
+        </span>
+      ) : (
+        <>
+          <span style={{ ...at(676.7, 86.9), width: 58.5, height: 26.3, borderRadius: 9 }} />
+          <span style={{ ...at(690, 93.5), fontSize: 11, fontWeight: 500, lineHeight: '13px', color: tk.mutedFg, fontVariantNumeric: 'tabular-nums' }}>{TOTAL}</span>
+          <span style={{ ...at(713, 94.5), fontSize: 11, fontWeight: 500, lineHeight: '11px', color: mix(tk.mutedFg, 60) }}>/{MAX}</span>
+          <span style={{ ...at(742.2, 92.3), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 60) }}>{S.essay.round(1)}</span>
+        </>
+      )}
+      {grading && chars > 0 ? [icon(812.5, Copy), icon(840.5, Download)] : null}
+      {s.stage === 'done' ? [icon(784.5, Copy), icon(812.5, Notebook), icon(840.5, Download)] : null}
+      <span style={{ ...at(X0, 116.4), width: FULL_W, height: 1, background: LINE_SOFT }} />
     </>
   );
 };
 
 const ChipsRow = ({ tk, counts }: { tk: Tokens; counts: Counts }) => {
   const chips: Array<[keyof Counts, number, number]> = [
-    ['all', 287, 50.2],
-    ['errors', 340.7, 50],
-    ['suggestions', 394.2, 50],
-    ['highlights', 447.7, 50],
+    ['all', 16, 50.2],
+    ['errors', 69.7, 50],
+    ['suggestions', 123.2, 50],
+    ['highlights', 176.7, 50],
   ];
   return (
     <>
@@ -384,7 +405,7 @@ const ChipsRow = ({ tk, counts }: { tk: Tokens; counts: Counts }) => {
           <Btn
             key={id}
             style={{
-              ...at(x, 352.1),
+              ...at(x, 126.3),
               width: w,
               height: 22.4,
               borderRadius: 999,
@@ -402,9 +423,9 @@ const ChipsRow = ({ tk, counts }: { tk: Tokens; counts: Counts }) => {
           </Btn>
         );
       })}
-      <span style={{ ...at(805.5, 355.6), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 60) }}>{S.essay.expand}</span>
-      <CaretDown size={12} color={mix(tk.mutedFg, 60)} style={{ ...at(853, 357.3) }} />
-      <span style={{ ...at(MAIN_X, VIEW_TOP_CHIPS - 1), width: MAIN_W, height: 1, background: LINE_SOFT }} />
+      <span style={{ ...at(805.5, 129.8), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 60) }}>{S.essay.expand}</span>
+      <CaretDown size={12} color={mix(tk.mutedFg, 60)} style={{ ...at(853, 131.4) }} />
+      <span style={{ ...at(X0, VIEW_TOP - 1), width: FULL_W, height: 1, background: LINE_SOFT }} />
     </>
   );
 };
@@ -420,13 +441,14 @@ const markStyle = (kind: 'good' | 'err' | 'note'): CSSProperties =>
 /**
  * StreamingAnnotatedText：15px / 1.8 行高 / foreground 85%，段间 space-y-3。
  * 流式中普通文字逐字出现；批注标签没闭合前，已到的内文是 pending（muted 60% + animate-pulse），闭合后换成批注样式并淡入 200ms；
- * <score> 在最末尾，流到它时各维度评语也以 pending 样式逐段出现；光标跟在最后一段末尾。
+ * 评分段（<score> 在最末尾）流式中不进正文，正文下方出「◌ 评分生成中...」占位，光标随之隐藏。
  */
 const EssayBody = ({ tk, s, streaming }: { tk: Tokens; s: EssayState; streaming: boolean }) => {
   const pos = streaming ? s.stream : Infinity;
   const pulse = pulseOf(s.clock);
   const pendingStyle: CSSProperties = { color: mix(tk.mutedFg, 60), opacity: pulse };
   const fade = (end: number) => (streaming ? ease.wbOut(clamp((pos - end) / (s.rate * 0.1))) : 1);
+  const scorePending = streaming && pos > SCORE_AT;
   const paras: ReactNode[][] = [];
   for (const para of PARAS) {
     if (para[0].start >= pos) break;
@@ -462,17 +484,7 @@ const EssayBody = ({ tk, s, streaming }: { tk: Tokens; s: EssayState; streaming:
       }),
     );
   }
-  if (streaming && pos > SCORE_AT) {
-    for (const d of DIMS) {
-      if (pos <= d.start) break;
-      paras.push([
-        <span key="p" style={pendingStyle}>
-          {d.comment.slice(0, Math.floor(pos - d.start))}
-        </span>,
-      ]);
-    }
-  }
-  if (streaming && paras.length > 0) {
+  if (streaming && !scorePending && paras.length > 0) {
     paras[paras.length - 1].push(
       <span key="cursor" style={{ display: 'inline-block', width: 1.75, height: 16.5, marginLeft: 1.75, verticalAlign: 'middle', background: mix(tk.foreground, 40), opacity: pulse }} />,
     );
@@ -484,13 +496,19 @@ const EssayBody = ({ tk, s, streaming }: { tk: Tokens; s: EssayState; streaming:
           {items}
         </div>
       ))}
+      {scorePending ? (
+        <div style={{ marginTop: 21, height: 45.5, boxSizing: 'border-box', borderRadius: 7, border: '1px solid rgba(224,224,224,0.3)', background: 'rgba(240,240,240,0.1)', display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', fontSize: 14, lineHeight: '20px', color: tk.mutedFg }}>
+          <Spin size={14} color={tk.mutedFg} clock={s.clock} />
+          {S.essay.scoreGenerating}
+        </div>
+      ) : null}
     </div>
   );
 };
 
 // ── 分数卡（ScoreCard：圆环 / 分数滚动 / 进度条 / 雷达，挂载即播 700ms / 500ms 入场）────
-/** 内容区坐标：取证 xg（滚动到顶，视口顶 380.75）里的窗口 y 直接换算。 */
-const sc = (x: number, y: number): CSSProperties => ({ position: 'absolute', left: x - MAIN_X, top: y - VIEW_TOP_CHIPS });
+/** 内容区坐标：取证 ezc（滚动到顶，视口顶 155）里的窗口 y 直接换算。 */
+const sc = (x: number, y: number): CSSProperties => ({ position: 'absolute', left: x - X0, top: y - VIEW_TOP });
 const gradeColor = (tk: Tokens, ratio: number) => (ratio >= 0.9 ? tk.success : ratio >= 0.75 ? tk.primary : ratio >= 0.6 ? tk.warning : tk.destructive);
 const cssEaseOut = (x: number) => 1 - Math.pow(1 - clamp(x), 2.2);
 const RADAR_LABELS: Record<string, string[]> = {
@@ -509,7 +527,7 @@ const Radar = ({ tk, k }: { tk: Tokens; k: number }) => {
   const poly = (rr: (i: number) => number) => DIMS.map((_, i) => pt(i, rr(i)).join(',')).join(' ');
   const vals = DIMS.map((d) => d.score / d.max);
   return (
-    <svg width={300} height={220} viewBox="0 0 300 220" style={{ ...sc(426, 540.3), overflow: 'visible' }}>
+    <svg width={300} height={220} viewBox="0 0 300 220" style={{ ...sc(COL + (COL_W - 300) / 2, 314.4), overflow: 'visible' }}>
       {[0.25, 0.5, 0.75, 1].map((lv) => (
         <polygon key={lv} points={poly(() => r * lv)} fill="none" stroke={lv === 1 ? 'rgba(224,224,224,0.6)' : LINE} strokeWidth={1} />
       ))}
@@ -549,29 +567,30 @@ const ScoreCard = ({ tk, since }: { tk: Tokens; since: number }) => {
   const count = (TOTAL * (1 - Math.pow(1 - clamp(since / 0.35), 3))).toFixed(1);
   const R = 24.5;
   const C = 2 * Math.PI * R;
+  const right = COL + COL_W;
   return (
     <>
-      <svg width={56} height={56} viewBox="0 0 56 56" style={{ ...sc(290.5, 398.3), transform: 'rotate(-90deg)' }}>
+      <svg width={56} height={56} viewBox="0 0 56 56" style={{ ...sc(COL, 172.4), transform: 'rotate(-90deg)' }}>
         <circle cx={28} cy={28} r={R} fill="none" stroke={mix(tk.muted, 20)} strokeWidth={3.5} />
         <circle cx={28} cy={28} r={R} fill="none" stroke={color} strokeWidth={3.5} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - ratio * k)} />
       </svg>
-      <span style={{ ...sc(290.5, 413.7), width: 56, textAlign: 'center', fontSize: 18, fontWeight: 600, lineHeight: '25.2px', color, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
-      <span style={{ ...sc(360.5, 400.2), fontSize: 12, lineHeight: '16.8px', color: tk.mutedFg }}>{S.essay.total}</span>
-      <span style={{ ...sc(360.5, 418.8), fontSize: 24, fontWeight: 600, lineHeight: '33.6px', color, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
-      <span style={{ ...sc(399, 428.8), fontSize: 14, lineHeight: '19.6px', color: mix(tk.mutedFg, 60) }}>/{MAX}</span>
-      <Btn style={{ ...sc(816.5, 398.3), width: 45, height: 27.3, borderRadius: 5, justifyContent: 'center', fontSize: 12, fontWeight: 500, color, background: mix(color, 10) }}>{S.essay.pass}</Btn>
-      <span style={{ ...sc(290.5, 471.8), width: 571, height: 3.5, borderRadius: 999, background: 'rgba(240,240,240,0.3)', overflow: 'hidden' }}>
-        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 571 * ratio * k, borderRadius: 999, background: color }} />
+      <span style={{ ...sc(COL, 187.8), width: 56, textAlign: 'center', fontSize: 18, fontWeight: 600, lineHeight: '25.2px', color, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+      <span style={{ ...sc(COL + 70, 174.3), fontSize: 12, lineHeight: '16.8px', color: tk.mutedFg }}>{S.essay.total}</span>
+      <span style={{ ...sc(COL + 70, 192.9), fontSize: 24, fontWeight: 600, lineHeight: '33.6px', color, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+      <span style={{ ...sc(COL + 108.5, 202.9), fontSize: 14, lineHeight: '19.6px', color: mix(tk.mutedFg, 60) }}>/{MAX}</span>
+      <Btn style={{ ...sc(right - 45, 172.4), width: 45, height: 27.3, borderRadius: 5, justifyContent: 'center', fontSize: 12, fontWeight: 500, color, background: mix(color, 10) }}>{S.essay.pass}</Btn>
+      <span style={{ ...sc(COL, 245.9), width: COL_W, height: 3.5, borderRadius: 999, background: 'rgba(240,240,240,0.3)', overflow: 'hidden' }}>
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: COL_W * ratio * k, borderRadius: 999, background: color }} />
       </span>
-      <span style={{ ...sc(290.5, 501.8), fontSize: 11, fontWeight: 500, lineHeight: '15.4px', color: mix(tk.mutedFg, 70) }}>{S.essay.dims}</span>
-      <span style={{ ...sc(798.3, 492.8), width: 63.3, height: 33.5, boxSizing: 'border-box', borderRadius: 5, border: '1px solid rgba(224,224,224,0.4)' }} />
-      <ChartBar size={13} color={mix(tk.mutedFg, 50)} style={{ ...sc(808.5, 503) }} />
-      <span style={{ ...sc(830.8, 495.5), width: 28, height: 28, borderRadius: 9, background: mix(tk.primary, 10) }} />
-      <ChartPolar size={13} color={tk.primary} style={{ ...sc(838.3, 503) }} />
+      <span style={{ ...sc(COL, 275.9), fontSize: 11, fontWeight: 500, lineHeight: '15.4px', color: mix(tk.mutedFg, 70) }}>{S.essay.dims}</span>
+      <span style={{ ...sc(right - 63.3, 266.9), width: 63.3, height: 33.5, boxSizing: 'border-box', borderRadius: 5, border: '1px solid rgba(224,224,224,0.4)' }} />
+      <ChartBar size={13} color={mix(tk.mutedFg, 50)} style={{ ...sc(right - 53, 277.1) }} />
+      <span style={{ ...sc(right - 30.7, 269.6), width: 28, height: 28, borderRadius: 9, background: mix(tk.primary, 10) }} />
+      <ChartPolar size={13} color={tk.primary} style={{ ...sc(right - 23.2, 277.1) }} />
       <Radar tk={tk} k={cssEaseOut(since / 0.25)} />
-      <div style={{ ...sc(290.5, 770.35), width: 571, fontSize: 11, lineHeight: '17.9px' }}>
+      <div style={{ ...sc(COL, 544.45), width: COL_W, fontSize: 11, lineHeight: '17.9px' }}>
         {DIMS.map((d, i) => (
-          <div key={d.name} style={{ marginTop: i ? 5.25 : 0 }}>
+          <div key={d.name} style={{ marginTop: i ? 5.25 : 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             <span style={{ color: mix(tk.foreground, 80) }}>{d.name}</span>
             <span style={{ marginLeft: 5.25, fontVariantNumeric: 'tabular-nums' }}>
               <span style={{ fontWeight: 500, color: gradeColor(tk, d.score / d.max) }}>{d.score}</span>
@@ -620,31 +639,32 @@ const POLISH_CARD: { original: Op[]; polished: Op[] } = {
 const DEL: CSSProperties = { color: 'rgba(239,68,68,0.9)', textDecoration: 'line-through', textDecorationColor: 'rgba(248,113,113,0.6)', background: 'rgba(239,68,68,0.05)', borderRadius: 1.75 };
 const INS: CSSProperties = { color: EMERALD_600, textDecoration: 'underline', textDecorationColor: 'rgba(52,211,153,0.6)', textUnderlineOffset: 1.75, background: 'rgba(16,185,129,0.05)', borderRadius: 1.75 };
 
+/** 第一张润色卡（原句一行 / 润色后一行，728 宽卡片 152.1 高，取证 probe-eyp）。 */
 const PolishPane = ({ tk }: { tk: Tokens }) => (
   <>
-    <Sparkle size={14} color={mix(tk.mutedFg, 60)} style={{ ...at(294, 370.5) }} />
-    <span style={{ ...at(315, 369.8), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 60) }}>{S.essay.polishDesc}</span>
-    <Btn style={{ ...at(750, 364.4), width: 108, height: 26.3, borderRadius: 9, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: tk.primary }}>
+    <Sparkle size={14} color={mix(tk.mutedFg, 60)} style={{ ...at(80, 144.7) }} />
+    <span style={{ ...at(101, 144), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 60) }}>{S.essay.polishDesc}</span>
+    <Btn style={{ ...at(693, 138.6), width: 108, height: 26.3, borderRadius: 9, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: tk.primary }}>
       <Eye size={12} />
       {S.essay.hideDiff}
     </Btn>
-    <div style={{ ...at(290.5, 404.6), width: 571, height: 171.6, boxSizing: 'border-box', borderRadius: 10.5, border: '1px solid rgba(224,224,224,0.4)', background: 'rgba(252,252,252,0.5)', overflow: 'hidden' }}>
+    <div style={{ ...at(COL, 178.8), width: COL_W, height: 152.1, boxSizing: 'border-box', borderRadius: 10.5, border: '1px solid rgba(224,224,224,0.4)', background: 'rgba(252,252,252,0.5)', overflow: 'hidden' }}>
       <span style={{ position: 'absolute', left: 14, top: 10.5, fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 50) }}>{S.essay.original}</span>
-      <div style={{ position: 'absolute', left: 14, top: 29.15, width: 541, fontSize: 12, lineHeight: '19.5px', color: mix(tk.foreground, 70), whiteSpace: 'pre-wrap' }}>
+      <div style={{ position: 'absolute', left: 14, top: 29.15, width: COL_W - 30, fontSize: 12, lineHeight: '19.5px', color: mix(tk.foreground, 70), whiteSpace: 'pre-wrap' }}>
         {POLISH_CARD.original.map(([d, text], i) => (
           <span key={i} style={d ? DEL : undefined}>
             {text}
           </span>
         ))}
       </div>
-      <div style={{ position: 'absolute', left: 0, top: 80, width: 569, height: 89.8, borderTop: `1px solid ${LINE_SOFT}`, background: 'rgba(236,253,245,0.3)' }}>
+      <div style={{ position: 'absolute', left: 0, top: 61, width: COL_W - 2, height: 89.1, borderTop: `1px solid ${LINE_SOFT}`, background: 'rgba(236,253,245,0.3)' }}>
         <ArrowRight size={12} color={EMERALD_600} style={{ position: 'absolute', left: 14, top: 17.6 }} />
         <span style={{ position: 'absolute', left: 31.3, top: 16, fontSize: 11, lineHeight: '15.4px', color: EMERALD_600 }}>{S.essay.polished}</span>
-        <Btn style={{ position: 'absolute', left: 491, top: 10.5, width: 64, height: 26.3, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: mix(tk.mutedFg, 50) }}>
+        <Btn style={{ position: 'absolute', left: COL_W - 80, top: 10.5, width: 64, height: 26.3, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: mix(tk.mutedFg, 50) }}>
           <Copy size={12} />
           {S.essay.copy}
         </Btn>
-        <div style={{ position: 'absolute', left: 14, top: 40.05, width: 541, fontSize: 12, fontWeight: 500, lineHeight: '19.5px', color: mix(tk.foreground, 85), whiteSpace: 'pre-wrap' }}>
+        <div style={{ position: 'absolute', left: 14, top: 40.05, width: COL_W - 30, fontSize: 12, fontWeight: 500, lineHeight: '19.5px', color: mix(tk.foreground, 85), whiteSpace: 'pre-wrap' }}>
           {POLISH_CARD.polished.map(([d, text], i) => (
             <span key={i} style={d ? INS : undefined}>
               {text}
@@ -657,24 +677,15 @@ const PolishPane = ({ tk }: { tk: Tokens }) => (
 );
 
 // ── 结果区组装 ────────────────────────────────────────
-/** 正文全文高度与完成态内容总高（取证 xg：正文 932.2–1314.7，内容含上下内边距到 1384.7）。 */
-const BODY_H = 382.5;
-const DONE_CONTENT_H = 1384.7 - VIEW_TOP_CHIPS;
+/** 完成态内容总高（取证 ezc：滚动条 199.5 / 轨道 420.9 → 约 888）。 */
+const DONE_CONTENT_H = 888;
+const DONE_BODY_TOP = 670.5;
 const THUMB_MIN = 40;
 
 const Thumb = ({ tk, y, h, k }: { tk: Tokens; y: number; h: number; k: number }) =>
   k > 0 ? <span style={{ ...at(872, y), width: 4, height: h, borderRadius: 999, background: mix(tk.foreground, 26), opacity: k }} /> : null;
 
-/** 流式中按已到的正文 / 评语估算内容高度，滚动条贴底（stick-to-bottom）。 */
-const streamThumb = (s: EssayState, viewTop: number, viewH: number) => {
-  const tail = DIMS.reduce((h, d) => h + (s.stream > d.start ? 64.5 * clamp((s.stream - d.start) / d.comment.length) : 0), 0);
-  const contentH = 87.5 + BODY_H * Math.min(1, s.stream / POLISH_AT) + tail;
-  if (contentH <= viewH) return null;
-  const h = clamp((viewH * (viewH - 4)) / contentH, THUMB_MIN, viewH - 4);
-  return { y: viewTop + viewH - 2 - h, h };
-};
-
-const ResultArea = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
+const ResultPane = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
   const grading = s.stage === 'grading';
   const done = s.stage === 'done';
   const barTop = done ? 577.8 : 557.1;
@@ -682,104 +693,91 @@ const ResultArea = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
   const overview = s.tab === 'overview';
   const counts = countsAt(done ? Infinity : s.stream);
   const chips = overview && (done || s.stream > FIRST_MARK);
-  const viewTop = !hasContent ? TABS_TOP : chips ? VIEW_TOP_CHIPS : CHIPS_TOP;
+  const viewTop = chips ? VIEW_TOP : 116.4;
   const viewH = barTop - viewTop;
   return (
     <>
-      <ResultHeader tk={tk} s={s} />
-      {hasContent ? <TabsRow tk={tk} s={s} /> : null}
+      <SummaryLine tk={tk} s={s} />
+      <TabsRow tk={tk} s={s} />
       {chips ? <ChipsRow tk={tk} counts={counts} /> : null}
       {grading && !hasContent ? (
-        <Btn style={{ ...at(MAIN_X, (TABS_TOP + barTop) / 2 - 9), width: MAIN_W, justifyContent: 'center', gap: 7, fontSize: 12, color: mix(tk.mutedFg, 40) }}>
+        <Btn style={{ ...at(X0, (116.4 + barTop) / 2 - 9), width: FULL_W, justifyContent: 'center', gap: 7, fontSize: 12, color: mix(tk.mutedFg, 40) }}>
           <Spin size={14} color={mix(tk.mutedFg, 40)} clock={s.clock} />
           {S.essay.waiting}
         </Btn>
       ) : null}
       {grading && hasContent ? (
-        <div style={{ ...at(MAIN_X, viewTop), width: MAIN_W, height: viewH, overflow: 'hidden' }}>
+        <div style={{ ...at(X0, viewTop), width: FULL_W, height: viewH, overflow: 'hidden' }}>
           {/* stick-to-bottom：内容底（含 pb-20）贴住视口底；内容不足一屏时从顶部排 */}
-          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, minHeight: viewH, boxSizing: 'border-box', padding: '17.5px 17.5px 70px' }}>
+          <div style={{ position: 'absolute', left: COL - X0, width: COL_W, bottom: 0, minHeight: viewH, boxSizing: 'border-box', padding: '17.5px 0 70px' }}>
             <EssayBody tk={tk} s={s} streaming />
           </div>
         </div>
       ) : null}
-      {grading && hasContent
-        ? (() => {
-            const th = streamThumb(s, viewTop, viewH);
-            return th ? <Thumb tk={tk} y={th.y} h={th.h} k={s.thumb} /> : null;
-          })()
-        : null}
       {done && overview ? (
-        <div style={{ ...at(MAIN_X, viewTop), width: MAIN_W, height: viewH, overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', left: 0, top: -s.scroll, width: MAIN_W }}>
+        <div style={{ ...at(X0, viewTop), width: FULL_W, height: viewH, overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', left: 0, top: -s.scroll, width: FULL_W }}>
             <ScoreCard tk={tk} since={s.sinceDone} />
-            <div style={{ position: 'absolute', left: 17.5, top: 932.2 - VIEW_TOP_CHIPS, width: 571 }}>
+            <div style={{ position: 'absolute', left: COL - X0, top: DONE_BODY_TOP - VIEW_TOP, width: COL_W }}>
               <EssayBody tk={tk} s={s} streaming={false} />
             </div>
           </div>
         </div>
       ) : null}
-      {done && overview ? <Thumb tk={tk} y={viewTop + 2 + ((viewH - 4 - THUMB_MIN) * s.scroll) / (DONE_CONTENT_H - viewH)} h={THUMB_MIN} k={s.thumb} /> : null}
+      {done && overview ? <Thumb tk={tk} y={viewTop + 2 + ((viewH - 4 - 199.5) * s.scroll) / (DONE_CONTENT_H - viewH)} h={199.5} k={s.thumb} /> : null}
       {done && !overview ? (
         <div style={{ position: 'absolute', inset: 0, opacity: ease.wbOut(s.tabEnter) }}>
           <PolishPane tk={tk} />
         </div>
       ) : null}
-      {done ? (
-        <span style={{ ...at(800.8, 551.9), fontSize: 11, lineHeight: '15.4px', color: mix(tk.mutedFg, 50), opacity: s.resultHover, fontVariantNumeric: 'tabular-nums' }}>
-          {RESULT.length} {S.essay.stat.chars}
-        </span>
-      ) : null}
-      {hasContent || grading ? (
-        <>
-          <span style={{ ...at(MAIN_X, barTop), width: MAIN_W, height: 1, background: LINE }} />
-          {[
-            [649, 121, Notebook, S.essay.mistakes],
-            [777, 88, Cards, S.essay.cards],
-          ].map(([x, w, I, label]) => {
-            const Icon = I as typeof Notebook;
-            return (
-              <Btn key={x as number} style={{ ...at(x as number, barTop + 8), width: w as number, height: 26.3, borderRadius: 9, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: tk.mutedFg, opacity: grading ? 0.5 : 1 }}>
-                <Icon size={14} />
-                {label as string}
-              </Btn>
-            );
-          })}
-          {grading ? <span style={{ ...at(287, 596.6), width: 578, textAlign: 'right', fontSize: 11, lineHeight: '15.4px', color: tk.mutedFg }}>{S.essay.afterGrading}</span> : null}
-        </>
-      ) : (
-        <>
-          <span style={{ ...at(556.8, 410), width: 38.5, height: 38.5, boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(240,240,240,0.2)', border: '1px solid rgba(224,224,224,0.4)' }} />
-          <Pen size={18} color={mix(tk.mutedFg, 50)} style={{ ...at(567, 420.2) }} />
-          <span style={{ ...at(MAIN_X, 459), width: MAIN_W, textAlign: 'center', fontSize: 12, lineHeight: '16.8px', color: mix(tk.mutedFg, 80) }}>{S.essay.waitTitle}</span>
-          <span style={{ ...at(446, 486.3), width: 260, textAlign: 'center', fontSize: 11, lineHeight: '17.9px', color: mix(tk.mutedFg, 50) }}>{S.essay.waitDesc}</span>
-        </>
-      )}
-    </>
-  );
-};
-
-const DraftPane = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
-  const k = ease.outCubic(s.lock);
-  return (
-    <>
-      <TopRows tk={tk} locked={s.stage === 'grading' ? k : 0} />
-      <InputArea tk={tk} s={s} k={s.pasted ? k : 0} />
-      <LockBanner tk={tk} k={k} phase={phaseOf(s.stream)} clock={s.clock} />
-      <ModelRow tk={tk} s={s} k={k} />
-      <ResultArea tk={tk} s={s} />
+      <span style={{ ...at(X0, barTop), width: FULL_W, height: 1, background: LINE }} />
+      {[
+        [649, 121, Notebook, S.essay.mistakes],
+        [777, 88, Cards, S.essay.cards],
+      ].map(([x, w, I, label]) => {
+        const Icon = I as typeof Notebook;
+        return (
+          <Btn key={x as number} style={{ ...at(x as number, barTop + 8), width: w as number, height: 26.3, borderRadius: 9, padding: '0 0 0 11.5px', gap: 7, fontSize: 11, fontWeight: 500, color: tk.mutedFg, opacity: grading ? 0.5 : 1 }}>
+            <Icon size={14} />
+            {label as string}
+          </Btn>
+        );
+      })}
+      {grading ? <span style={{ ...at(16, 596.6), width: 849, textAlign: 'right', fontSize: 11, lineHeight: '15.4px', color: tk.mutedFg }}>{S.essay.afterGrading}</span> : null}
     </>
   );
 };
 
 export const EssayView = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
   const home = s.stage === 'home';
+  const sidebar = <ResourceSidebar tk={tk} winH={ESSAY_H} icon={PenNib} title={S.essay.title} items={home ? EXISTING : [NEW_NAME, ...EXISTING]} fresh={!home} settings={S.essay.settings} />;
+  const k = ease.outCubic(s.lock);
   return (
     <div style={{ position: 'absolute', inset: 0, fontFamily: font.sys, background: tk.background, overflow: 'hidden' }}>
-      <ResourceSidebar tk={tk} winH={ESSAY_H} icon={PenNib} title={S.essay.title} items={home ? EXISTING : [NEW_NAME, ...EXISTING]} fresh={!home} settings={S.essay.settings} />
+      {home ? sidebar : null}
       <div style={{ position: 'absolute', inset: 0, opacity: ease.wbOut(s.enter) }}>
-        {home ? <ResourceHome tk={tk} icon={PenNib} label={S.essay.newEssay} btn={{ x: 520.5, w: 111 }} hover={s.hover === 'new'} press={s.press} /> : <DraftPane tk={tk} s={s} />}
+        {home ? (
+          <ResourceHome tk={tk} icon={PenNib} label={S.essay.newEssay} btn={{ x: 520.5, w: 111 }} hover={s.hover === 'new'} press={s.press} />
+        ) : (
+          <>
+            {k < 1 ? (
+              <div style={{ position: 'absolute', inset: 0, opacity: 1 - k }}>
+                <DraftPane tk={tk} s={s.stage === 'draft' ? s : { ...s, stage: 'draft' }} />
+              </div>
+            ) : null}
+            {k > 0 ? (
+              <div style={{ position: 'absolute', inset: 0, opacity: k }}>
+                <ResultPane tk={tk} s={s} />
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
+      {home ? null : (
+        <CollapsingSidebar tk={tk} k={s.collapse}>
+          {sidebar}
+        </CollapsingSidebar>
+      )}
     </div>
   );
 };
@@ -787,14 +785,15 @@ export const EssayView = ({ tk, s }: { tk: Tokens; s: EssayState }) => {
 /** 片中点到的位置（窗口坐标，含 1px 边框与 38px 标题栏）。 */
 export const ESSAY_PT = {
   newEssay: RESOURCE_NEW_PT,
-  /** 点进输入框（空态说明文字右侧的空白处），随后 ⌘V */
-  input: { x: 768, y: 150 },
-  grade: { x: 825, y: 246.6 },
-  /** 结果区里滚动：流式时停在正文下方的留白（pb-20），滚到顶时落在「分项评分」与雷达之间，不挡字 */
-  wheel: { x: 770, y: 538 },
-  polish: { x: 504.7, y: 329.5 },
+  /** 点进输入框（空态说明下方的空白处），随后 ⌘V */
+  input: { x: 600, y: 430 },
+  grade: { x: 825, y: 560.6 },
+  /** 结果区里停指针的位置：分数卡右侧留白，不挡字 */
+  wheel: { x: 640, y: 222 },
+  polish: { x: 233.7, y: 100 },
 } as const;
 /** 流式进度里的关键位置（原始字符数）：各条批注闭合处、润色段开始、评分段开始、全文长度。 */
 export const ESSAY_STREAM = { marks: MARKS.map((m) => m.end), polish: POLISH_AT, score: SCORE_AT, total: RESULT.length } as const;
-/** 完成后结果区的滚动位置：分数卡插在上方、视口停在正文开头（xf）→ 滚到顶 → 往下露出雷达。 */
-export const ESSAY_SCROLL = { done: 563, top: 0, radar: 165 } as const;
+/** 完成后结果区的滚动位置：分数卡插在上方、视口仍停在正文末尾（滚动锚定）→ 自动平滑滚回顶部分数卡。 */
+export const ESSAY_SCROLL = { done: DONE_CONTENT_H - (577.8 - VIEW_TOP), top: 0 } as const;
+void LINE_X;

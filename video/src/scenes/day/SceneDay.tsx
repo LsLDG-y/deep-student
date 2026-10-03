@@ -131,11 +131,10 @@ const todoState = (t: number): TodoState => ({
   ring: t >= DAY.todayFocus ? ((t - DAY.todayFocus) * PACE) / 1500 : 0,
 });
 
-// 07：作文批改。流式整段压到约 1.1 脚本秒（后端 wire 格式按原始字符匀速流出）；完成后先往上滚看分数，再往下露出雷达
+// 07：作文批改。流式整段压到约 1.1 脚本秒（后端 wire 格式按原始字符匀速流出）；批完自动平滑滚回顶部分数卡（66797e169），全宽下雷达同屏
 const ESSAY_STREAM_T: [number, number] = [DAY.essayStream, DAY.essayDone - 0.03];
 const ESSAY_RATE = ESSAY_STREAM.total / (ESSAY_STREAM_T[1] - ESSAY_STREAM_T[0]);
-const ESSAY_SCROLL_UP: [number, number] = [DAY.essayScoreUp, DAY.essayScoreUp + 0.26];
-const ESSAY_SCROLL_DOWN: [number, number] = [DAY.essayRadar, DAY.essayRadar + 0.22];
+const ESSAY_SCROLL_UP: [number, number] = [DAY.essayDone + 0.02, DAY.essayDone + 0.24];
 /** 指针离开作文结果区（去点桌面「翻译」） */
 const ESSAY_LEAVE = DAY.translateLaunch - 0.42;
 const ESSAY_CLICKS: Array<[EssayTarget, number]> = [
@@ -150,21 +149,19 @@ const essayState = (t: number): EssayState => {
   return {
     stage,
     enter: stage === 'home' ? 1 : prog(t, DAY.essayNew + 0.02, DAY.essayNew + 0.07),
+    collapse: prog(t, DAY.essayNew + 0.02, DAY.essayNew + 0.02 + SIDEBAR_COLLAPSE_S),
     pasted: t >= DAY.essayPaste + 0.04,
     hover: ESSAY_CLICKS.find(([, c]) => t >= c - 0.09 && t < c + 0.05)?.[0] ?? null,
     press: pressAtT === undefined ? 0 : pressAt(t, pressAtT),
-    lock: prog(t, DAY.essayGrade + 0.01, DAY.essayGrade + 0.11) * (1 - prog(t, DAY.essayDone, DAY.essayDone + 0.1)),
+    lock: prog(t, DAY.essayGrade + 0.01, DAY.essayGrade + 0.11),
     stream: ESSAY_STREAM.total * prog(t, ...ESSAY_STREAM_T),
     rate: ESSAY_RATE,
     sinceDone: t - DAY.essayDone,
-    scroll:
-      ESSAY_SCROLL.done +
-      (ESSAY_SCROLL.top - ESSAY_SCROLL.done) * ease.inOutCubic(prog(t, ...ESSAY_SCROLL_UP)) +
-      (ESSAY_SCROLL.radar - ESSAY_SCROLL.top) * ease.inOutCubic(prog(t, ...ESSAY_SCROLL_DOWN)),
+    scroll: ESSAY_SCROLL.done + (ESSAY_SCROLL.top - ESSAY_SCROLL.done) * ease.inOutCubic(prog(t, ...ESSAY_SCROLL_UP)),
     tab: t >= DAY.essayPolish + 0.01 ? 'polish' : 'overview',
     tabEnter: prog(t, DAY.essayPolish + 0.01, DAY.essayPolish + 0.11),
     resultHover: prog(t, DAY.essayDone, DAY.essayDone + 0.1) * (1 - prog(t, ESSAY_LEAVE, ESSAY_LEAVE + 0.1)),
-    thumb: t >= DAY.essayStream ? 1 - prog(t, ESSAY_SCROLL_DOWN[1] + 0.45, ESSAY_SCROLL_DOWN[1] + 0.55) : 0,
+    thumb: t >= DAY.essayDone ? 1 - prog(t, ESSAY_SCROLL_UP[1] + 0.45, ESSAY_SCROLL_UP[1] + 0.55) : 0,
     clock: t * PACE,
   };
 };
@@ -329,16 +326,16 @@ const DAY_CAM: CamKey[] = [
   [DAY.essayLaunch - 0.25, FULL, ease.inOutCubic],
   [DAY.essayOpen + 0.1, FULL, ease.linear],
   // 07：作文窗口 → 新建 → 输入区（粘贴）→ 模型行（开始批改）→ 结果区（流式批注）→ 分数卡 / 雷达 → 润色提升
-  [DAY.essayNew - 0.12, { x: 560, y: 460, zoom: 1.3 }, ease.inOutCubic],
-  [DAY.essayNew + 0.06, { x: 560, y: 460, zoom: 1.3 }, ease.linear],
-  [DAY.essayPaste - 0.04, { x: 600, y: 330, zoom: 1.55 }, ease.inOutCubic],
-  [DAY.essayGrade + 0.05, { x: 640, y: 360, zoom: 1.55 }, ease.inOutCubic],
-  [DAY.essayStream + 0.25, { x: 648, y: 520, zoom: 1.7 }, ease.inOutCubic],
-  [DAY.essayDone, { x: 648, y: 530, zoom: 1.72 }, ease.linear],
-  [DAY.essayScoreUp + 0.3, { x: 648, y: 560, zoom: 1.85 }, ease.inOutCubic],
-  [DAY.essayPolish - 0.05, { x: 648, y: 560, zoom: 1.85 }, ease.linear],
-  [DAY.essayPolish + 0.3, { x: 648, y: 545, zoom: 1.85 }, ease.inOutCubic],
-  [DAY.translateLaunch - 0.75, { x: 650, y: 548, zoom: 1.86 }, ease.linear],
+  [DAY.essayNew - 0.12, { x: 512, y: 460, zoom: 1.3 }, ease.inOutCubic],
+  [DAY.essayNew + 0.06, { x: 512, y: 460, zoom: 1.3 }, ease.linear],
+  [DAY.essayPaste - 0.04, { x: 540, y: 430, zoom: 1.45 }, ease.inOutCubic],
+  [DAY.essayGrade + 0.05, { x: 560, y: 450, zoom: 1.45 }, ease.inOutCubic],
+  [DAY.essayStream + 0.25, { x: 512, y: 430, zoom: 1.55 }, ease.inOutCubic],
+  [DAY.essayDone, { x: 512, y: 440, zoom: 1.55 }, ease.linear],
+  [DAY.essayScoreUp + 0.3, { x: 500, y: 450, zoom: 1.6 }, ease.inOutCubic],
+  [DAY.essayPolish - 0.05, { x: 500, y: 450, zoom: 1.6 }, ease.linear],
+  [DAY.essayPolish + 0.3, { x: 512, y: 440, zoom: 1.6 }, ease.inOutCubic],
+  [DAY.translateLaunch - 0.75, { x: 514, y: 442, zoom: 1.61 }, ease.linear],
   [DAY.translateLaunch - 0.3, FULL, ease.inOutCubic],
   [DAY.translateOpen + 0.1, FULL, ease.linear],
   // 翻译窗口 → 新建 → 原文框（粘贴）→ 翻译 → 左右两栏看译文流出、保存
@@ -441,7 +438,7 @@ const PUPIL_PATH: Array<[number, number, number]> = (() => {
     [DAY.essayGrade - 0.07, es.grade.x, es.grade.y],
     [DAY.essayGrade + 0.06, es.grade.x, es.grade.y],
     [DAY.essayStream + 0.22, es.wheel.x, es.wheel.y],
-    [ESSAY_SCROLL_DOWN[1] + 0.05, es.wheel.x + 6, es.wheel.y + 4],
+    [DAY.essayRadar + 0.27, es.wheel.x + 6, es.wheel.y + 4],
     [DAY.essayPolish - 0.07, es.polish.x, es.polish.y],
     [DAY.essayPolish + 0.06, es.polish.x, es.polish.y],
     [DAY.essayPolish + 0.45, es.polish.x + 150, es.polish.y + 160],
@@ -649,7 +646,7 @@ export const SceneDay = ({ t }: { t: number }) => {
             </WbWindow>
           ) : null}
           {essay.visible ? (
-            <WbWindow tk={tk} rect={ESSAY_RECT} title={APP_NAMES.essay} focused={t < DAY.translateOpen} style={essay.style}>
+            <WbWindow tk={tk} rect={ESSAY_RECT} toolbar={<ResourceTitlebar title={APP_NAMES.essay} rail={t < DAY.essayNew + 0.02} />} focused={t < DAY.translateOpen} style={essay.style}>
               <EssayView tk={tk} s={essayState(t)} />
             </WbWindow>
           ) : null}
