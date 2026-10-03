@@ -40,7 +40,7 @@ const SURFACE = 'rgb(252, 252, 252)';
 const at = (x: number, y: number): CSSProperties => ({ position: 'absolute', left: x, top: y });
 
 export const MmPanelHeader = ({ title }: { title: string }) => (
-  <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: MP.header, background: '#fff', fontFamily: font.ui }}>
+  <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: MP.header, boxSizing: 'border-box', borderBottom: '1px solid rgb(238, 238, 238)', background: '#fff', fontFamily: font.ui }}>
     <FileText size={16} color={MUTED} style={at(12.5, 12.3)} />
     <span style={{ ...at(35.5, 11.3), display: 'inline-flex', alignItems: 'baseline', gap: 7, whiteSpace: 'nowrap' }}>
       <span style={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: FG }}>{title}</span>
@@ -76,6 +76,7 @@ const IconBtn = ({ cx, active, press = 0, children }: { cx: number; active?: boo
 /** 面板宽 720 时右侧只剩图标：切换结构 / 样式 | 背诵 / 隐藏已完成 / 搜索 | 更多。 */
 export const MmPanelToolbar = ({ structureActive, structurePress = 0, structureTip = 0, recite, recitePress = 0 }: { structureActive: boolean; structurePress?: number; structureTip?: number; recite: boolean; recitePress?: number }) => (
   <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: MP.header + MP.toolbar, fontFamily: font.ui, pointerEvents: 'none' }}>
+    <span style={{ position: 'absolute', left: 0, right: 0, top: MP.header + MP.toolbar - 1, height: 1, background: LINE }} />
     <span style={{ ...at(8.4, 44), width: 125.2, height: 28, boxSizing: 'border-box', borderRadius: 9, background: 'rgb(240, 240, 240)' }} />
     <FileText size={14} color={FG} style={at(23, 51)} />
     <span style={{ ...at(41, 49.8), fontSize: 11, fontWeight: 500, lineHeight: '16.5px', color: FG }}>{S.mm.outline}</span>
@@ -125,23 +126,30 @@ const RowBtn = ({ x, w, icon, label, disabled }: { x: number; w: number; icon?: 
 
 /** 「一键遮住要点」按钮中心（背诵行坐标，行顶 = 工具条底）。 */
 export const MP_MASK_BTN = { x: 88.5 + 125.5 / 2, y: 5.3 + 14 } as const;
+/** 遮盖后「全部揭示」按钮中心（背诵行坐标）。 */
+export const MP_REVEAL_ALL_BTN = { x: 392.5 + 99.5 / 2, y: 5.3 + 14 } as const;
+/** --mm-warning：背诵图标与进度条。 */
+const WARN = 'rgb(195, 136, 34)';
 
 /**
- * 背诵模式行：未遮盖时两行（一键遮住要点 / 手动挖空 | 难点优先 | 全部揭示 / 重新遮盖 + 第二行退出，后三项禁用）；
+ * 背诵模式行（ReciteStatusBar，probe-clw-book / clx-mask）：未遮盖时两行（一键遮住要点 / 手动挖空 | 难点优先 | 全部揭示 / 重新遮盖 + 第二行退出，后三项禁用）；
  * 遮盖后一行（进度条 + n/总 · % + 剩余 | 难点优先 | 全部揭示 / 重新遮盖 / 退出）。
  */
-export const MmReciteRow = ({ masked, revealed, total, fill, maskPress = 0 }: { masked: boolean; revealed: number; total: number; fill: number; maskPress?: number }) => {
+export const MmReciteRow = ({ masked, revealed, total, fill, maskPress = 0, revealAllHover = 0, revealAllPress = 0 }: { masked: boolean; revealed: number; total: number; fill: number; maskPress?: number; revealAllHover?: number; revealAllPress?: number }) => {
   const h = masked ? MP.reciteShort : MP.reciteTall;
   const pct = Math.round((revealed / total) * 100);
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: h, background: SURFACE, borderBottom: `1px solid ${LINE}`, fontFamily: font.ui }}>
-      <BookOpen size={16} color="rgb(195, 136, 34)" style={at(10.5, 11.3)} />
+      <BookOpen size={16} color={WARN} style={at(10.5, 11.3)} />
       <span style={{ ...at(33.5, 10.3), fontSize: 12, fontWeight: 500, lineHeight: '18px', color: FG }}>{S.mm.recite}</span>
       {masked ? (
         <>
           <span style={{ ...at(88.5, 15.3), width: 84, height: 8, borderRadius: 9999, background: LINE, overflow: 'hidden' }}>
-            <span style={{ display: 'block', height: '100%', width: `${fill * 100}%`, background: 'rgb(37, 147, 95)' }} />
+            <span style={{ display: 'block', height: '100%', borderRadius: 9999, width: `${fill * 100}%`, background: WARN }} />
           </span>
+          {revealAllHover > 0.001 ? (
+            <span style={{ ...at(392.5, 5.3), width: 99.5, height: 28, borderRadius: 9, background: 'rgb(240, 240, 240)', opacity: revealAllHover, transform: `scale(${1 - revealAllPress * 0.06})` }} />
+          ) : null}
           <span style={{ ...at(179.5, 11), fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
             {revealed}/{total}·{pct}%
           </span>
@@ -237,10 +245,13 @@ const Glyph = ({ cell, color }: { cell: StructCell; color: string }) => {
   );
 };
 
-export const StructureGrid = ({ current, currentLabel, hot, press = 0, style }: { current: StructCell; currentLabel: string; hot?: StructCell; press?: number; style?: CSSProperties }) => (
+/** 选择结构弹层：标题 + 右上「当前: 预设名」（预设名主色加粗）、三类结构格、底部提示；点选即关闭（StructureSelector handlePresetSelect）。 */
+export const StructureGrid = ({ current, currentName, hot, press = 0, style }: { current: StructCell; currentName: string; hot?: StructCell; press?: number; style?: CSSProperties }) => (
   <div style={{ position: 'absolute', width: STRUCT_POP.w, height: STRUCT_POP.h, boxSizing: 'border-box', borderRadius: 12, background: SURFACE, border: `1px solid ${LINE}`, boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)', fontFamily: font.ui, ...style }}>
     <span style={{ ...at(11, 7.3), fontSize: 15, fontWeight: 600, lineHeight: '22.5px', color: FG }}>{S.mm.selectStructure}</span>
-    <span style={{ position: 'absolute', right: 11, top: 10.3, fontSize: 11, lineHeight: '16.5px', color: MUTED }}>{currentLabel}</span>
+    <span style={{ position: 'absolute', right: 11, top: 10.3, fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap' }}>
+      {S.mm.structureCurrent} <span style={{ color: PRI, fontWeight: 500 }}>{currentName}</span>
+    </span>
     {STRUCT_ROWS.map((row, r) => (
       <div key={row.label}>
         <span style={{ ...at(11, ROW_Y[r] - 21), color: MUTED, display: 'inline-flex' }}>{row.icon}</span>
@@ -275,21 +286,59 @@ export const StructureGrid = ({ current, currentLabel, hot, press = 0, style }: 
   </div>
 );
 
+/** 画布点阵底（React Flow Background：Dots，gap 20、size 1、--mm-text-muted、opacity 0.3）。 */
+export const MmCanvasDots = () => (
+  <div
+    style={{
+      position: 'absolute',
+      inset: 0,
+      backgroundImage: 'radial-gradient(circle, rgba(101, 105, 114, 0.7) 0.6px, transparent 1px)',
+      backgroundSize: '20px 20px',
+      backgroundPosition: '10px 10px',
+      opacity: 0.3,
+    }}
+  />
+);
+
+export type MiniRect = { x: number; y: number; w: number; h: number; color: string };
+const MINI = { w: 104, h: 68 } as const;
+
+/** 小地图（React Flow MiniMap 104×68）：节点按分支色画实心块，视口外罩 foreground / 0.08。坐标均为图坐标。 */
+const MmMiniMap = ({ nodes, view }: { nodes: MiniRect[]; view: Omit<MiniRect, 'color'> }) => {
+  let x0 = view.x;
+  let y0 = view.y;
+  let x1 = view.x + view.w;
+  let y1 = view.y + view.h;
+  for (const n of nodes) {
+    x0 = Math.min(x0, n.x);
+    y0 = Math.min(y0, n.y);
+    x1 = Math.max(x1, n.x + n.w);
+    y1 = Math.max(y1, n.y + n.h);
+  }
+  const s = Math.min(MINI.w / (x1 - x0), MINI.h / (y1 - y0));
+  const ox = (MINI.w - (x1 - x0) * s) / 2 - x0 * s;
+  const oy = (MINI.h - (y1 - y0) * s) / 2 - y0 * s;
+  const R = (r: Omit<MiniRect, 'color'>) => ({ x: ox + r.x * s, y: oy + r.y * s, width: r.w * s, height: r.h * s });
+  const v = R(view);
+  return (
+    <svg width={MINI.w} height={MINI.h} style={{ position: 'absolute', left: 0, top: 0 }}>
+      {nodes.map((n, i) => (
+        <rect key={i} {...R(n)} rx={5 * s} fill={n.color} />
+      ))}
+      <path d={`M0 0H${MINI.w}V${MINI.h}H0Z M${v.x} ${v.y}v${v.height}h${v.width}v${-v.height}Z`} fill="rgba(42, 45, 50, 0.08)" fillRule="evenodd" />
+    </svg>
+  );
+};
+
 /** 画布浮层：左下 + / − / 适应，右下小地图，底部「框选 | 拖动画布 | 滚轮缩放 | 百分比」。h = 面板高。 */
-export const MmCanvasControls = ({ h, zoomPct }: { h: number; zoomPct: number }) => (
+export const MmCanvasControls = ({ h, zoomPct, mini }: { h: number; zoomPct: number; mini: { nodes: MiniRect[]; view: Omit<MiniRect, 'color'> } }) => (
   <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', fontFamily: font.ui }}>
     <span style={{ ...at(17, h - 96), width: 28, height: 80, boxSizing: 'border-box', borderRadius: 6, background: SURFACE, border: `1px solid ${LINE}` }} />
     <Plus size={12} color={FG} style={at(25, h - 88.5)} />
     <Minus size={12} color={FG} style={at(25, h - 62.4)} />
     <CornersOut size={12} color={FG} style={at(25, h - 35.6)} />
-    <span style={{ ...at(610, h - 114), width: 88, height: 69, boxSizing: 'border-box', borderRadius: 4, background: 'rgba(252, 252, 252, 0.92)', border: `1px solid ${LINE}`, overflow: 'hidden' }}>
-      <span style={{ ...at(16, 31), width: 12, height: 6, borderRadius: 1.5, background: 'rgba(101, 105, 114, 0.55)' }} />
-      {[18, 33, 48].map((y) => (
-        <span key={y} style={{ ...at(42, y), width: 10, height: 4, borderRadius: 1, background: 'rgba(101, 105, 114, 0.35)' }} />
-      ))}
-      {[14, 22, 30, 38, 46, 54].map((y) => (
-        <span key={y} style={{ ...at(60, y), width: 16, height: 2, borderRadius: 1, background: 'rgba(101, 105, 114, 0.25)' }} />
-      ))}
+    <span style={{ ...at(718 - 8 - MINI.w, h - 47 - MINI.h), width: MINI.w, height: MINI.h, boxSizing: 'border-box', borderRadius: 6, background: SURFACE, border: `1px solid ${LINE}`, overflow: 'hidden' }}>
+      <MmMiniMap nodes={mini.nodes} view={mini.view} />
     </span>
     <span style={{ ...at(427.9, h - 39), width: 284.1, height: 30, boxSizing: 'border-box', borderRadius: 6, background: SURFACE, border: `1px solid ${LINE}`, color: FG }}>
       <SelectionPlus size={15} style={at(9, 6.5)} />

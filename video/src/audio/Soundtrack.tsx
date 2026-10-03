@@ -51,15 +51,18 @@ const CUES: Cue[] = [
   [9.1 + POST, 'click', 0.35],
   [9.5 + POST, 'pop', 0.22],
   [10.5 + POST, 'click', 0.35],
-  // 03 整理：展开 → 切结构 → 背诵逐个揭示（上行琶音）→ 收回
-  [MM.open0, 'whoosh-up', 0.3],
-  [MM.structClick, 'click', 0.33],
-  ...MM.steps.flatMap((s): Cue[] => [
+  // 03 整理：右侧面板打开导图 → 两次切结构（开弹层 / 点选）→ 背诵：遮住 → 逐个揭示（上行琶音）→ 全部揭示 → 回到对话
+  [MM.open, 'whoosh-up', 0.2],
+  ...MM.structClicks.map((s): Cue => [s, 'click', 0.33]),
+  ...MM.picks.flatMap((s): Cue[] => [
     [s, 'click', 0.33],
     [s + 0.02, 'flip', 0.16],
   ]),
   [MM.reciteClick, 'click', 0.33],
+  [MM.maskClick, 'click', 0.33],
   ...MM.reveals.map((r, i): Cue => [r, REVEAL_NOTES[i], 0.32]),
+  [MM.revealAll, 'click', 0.3],
+  [MM.revealAll + 0.02, REVEAL_NOTES[3], 0.32],
   [MM.close0, 'whoosh-down', 0.26],
   // 04 练习：卡片逐张落入 → 点「复习这批」→ 缩进 Dock → 闪卡窗口弹开 → 翻面 / 评分
   ...Array.from({ length: 12 }, (_, i): Cue => [PR.cards0 + i * PR.cardGap, 'tick', 0.1 + (i % 3) * 0.02]),

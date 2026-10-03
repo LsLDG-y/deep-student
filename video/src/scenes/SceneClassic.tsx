@@ -35,12 +35,12 @@ import {
   SelectionToolbar,
   Toast,
 } from '../ui/classic';
-import { MindmapCard } from '../ui/mindmap';
+import { CARD_OPEN_BTN, MindmapCard } from '../ui/mindmap';
 import type { SidebarRow } from '../ui/research';
 import { PAGE_H, SELECTION_BOX, TextbookPage, THEOREM_CHARS } from '../ui/TextbookPage';
 import { Tex } from '../ui/tex';
 import { AnkiStackBlock, ankiActionCenter, ANKI_BLOCK } from '../ui/anki';
-import { MindmapView, MM, openAt, ORGANIZE_CLICKS, ORGANIZE_PUPIL, organizePupilOpacity } from './organize/MindmapView';
+import { MindmapPanel, mindPanelK, MM, ORGANIZE_CLICKS, ORGANIZE_PUPIL, organizePupilOpacity } from './organize/MindmapView';
 import { CHAT_SCROLL, PR } from './practice/beats';
 import { CUT_ZOOM, POST, RV, STRIP, STRIP_WORLD } from './retrieval/beats';
 import { Handoff } from './retrieval/Handoff';
@@ -91,7 +91,9 @@ const ANSWER_LINES = {
 };
 export const PDF_BADGE = { x: THREAD_X + 7 * 16 + 8 + 30, y: chatY(ANSWER_LINES.l5) + 12 };
 export const CARD = { x: THREAD_X, y: chatY(MSG.card), w: COMPOSER_W, h: 280 };
-export const OPEN_BTN = { x: CARD.x + CARD.w - 12 - 14, y: CARD.y + 6 + 14 };
+export const OPEN_BTN = { x: CARD.x + CARD.w - CARD_OPEN_BTN.right, y: CARD.y + CARD_OPEN_BTN.top };
+/** 点「打开」的时刻：导图随后在右侧面板打开（MM.open）。 */
+const OPEN_CLICK = 10.5 + POST;
 
 /** 导图卡之后：一句引导语 + Anki 卡片块（聊天区局部坐标，上滚前）。 */
 const LEAD = '这一节的 12 张复习卡也备好了，已加入卡片库：';
@@ -125,15 +127,13 @@ export const CLASSIC_CAM: CamKey[] = [
   [9.45 + POST, { x: CW.panelX + CW.panel / 2, y: 470, zoom: 1.25 }, ease.inOutCubic],
   [9.85 + POST, { x: CW.panelX + CW.panel / 2 + 6, y: 476, zoom: 1.27 }, ease.linear],
   [10.2 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.6 }, ease.inOutQuint],
-  [10.5 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.64 }, ease.linear],
-  [11 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.9 }, ease.inCubic],
-  // 03 整理（后半）：卡片展开成全窗导图，镜头顺势拉开；切结构时轻推，背诵时推近画布
-  [MM.open1, { x: CW.w / 2, y: CW.h / 2, zoom: 1.0 }, ease.outCubic],
-  [MM.structClick - 0.12, { x: CW.w / 2 + 6, y: CW.h / 2 - 4, zoom: 1.01 }, ease.linear],
-  [MM.steps[0] - 0.04, { x: 1060, y: 380, zoom: 1.28 }, ease.inOutCubic],
-  [MM.popClose, { x: 1050, y: 388, zoom: 1.31 }, ease.linear],
-  [MM.reciteClick + 0.14, { x: 1040, y: 330, zoom: 1.3 }, ease.inOutCubic],
-  [MM.close0, { x: 1036, y: 334, zoom: 1.33 }, ease.linear],
+  [OPEN_CLICK, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.64 }, ease.linear],
+  // 03 整理（后半）：点「打开」后导图在右侧面板打开，镜头横移过去（窗口右缘留在画内）；切结构、背诵都在面板里，逐步推近
+  [MM.open + 0.5, { x: 1100, y: 372, zoom: 1.45 }, ease.inOutCubic],
+  [MM.structClicks[0] - 0.1, { x: 1104, y: 370, zoom: 1.47 }, ease.linear],
+  [MM.picks[1] + 0.2, { x: 1110, y: 368, zoom: 1.49 }, ease.linear],
+  [MM.reciteClick + 0.16, { x: 1120, y: 386, zoom: 1.51 }, ease.inOutCubic],
+  [MM.close0, { x: 1130, y: 390, zoom: 1.53 }, ease.linear],
   [MM.close1, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 + 40, zoom: 1.45 }, ease.inOutCubic],
   // 04 练习：跟住上滚的卡片块，最后推向「复习这批」
   [PR.scroll1, { x: THREAD_X + COMPOSER_W / 2, y: ANKI_WORLD.y + 170, zoom: 1.42 }, ease.inOutCubic],
@@ -278,7 +278,7 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
 
       {t >= 9.5 + POST ? (
         <div style={{ position: 'absolute', left: 32, top: MSG.card }}>
-          <MindmapCard tk={tk} width={COMPOSER_W} enter={cardEnter} openPress={Math.max(0, 1 - Math.abs(t - (10.5 + POST)) / 0.1)} />
+          <MindmapCard tk={tk} width={COMPOSER_W} enter={cardEnter} openPress={Math.max(0, 1 - Math.abs(t - OPEN_CLICK) / 0.1)} />
         </div>
       ) : null}
 
@@ -373,20 +373,21 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
     [10.42 + POST, OPEN_BTN.x, OPEN_BTN.y],
   ]);
   const practice = t >= PR.scroll0;
-  const organize = t >= MM.open0 && !practice;
+  const organize = t > OPEN_CLICK && !practice;
   // 新会话是草稿、不进侧栏；发出后顶到「对话」最上面显示「未命名会话」+ 转圈，首轮（到卡片生成完）结束后自动起名
   const titled = t >= PR.done + 0.12;
   const sessions: SidebarRow[] =
     t < SENT_AT
       ? OLD_SESSIONS
       : [{ title: titled ? SESSION_TITLE : '未命名会话', time: '刚刚', active: true, streaming: !titled, enter: prog(t, SENT_AT + 0.01, SENT_AT + 0.085) }, ...OLD_SESSIONS];
-  const trackWorld = practice ? pathAt(t, PRACTICE_PUPIL) : organize ? pathAt(t, ORGANIZE_PUPIL) : pupilWorld;
+  const trackWorld = practice ? pathAt(t, PRACTICE_PUPIL) : organize ? pathAt(t, [[OPEN_CLICK, OPEN_BTN.x, OPEN_BTN.y], ...ORGANIZE_PUPIL]) : pupilWorld;
   const pupilScreen = project(cam, trackWorld.x, trackWorld.y);
   const pupilOpacity = practice
     ? prog(t, PR.done, PR.done + 0.1)
     : organize
       ? organizePupilOpacity(t)
-      : prog(t, 0.3, 0.55) * (1 - prog(t, 5.9, 6.1)) + prog(t, 8.5 + POST, 8.7 + POST) - (t > 10.55 + POST ? 1 : 0);
+      : prog(t, 0.3, 0.55) * (1 - prog(t, 5.9, 6.1)) + prog(t, 8.5 + POST, 8.7 + POST);
+  const mindK = mindPanelK(t);
 
   return (
     <AbsoluteFill>
@@ -395,15 +396,16 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
           <ClassicWindow
             tk={tk}
             t={t}
-            title={openAt(t) > 0.5 ? '微分中值定理' : titled ? SESSION_TITLE : undefined}
-            terminal={t >= SENT_AT && openAt(t) <= 0.5}
+            title={titled ? SESSION_TITLE : undefined}
+            terminal={t >= SENT_AT}
             sessions={sessions}
             chromeOpacity={chrome}
             style={{ opacity: chrome > 0 ? 1 : 0, background: chrome < 1 ? 'transparent' : tk.background, boxShadow: chrome < 1 ? 'none' : undefined }}
             chat={<ChatColumn tk={tk} t={t} />}
             panel={
               <div style={{ opacity: chrome }}>
-                <PdfPanel tk={tk} selected={selected} scrollY={panelScroll} pageLabel={pageLabel} />
+                {mindK < 1 ? <PdfPanel tk={tk} selected={selected} scrollY={panelScroll} pageLabel={pageLabel} /> : null}
+                <MindmapPanel t={t} tk={tk} />
               </div>
             }
           />
@@ -482,11 +484,10 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
           ) : null}
 
           <Vectorize t={t} />
-          <MindmapView t={t} tk={tk} card={CARD} />
         </div>
       </CameraView>
       <Handoff t={t} cam={cam} />
-      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, 10.5 + POST, ...ORGANIZE_CLICKS, PR.reviewClick]} />
+      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, OPEN_CLICK, ...ORGANIZE_CLICKS, PR.reviewClick]} />
     </AbsoluteFill>
   );
 };
