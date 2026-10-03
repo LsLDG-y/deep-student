@@ -1,5 +1,4 @@
 import {
-  ArrowClockwise,
   ArrowsClockwise,
   CaretDown,
   CaretLeft,
@@ -55,7 +54,6 @@ const FG = 'rgb(42, 45, 50)';
 const MUTED = 'rgb(101, 105, 114)';
 const PRI = 'rgb(30, 94, 184)';
 const OK = 'rgb(37, 147, 95)';
-const WARN = 'rgb(195, 136, 34)';
 const MUTED_BG = 'rgba(240, 240, 240, 0.6)';
 const SOFT_LINE = 'rgba(224, 224, 224, 0.3)';
 const at = (x: number, y: number): CSSProperties => ({ position: 'absolute', left: x, top: y });
@@ -331,8 +329,8 @@ export const AnkiBlock = ({ tk, t, reviewHover = 0, reviewPress = 0 }: { tk: Tok
             </span>
           );
         })}
-        <span style={{ ...at(W - 249, 15.5), width: 122.2, height: 20, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: WARN, background: 'rgba(195, 136, 34, 0.1)', whiteSpace: 'nowrap' }}>{S.anki.ankiConnect}</span>
-        <ArrowClockwise size={16} color={MUTED} style={at(W - 110.2, 17.5)} />
+        {/* AnkiConnect 已连接 = default 徽标（primary/5 底、primary 字）；刷新钮只在未连接时渲染，徽标直接接在百分比前（gap 7） */}
+        <span style={{ ...at(W - 207, 15.5), width: 122.2, height: 20, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: PRI, background: 'rgba(30, 94, 184, 0.05)', whiteSpace: 'nowrap' }}>{S.anki.ankiConnect}</span>
         <span style={{ ...at(W - 77.7, 17.3), fontSize: 11, lineHeight: '16.5px', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
         <CaretDown size={14} color={MUTED} style={{ ...at(W - 32.5, 18.5), transform: 'rotate(180deg)' }} />
         <span style={{ ...at(11.5, 50), width: W - 23, height: 8, borderRadius: 9999, background: 'rgba(240, 240, 240, 0.5)', overflow: 'hidden' }}>

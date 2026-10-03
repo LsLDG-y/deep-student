@@ -124,7 +124,7 @@ export const S = {
     taskCenter: tr('anki', 'chatBlock.openTaskCenter'),
     exportApkg: tr('anki', 'chatBlock.exportApkg'),
     steps: [tr('chatV2', 'blocks.ankiCards.progress.steps.routing'), tr('chatV2', 'blocks.ankiCards.progress.steps.generating'), tr('chatV2', 'blocks.ankiCards.progress.steps.completed')],
-    ankiConnect: `${tr('chatV2', 'blocks.ankiCards.progress.ankiConnect.label')}: ${tr('chatV2', 'blocks.ankiCards.progress.ankiConnect.notConnected')}`,
+    ankiConnect: `${tr('chatV2', 'blocks.ankiCards.progress.ankiConnect.label')}: ${tr('chatV2', 'blocks.ankiCards.progress.ankiConnect.connected')}`,
     generatingNth: (n: number) => tr('anki', 'chatBlock.generatingNth', { count: n }),
     cardsValue: (n: number) => tr('chatV2', 'blocks.ankiCards.progress.metrics.cardsValue', { count: n }),
   },
