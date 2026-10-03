@@ -1,3 +1,4 @@
+import analysis from '@app/locales/zh-CN/analysis.json';
 import anki from '@app/locales/zh-CN/anki.json';
 import chatV2 from '@app/locales/zh-CN/chatV2.json';
 import common from '@app/locales/zh-CN/common.json';
@@ -17,6 +18,7 @@ import translation from '@app/locales/zh-CN/translation.json';
 import workbench from '@app/locales/zh-CN/workbench.json';
 
 const NS = {
+  analysis,
   anki,
   chatV2,
   common,
@@ -51,8 +53,10 @@ export const tr = (ns: Ns, key: string, vars: Record<string, string | number> = 
 };
 
 export const S = {
-  emptyTitle: tr('chatV2', 'messageList.empty.primaryAction'),
-  placeholder: tr('chatV2', 'inputBar.placeholder'),
+  // 空态标题从 primaryActionVariants 随机取一条（primaryAction 只是没有变体时的兜底）
+  emptyTitle: tr('chatV2', 'messageList.empty.primaryActionVariants.0'),
+  // InputBarUI 缺省占位符走 analysis:input_bar.placeholder（「请输入问题...」）
+  placeholder: tr('analysis', 'input_bar.placeholder'),
   refAdded: tr('chatV2', 'selectionRef.added'),
   sel: {
     copy: tr('chatV2', 'selectionToolbar.copy'),

@@ -8,8 +8,12 @@ import { font, light, type Tokens } from '../theme';
 import { Pupil, pathAt } from '../ui/brand';
 import {
   CitationBadge,
+  CLASSIC_ASSISTANT_TOP,
+  CLASSIC_USER_TOP,
   Composer,
+  composerHeight,
   COMPOSER_W,
+  CP,
   PdfBadge,
   RefChip,
   ThinkLine,
@@ -38,7 +42,7 @@ import { Tex } from '../ui/tex';
 import { AnkiStackBlock, ankiActionCenter, ANKI_BLOCK } from '../ui/anki';
 import { MindmapView, MM, openAt, ORGANIZE_CLICKS, ORGANIZE_PUPIL, organizePupilOpacity } from './organize/MindmapView';
 import { CHAT_SCROLL, PR } from './practice/beats';
-import { CUT_ZOOM, POST, RV, STRIP_WORLD } from './retrieval/beats';
+import { CUT_ZOOM, POST, RV, STRIP, STRIP_WORLD } from './retrieval/beats';
 import { Handoff } from './retrieval/Handoff';
 import { Vectorize } from './retrieval/Vectorize';
 
@@ -54,8 +58,9 @@ const chatY = (localY: number) => CW.title + localY;
 
 /** 空态布局：logo + 标题 + 居中输入框（chat-empty-composer-layout）。 */
 const EMPTY = { logoTop: 360, titleTop: 432, composerTop: 500 };
-const COMPOSER_H_FULL = 12 + 32 + 8 + 24 + 8 + 24 + 8 + 32 + 12;
-const COMPOSER_H_DOCKED = 12 + 24 + 8 + 32 + 12;
+/** 空态输入框：引用行 + 两张照片附件行；发出后贴底只剩文本框 + 底栏。 */
+const COMPOSER_H_FULL = composerHeight(1, PHOTOS.length);
+const COMPOSER_H_DOCKED = composerHeight(0, 0);
 const DOCK_TOP = CW.h - CW.title - 16 - COMPOSER_H_DOCKED;
 
 const SEL = {
@@ -67,11 +72,15 @@ const SEL = {
 const TOOLBAR_Y = SEL.y + SEL.h + 8;
 const TOOLBAR_X = SEL.x + SEL.w / 2 - SEL_TOOLBAR_W / 2;
 const QUOTE_BTN = { x: TOOLBAR_X + SEL_ADD_CX, y: TOOLBAR_Y + 14.5 };
-const CHIP_SLOT = { x: THREAD_X + 16, y: chatY(EMPTY.composerTop) + 12 + 32 + 8 };
-const SEND_BTN = { x: THREAD_X + COMPOSER_W - 12 - 16, y: chatY(EMPTY.composerTop) + COMPOSER_H_FULL - 12 - 16 };
-const TEXT_POS = { x: THREAD_X + 120, y: chatY(EMPTY.composerTop) + 12 + 32 + 8 + 24 + 8 + 12 };
+const CHIP_SLOT = { x: THREAD_X + CP.padL + 7, y: chatY(EMPTY.composerTop) + CP.padY + (CP.refRow - 23.5) / 2 };
+const SEND_BTN = { x: THREAD_X + COMPOSER_W - CP.padR - 14, y: chatY(EMPTY.composerTop) + COMPOSER_H_FULL - CP.padY - 14 };
+const TEXT_POS = { x: THREAD_X + CP.padL + 110, y: chatY(EMPTY.composerTop) + CP.padY + CP.refRow + CP.attRow + CP.gap + 7.8 + 12 };
 
-const MSG = { user: 24, assistant: 150, answer: 272, card: 500 };
+/** 助手块顶比原版（150）下移的量：用户消息改成「气泡 + 下方附件方块 + 复制 / 时间」后变高。 */
+const SHIFT = CLASSIC_ASSISTANT_TOP - 150;
+const MSG = { user: CLASSIC_USER_TOP, assistant: CLASSIC_ASSISTANT_TOP, answer: CLASSIC_ASSISTANT_TOP + 122, card: CLASSIC_ASSISTANT_TOP + 350 };
+/** 卡片块上滚距离：内容整体下移 SHIFT，贴底输入框高了（88 → 98），都要多滚。 */
+const SCROLL = CHAT_SCROLL + SHIFT + (COMPOSER_H_DOCKED - 88);
 const ANSWER_LINES = {
   l1: MSG.answer,
   l2: MSG.answer + 24,
@@ -89,7 +98,7 @@ const LEAD = '这一节的 12 张复习卡也备好了，已加入卡片库：';
 const LEAD_Y = MSG.card + 280 + 16;
 const ANKI_Y = LEAD_Y + 24 + 12;
 /** 卡片块上滚到位后在世界坐标里的原点。 */
-const ANKI_WORLD = { x: THREAD_X, y: chatY(ANKI_Y - CHAT_SCROLL) };
+const ANKI_WORLD = { x: THREAD_X, y: chatY(ANKI_Y - SCROLL) };
 const REVIEW_BTN = { x: ANKI_WORLD.x + ankiActionCenter('review').x, y: ANKI_WORLD.y + ankiActionCenter('review').y };
 
 export const CLASSIC_CAM: CamKey[] = [
@@ -99,20 +108,20 @@ export const CLASSIC_CAM: CamKey[] = [
   [3.0, { x: SEL.x + SEL.w / 2 + 10, y: SEL.y + 104, zoom: 1.8 }, ease.linear],
   [3.6, { x: CW.w / 2, y: CW.h / 2, zoom: 1.0 }, ease.outCubic],
   [4.0, { x: CW.w / 2 - 6, y: CW.h / 2 + 4, zoom: 1.015 }, ease.linear],
-  [4.35, { x: THREAD_X + COMPOSER_W / 2, y: chatY(EMPTY.composerTop) + 80, zoom: 1.6 }, ease.inOutCubic],
-  [4.55, { x: THREAD_X + COMPOSER_W / 2, y: chatY(EMPTY.composerTop) + 80, zoom: 1.62 }, ease.linear],
-  [5.2, { x: THREAD_X + COMPOSER_W / 2, y: chatY(170), zoom: 1.6 }, ease.inOutCubic],
-  [5.98, { x: THREAD_X + COMPOSER_W / 2, y: chatY(196), zoom: 1.65 }, ease.linear],
-  // 02 看清：推向气泡看向量化，再顺着向量条匹配剪辑进 3D
-  [6.32, { x: THREAD_X + COMPOSER_W / 2 + 10, y: 205, zoom: 2.1 }, ease.inOutCubic],
-  [6.62, { x: STRIP_WORLD.x, y: 262, zoom: 2.28 }, ease.inOutCubic],
+  [4.35, { x: THREAD_X + COMPOSER_W / 2, y: chatY(EMPTY.composerTop) + COMPOSER_H_FULL / 2, zoom: 1.6 }, ease.inOutCubic],
+  [4.55, { x: THREAD_X + COMPOSER_W / 2, y: chatY(EMPTY.composerTop) + COMPOSER_H_FULL / 2, zoom: 1.62 }, ease.linear],
+  [5.2, { x: THREAD_X + COMPOSER_W / 2, y: chatY(170 + SHIFT), zoom: 1.6 }, ease.inOutCubic],
+  [5.98, { x: THREAD_X + COMPOSER_W / 2, y: chatY(196 + SHIFT), zoom: 1.65 }, ease.linear],
+  // 02 看清：推向气泡看向量化（取气泡与向量条的中点），再顺着向量条匹配剪辑进 3D
+  [6.32, { x: THREAD_X + COMPOSER_W / 2 + 10, y: chatY((MSG.user + 23.7 + STRIP.cy) / 2), zoom: 2.1 }, ease.inOutCubic],
+  [6.62, { x: STRIP_WORLD.x, y: 262 + SHIFT, zoom: 2.28 }, ease.inOutCubic],
   [RV.cut, { x: STRIP_WORLD.x, y: STRIP_WORLD.y, zoom: CUT_ZOOM }, ease.inCubic],
   // 3D 期间相机跳到全窗机位，3D 淡出时界面已就位
   [RV.cut + 0.005, { x: CW.w / 2, y: CW.h / 2, zoom: 0.93 }, ease.linear],
   [RV.reveal, { x: CW.w / 2, y: CW.h / 2, zoom: 0.93 }, ease.linear],
   [9.0, { x: CW.w / 2, y: CW.h / 2, zoom: 1.0 }, ease.outCubic],
-  [8.5 + POST - 0.2, { x: THREAD_X + COMPOSER_W / 2, y: chatY(360), zoom: 1.5 }, ease.inOutCubic],
-  [8.9 + POST, { x: THREAD_X + COMPOSER_W / 2, y: chatY(372), zoom: 1.52 }, ease.linear],
+  [8.5 + POST - 0.2, { x: THREAD_X + COMPOSER_W / 2, y: chatY(360 + SHIFT), zoom: 1.5 }, ease.inOutCubic],
+  [8.9 + POST, { x: THREAD_X + COMPOSER_W / 2, y: chatY(372 + SHIFT), zoom: 1.52 }, ease.linear],
   [9.45 + POST, { x: CW.panelX + CW.panel / 2, y: 470, zoom: 1.25 }, ease.inOutCubic],
   [9.85 + POST, { x: CW.panelX + CW.panel / 2 + 6, y: 476, zoom: 1.27 }, ease.linear],
   [10.2 + POST, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 - 10, zoom: 1.6 }, ease.inOutQuint],
@@ -218,7 +227,7 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
   const rowFlash = (at: number) => (t >= at ? Math.exp(-(t - at) * PACE * 3) : 0);
   const sweep = (start: number) => ((t - start) % 0.8) / 0.8;
   const cardEnter = (_n: unknown, i: number) => prog(t, 9.55 + POST + i * 0.04, 9.55 + POST + i * 0.04 + DUR.mindmapNodeEnter, ease.wbOut);
-  const scroll = CHAT_SCROLL * prog(t, PR.scroll0, PR.scroll1, ease.inOutCubic);
+  const scroll = SCROLL * prog(t, PR.scroll0, PR.scroll1, ease.inOutCubic);
   const leadChars = [...LEAD];
   const leadN = Math.max(0, Math.min(leadChars.length, Math.floor(((t - PR.lead) * CPS) / 3) * 3));
   return (
@@ -245,7 +254,7 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
             transformOrigin: 'right top',
           }}
         >
-          <UserMessage tk={tk} text={PROMPT} attachments={PHOTOS} refs={[REF_LABEL]} />
+          <UserMessage tk={tk} text={PROMPT} attachments={PHOTOS} refs={[REF_LABEL]} time="21:00" />
         </div>
       ) : null}
 
@@ -356,8 +365,8 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
     [3.95, TEXT_POS.x, TEXT_POS.y],
     [4.4, SEND_BTN.x, SEND_BTN.y],
     [4.6, SEND_BTN.x, SEND_BTN.y],
-    [5.3, THREAD_X + 420, chatY(360)],
-    [8.6 + POST, THREAD_X + 420, chatY(360)],
+    [5.3, THREAD_X + 420, chatY(360 + SHIFT)],
+    [8.6 + POST, THREAD_X + 420, chatY(360 + SHIFT)],
     [9.0 + POST, PDF_BADGE.x, PDF_BADGE.y],
     [9.15 + POST, PDF_BADGE.x, PDF_BADGE.y],
     [9.9 + POST, OPEN_BTN.x - 60, OPEN_BTN.y + 40],
@@ -452,7 +461,7 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
                 opacity: prog(t, 3.1, 3.2) * (1 - prog(t, 4.1, 4.3)),
               }}
             >
-              <Toast tk={tk} text={S.refAdded} sub="高等数学（第七版）上册" />
+              <Toast tk={tk} text={S.refAdded} sub={REF_LABEL} />
             </div>
           ) : null}
 

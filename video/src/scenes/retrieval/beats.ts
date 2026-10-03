@@ -1,5 +1,5 @@
 import { CW } from '../../ui/classic';
-import { COMPOSER_W } from '../../ui/chat';
+import { CLASSIC_ASSISTANT_TOP, CLASSIC_USER_TOP, COMPOSER_W } from '../../ui/chat';
 import { rand } from '../../lib/time';
 
 /**
@@ -31,12 +31,12 @@ export const QUERY_TOKENS = ['讲透', '这一节', '：', '画', '导图', '、
 export const QUERY_TEXT = QUERY_TOKENS.join('');
 export const TOKEN_DIMS = 8;
 
-/** 查询向量条（chat 列局部坐标）：64 维显示格。 */
-export const STRIP = { cells: 64, cell: 8, pitch: 10, cx: 360, cy: 250 };
+/** 查询向量条（chat 列局部坐标）：64 维显示格，跟着助手块顶走（原版助手块顶 150 时 cy=250）。 */
+export const STRIP = { cells: 64, cell: 8, pitch: 10, cx: 360, cy: 250 + (CLASSIC_ASSISTANT_TOP - 150) };
 export const STRIP_W = (STRIP.cells - 1) * STRIP.pitch + STRIP.cell;
 
-/** 用户气泡的文本基线位置（chat 列局部坐标）：附件行 32 + gap 8，padding 12/16，右对齐到 32+COMPOSER_W。 */
-export const BUBBLE = { right: 32 + COMPOSER_W, top: 24 + 32 + 8, padX: 16, padY: 12, line: 24, font: 16 };
+/** 用户气泡（chat 列局部坐标）：气泡在最上（附件方块排在气泡下方），padding 10.5/14、行高 26.4，右对齐到 32+COMPOSER_W。 */
+export const BUBBLE = { right: 32 + COMPOSER_W, top: CLASSIC_USER_TOP, padX: 14, padY: 10.5, line: 26.4, font: 16 };
 
 export const toWorld = (x: number, y: number) => ({ x: CW.chatX + x, y: CW.title + y });
 export const STRIP_WORLD = toWorld(STRIP.cx, STRIP.cy);

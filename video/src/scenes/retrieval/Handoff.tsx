@@ -1,6 +1,6 @@
 import { project, type Cam } from '../../lib/camera';
 import { clamp, ease, prog } from '../../lib/time';
-import { TL_PITCH } from '../../ui/chat';
+import { CLASSIC_ASSISTANT_TOP, TL_PITCH } from '../../ui/chat';
 import { CW, PAGE_ORIGIN } from '../../ui/classic';
 import { PAGE_W } from '../../ui/TextbookPage';
 import { hitScreenRect } from './archive';
@@ -8,8 +8,8 @@ import { useArchiveAssets } from './assets';
 import { HITS, RV } from './beats';
 
 const ASPECT = 1.33;
-/** 检索行在世界坐标中的落点（assistant 块 top=150，时间线行距 TL_PITCH；x 落在工具图标上）。 */
-export const ROW_Y = [CW.title + 150 + TL_PITCH, CW.title + 150 + 2 * TL_PITCH];
+/** 检索行在世界坐标中的落点（助手块顶 + 时间线行距 TL_PITCH；x 落在工具图标上）。 */
+export const ROW_Y = [CW.title + CLASSIC_ASSISTANT_TOP + TL_PITCH, CW.title + CLASSIC_ASSISTANT_TOP + 2 * TL_PITCH];
 const ROW_X = CW.chatX + 32 + 12;
 
 const FLIGHTS = [
