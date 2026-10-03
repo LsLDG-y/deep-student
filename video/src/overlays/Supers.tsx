@@ -26,7 +26,7 @@ export const SUPERS: Super[] = [
   { s: 2.5, e: 3.4, text: '01 读懂', kind: 'chapter' },
   { s: 3.55, e: 5.4, text: '划一下，就是上下文', kind: 'feature' },
   { s: 5.5, e: 6.4, text: '02 看清', kind: 'chapter' },
-  { s: 7.18, e: 7.98, text: '提问即向量，从全部资料里找出处', kind: 'feature', tone: 'dark' },
+  { s: 7.18, e: 7.98, text: '提问即向量，从全部资料里找出处', kind: 'feature' },
   { s: 9.1, e: 10.9, text: '每条引用，都回得到原文', kind: 'feature' },
   { s: 11.0, e: 11.9, text: '03 整理', kind: 'chapter' },
   { s: 12.3, e: 13.95, text: '一句话长出导图，结构随手切', kind: 'feature' },

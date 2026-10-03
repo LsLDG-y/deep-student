@@ -195,12 +195,18 @@ export const PdfPanel = ({
   scrollY = 0,
   selected = 0,
   pageLabel = 132,
+  flash = 0,
+  pagesHidden = false,
   bodyHeight = CW.h - CW.title,
 }: {
   tk: Tokens;
   scrollY?: number;
   selected?: number;
   pageLabel?: number;
+  /** 第 134 页命中句的定位高亮（TextbookPage flash） */
+  flash?: number;
+  /** 命中页飞来的途中先空出页面槽位，落地那一帧再显示 */
+  pagesHidden?: boolean;
   bodyHeight?: number;
 }) => {
   const bodyH = bodyHeight - PANEL_HEADER;
@@ -230,10 +236,10 @@ export const PdfPanel = ({
         <X size={16} color={tk.mutedFg} style={{ position: 'absolute', left: 689.3, top: 12.3 }} />
       </div>
       <div style={{ position: 'relative', height: bodyH - PDF_TOOLBAR, overflow: 'hidden', background: tk.dark ? 'hsl(0 0% 11%)' : 'hsl(0 0% 96%)' }}>
-        <div style={{ position: 'absolute', left: 16, top: 16 - scrollY }}>
+        <div style={{ position: 'absolute', left: 16, top: 16 - scrollY, opacity: pagesHidden ? 0 : 1 }}>
           <TextbookPage page={132} selected={selected} style={{ boxShadow: pageShadow() }} />
           <FillerPage style={{ marginTop: 16 }} n={133} />
-          <TextbookPage page={134} style={{ marginTop: 16, boxShadow: pageShadow() }} />
+          <TextbookPage page={134} flash={flash} style={{ marginTop: 16, boxShadow: pageShadow() }} />
         </div>
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: 'rgb(240, 240, 240)' }} />
         <div style={{ position: 'absolute', left: 0, bottom: 0, height: 3, width: `${(pageLabel / PDF_PAGES) * 100}%`, background: tk.primary }} />

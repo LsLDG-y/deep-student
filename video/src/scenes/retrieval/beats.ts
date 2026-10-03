@@ -52,6 +52,10 @@ export const cellValue = (i: number) => {
 };
 export const tokenCell = (tok: number, d: number) => cellValue(tok * 13 + d * 5 + 7);
 
+/** 查询向量的细竖条（DOM 像素）：宽 BAR.w，高 = barLen(v) × BAR.h；3D 里按 CUT_ZOOM 换算成同样的屏幕尺寸。 */
+export const BAR = { w: 3, h: 22 };
+export const barLen = (v: number) => 0.22 + 0.78 * Math.min(1, Math.abs(v));
+
 /** 嵌入值 → 叠在白底上的实色（DOM 与 3D 共用，保证匹配剪辑无色差）。 */
 export const cellRGB = (v: number): [number, number, number] => {
   const a = Math.min(1, Math.abs(v));

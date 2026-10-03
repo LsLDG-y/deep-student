@@ -38,7 +38,7 @@ import {
 } from '../ui/classic';
 import { CARD_OPEN_BTN, MindmapCard } from '../ui/mindmap';
 import { AssistantFooter, SourcesRow, type SidebarRow } from '../ui/research';
-import { PAGE_H, SELECTION_BOX, TextbookPage, THEOREM_CHARS } from '../ui/TextbookPage';
+import { PAGE_H, quoteFlashAlpha, SELECTION_BOX, TextbookPage, THEOREM_CHARS } from '../ui/TextbookPage';
 import { Tex } from '../ui/tex';
 import { AnkiBlock, ankiActionCenter, ankiLayout } from '../ui/anki';
 import { MindmapPanel, mindPanelK, MM, ORGANIZE_CLICKS, ORGANIZE_PUPIL, organizePupilOpacity } from './organize/MindmapView';
@@ -94,7 +94,18 @@ const ANSWER_LINES = {
 };
 /** 导图卡：段落之后 29.4（probe-clp-12 段底 → 卡顶）。 */
 const MSG = { user: CLASSIC_USER_TOP, assistant: CLASSIC_ASSISTANT_TOP, answer: ANSWER_TOP, card: ANSWER_LINES.l5 + LH + 29.4 };
-export const PDF_BADGE = { x: THREAD_X + 7 * 16 + 8 + 30, y: chatY(ANSWER_LINES.l5) + LH / 2 };
+
+const L3 = '证明的关键是构造辅助函数 φ(x)，把问题化归为罗尔定理';
+let measureCtx: CanvasRenderingContext2D | null = null;
+const textW = (s: string, px: number) => {
+  measureCtx ??= document.createElement('canvas').getContext('2d');
+  if (!measureCtx) return [...s].length * px;
+  measureCtx.font = `${px}px ${font.ui}`;
+  return measureCtx.measureText(s).width;
+};
+/** 回答里 [2]（出处 = 教材第 134 页「引进辅助函数 … 根据罗尔定理」）：指针点它 → 右侧跳页并闪烁命中句。 */
+const cite2 = () => ({ x: THREAD_X + textW(L3, 16) + 4 + 11, y: chatY(ANSWER_LINES.l3) + LH / 2 });
+const CITE_CLICK = 9.1 + POST;
 
 /** 消息列可见底：输入框顶上 24；「产物」药丸出现后再让出一行（页脚底 → 药丸顶 23，probe-cza-bottom）。 */
 const VIS_BOTTOM = DOCK_TOP - 24;
@@ -199,7 +210,7 @@ const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
   const line = (s: string, start: number) => [...s].slice(0, reveal(start, [...s].length)).join('');
   const l1 = '拉格朗日中值定理说的是：只要 f(x) 在 [a, b] 上连续、在 (a, b)';
   const l2 = '内可导，曲线上就一定有一点的切线与两端连线平行';
-  const l3 = '证明的关键是构造辅助函数 φ(x)，把问题化归为罗尔定理';
+  const l3 = L3;
   const l4 = '你上次在 ξ 的取值上丢过分——它严格落在开区间内';
   const s1 = 8.05 + POST;
   const s2 = s1 + [...l1].length / CPS;
@@ -208,7 +219,9 @@ const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
   const s4 = s3 + [...l3].length / CPS + 0.03;
   const s5 = s4 + [...l4].length / CPS + 0.03;
   const badge = (n: number, at: number) =>
-    t >= at ? <CitationBadge n={n} tk={tk} glow={1 - prog(t, at, at + 0.5, ease.outCubic)} /> : null;
+    t >= at ? (
+      <CitationBadge n={n} tk={tk} glow={1 - prog(t, at, at + 0.5, ease.outCubic)} press={n === 2 ? Math.max(0, 1 - Math.abs(t - CITE_CLICK) / 0.1) : 0} />
+    ) : null;
   const base = { position: 'absolute' as const, left: 32, fontSize: 16, lineHeight: `${LH}px`, color: tk.foreground, whiteSpace: 'nowrap' as const };
   return (
     <div style={{ fontFamily: font.ui }}>
@@ -242,7 +255,7 @@ const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
       </div>
       <div style={{ ...base, top: ANSWER_LINES.l5 }}>
         {line('完整证明见教材 ', s5)}
-        {t >= s5 + 0.06 ? <PdfBadge page={134} tk={tk} press={Math.max(0, 1 - Math.abs(t - (9.1 + POST)) / 0.1)} /> : null}
+        {t >= s5 + 0.06 ? <PdfBadge page={134} tk={tk} /> : null}
       </div>
     </div>
   );
@@ -395,14 +408,12 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
   const selectionUi = t >= 2.55 && t < 3.25;
   const selUiFade = 1 - prog(t, 3.05, 3.25);
   const chipK = prog(t, 3.02, 3.5, ease.inOutCubic);
-  // 教材页落进面板的瞬间，面板以硬弹簧"啪"地翻到第 134 页
-  const snapK = springAt(t, RV.land1 - 0.07, { stiffness: 420, damping: 26 });
+  // 命中页还在飞的时候面板先以硬弹簧翻到第 134 页并停稳，飞来的那页正好盖上同一位置（交接不叠影）
+  const snapK = springAt(t, RV.reveal + 0.06, { stiffness: 420, damping: 26 });
   const panelScroll = 2 * (PAGE_H + 16) * snapK;
   const pageLabel = snapK < 0.3 ? 132 : snapK < 0.75 ? 133 : 134;
-  const pageFlash = Math.max(
-    t >= RV.land1 ? Math.exp(-(t - RV.land1) * PACE * 1.6) : 0,
-    t >= 9.15 + POST ? Math.exp(-(t - 9.15 - POST) * PACE * 1.6) : 0,
-  );
+  // 定位到句子：落页那一刻与点 [2]（产品跳页后在文本层找到命中片段再闪）各闪一次
+  const quoteFlash = Math.max(quoteFlashAlpha((t - RV.land1) * PACE), quoteFlashAlpha((t - CITE_CLICK - 0.05) * PACE));
 
   const chipPos = (() => {
     const a = { x: SEL.x + SEL.w / 2 - 120, y: SEL.y + 30 };
@@ -424,8 +435,8 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
     [4.6, SEND_BTN.x, SEND_BTN.y],
     [5.3, THREAD_X + 420, chatY(360 + SHIFT)],
     [8.6 + POST, THREAD_X + 420, chatY(360 + SHIFT)],
-    [9.0 + POST, PDF_BADGE.x, PDF_BADGE.y],
-    [9.15 + POST, PDF_BADGE.x, PDF_BADGE.y],
+    [CITE_CLICK - 0.1, cite2().x, cite2().y],
+    [CITE_CLICK + 0.05, cite2().x, cite2().y],
     [9.9 + POST, OPEN_BTN.x - 60, OPEN_BTN.y + 40],
     [10.42 + POST, OPEN_BTN.x, OPEN_BTN.y],
   ]);
@@ -461,7 +472,9 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
             chat={<ChatColumn tk={tk} t={t} />}
             panel={
               <div style={{ opacity: chrome }}>
-                {mindK < 1 ? <PdfPanel tk={tk} selected={selected} scrollY={panelScroll} pageLabel={pageLabel} /> : null}
+                {mindK < 1 ? (
+                  <PdfPanel tk={tk} selected={selected} scrollY={panelScroll} pageLabel={pageLabel} flash={quoteFlash} pagesHidden={t >= RV.reveal && t < RV.land1} />
+                ) : null}
                 <MindmapPanel t={t} tk={tk} />
               </div>
             }
@@ -524,27 +537,11 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
             </div>
           ) : null}
 
-          {pageFlash > 0.01 ? (
-            <div
-              style={{
-                position: 'absolute',
-                left: PAGE_ORIGIN.x - 6,
-                top: PAGE_ORIGIN.y + 2 * (PAGE_H + 16) - panelScroll + 80,
-                width: 688 + 12,
-                height: 400,
-                borderRadius: 8,
-                background: `hsl(215 80% 55% / ${0.12 * pageFlash})`,
-                boxShadow: `inset 3px 0 0 hsl(215 72% 42% / ${pageFlash})`,
-                clipPath: `inset(${Math.max(0, CW.title + 44 - (PAGE_ORIGIN.y + 2 * (PAGE_H + 16) - panelScroll + 80))}px 0 0 0)`,
-              }}
-            />
-          ) : null}
-
           <Vectorize t={t} />
         </div>
       </CameraView>
       <Handoff t={t} cam={cam} />
-      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, OPEN_CLICK, ...ORGANIZE_CLICKS, PR.reviewClick]} />
+      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, CITE_CLICK, OPEN_CLICK, ...ORGANIZE_CLICKS, PR.reviewClick]} />
     </AbsoluteFill>
   );
 };

@@ -78,6 +78,16 @@ const SelectableText = ({ tokens, selected, selColor }: { tokens: Tok[]; selecte
 /** 产品 PDF 文字层的选区色：`enhanced-pdf.css` 里 `.react-pdf__Page__textContent span::selection` 为 primary / 0.4。 */
 export const PDF_SELECTION = `color-mix(in srgb, ${light.primary} 40%, transparent)`;
 
+/**
+ * 引用定位到句子（`quoteFlash.ts` + `.ds-pdf-quote-flash`）：命中的文本层 span 铺 warning 色（亮色主题 38 70% 45%），
+ * 关键帧 0–60% 停在 0.48、到 100% 淡到 0，共 2.4s 真实时间；每行各一块、圆角 2。
+ */
+export const QUOTE_FLASH_S = 2.4;
+export const quoteFlashAlpha = (sinceReal: number) =>
+  sinceReal < 0 || sinceReal > QUOTE_FLASH_S ? 0 : sinceReal < QUOTE_FLASH_S * 0.6 ? 0.48 : 0.48 * (1 - (sinceReal - QUOTE_FLASH_S * 0.6) / (QUOTE_FLASH_S * 0.4));
+const quoteFlashStyle = (alpha: number): CSSProperties | undefined =>
+  alpha > 0.001 ? { background: `hsl(38 70% 45% / ${alpha})`, borderRadius: 2, WebkitBoxDecorationBreak: 'clone', boxDecorationBreak: 'clone' } : undefined;
+
 const Figure = () => {
   const fx = (x: number) => {
     const u = (x - 100) / 340;
@@ -137,11 +147,14 @@ export const TextbookPage = ({
   page = 132,
   selected = 0,
   selColor = PDF_SELECTION,
+  flash = 0,
   style,
 }: {
   page?: 132 | 134;
   selected?: number;
   selColor?: string;
+  /** 第 134 页命中句（[2]「构造辅助函数」的出处）的定位高亮透明度，见 quoteFlashAlpha */
+  flash?: number;
   style?: CSSProperties;
 }) => (
   <div
@@ -207,8 +220,10 @@ export const TextbookPage = ({
         </Block>
         <Block y={214} style={SERIF_BODY}>
           <span style={{ paddingLeft: '2em' }} />
-          容易验证 φ(<i>a</i>) = φ(<i>b</i>) = 0，且 φ(<i>x</i>) 在闭区间 [<i>a</i>, <i>b</i>] 上连续、在开区间 (<i>a</i>, <i>b</i>)
-          内可导。根据罗尔定理，在 (<i>a</i>, <i>b</i>) 内至少有一点 <i>ξ</i>，使 φ′(<i>ξ</i>) = 0，即
+          <span style={quoteFlashStyle(flash)}>
+            容易验证 φ(<i>a</i>) = φ(<i>b</i>) = 0，且 φ(<i>x</i>) 在闭区间 [<i>a</i>, <i>b</i>] 上连续、在开区间 (<i>a</i>, <i>b</i>)
+            内可导。根据罗尔定理，在 (<i>a</i>, <i>b</i>) 内至少有一点 <i>ξ</i>，使 φ′(<i>ξ</i>) = 0，即
+          </span>
         </Block>
         <Block y={344} style={{ display: 'flex', justifyContent: 'center', color: INK, fontSize: 21 }}>
           <Tex tex="f'(\xi)-\dfrac{f(b)-f(a)}{b-a}=0" />

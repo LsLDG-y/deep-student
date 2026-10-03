@@ -77,8 +77,9 @@ export const pxPerUnit = (d: number) => HEIGHT / (2 * d * TAN);
 
 // ── 查询向量条（3D）与探针 ───────────────────────────
 export const strip3D = () => {
-  const pitch = (STRIP.pitch * CUT_ZOOM) / pxPerUnit(STRIP_D); // DOM pitch × CUT_ZOOM → 屏幕像素 → 世界单位
-  return { pitch, cell: (pitch * STRIP.cell) / STRIP.pitch };
+  const unit = CUT_ZOOM / pxPerUnit(STRIP_D); // 1 个 DOM 像素 × CUT_ZOOM → 屏幕像素 → 世界单位
+  const pitch = STRIP.pitch * unit;
+  return { pitch, unit, cell: STRIP.cell * unit };
 };
 
 /** 命中纸片在资料堆里的原始位置。 */
@@ -133,7 +134,7 @@ export const cards = (): Card[] => {
   for (let z = -1.5; z > -128; z -= 2.5) {
     for (let gx = -21; gx <= 21; gx += 2.15) {
       for (let gy = -12; gy <= 12; gy += 2.2) {
-        if (r() > 0.17) continue;
+        if (r() > 0.085) continue;
         const pos = new Vector3(gx + (r() - 0.5) * 1.6, gy + (r() - 0.5) * 1.6, z + (r() - 0.5) * 2.2);
         // 镜头通道：路径附近留空
         const corridor = (pos.x / 3.1) ** 2 + (pos.y / 2.1) ** 2;
@@ -151,12 +152,12 @@ export const cards = (): Card[] => {
         const d = pos.distanceTo(HIT_CENTROID);
         const sim = clamp(0.1 + 0.66 * Math.exp(-(d * d) / (2 * 7.5 * 7.5)) + (r() - 0.5) * 0.24, 0.02, 0.79);
         const reveal = Math.min(...PULSES.map((e, k) => e + PULSE_ORIGINS[k].distanceTo(pos) / PULSE_SPEED));
-        const tilt = r() < 0.12 ? 3 : 1;
+        const tilt = r() < 0.06 ? 2 : 1;
         out.push({
           type,
           variant: Math.floor(r() * VARIANTS[type]),
           pos,
-          rot: new Euler((r() - 0.5) * 0.18 * tilt, (r() - 0.5) * 0.3 * tilt, (r() - 0.5) * 0.12 * tilt),
+          rot: new Euler((r() - 0.5) * 0.14 * tilt, (r() - 0.5) * 0.24 * tilt, (r() - 0.5) * 0.08 * tilt),
           scale: 0.95 + r() * 0.4,
           sim,
           phase: r() * Math.PI * 2,

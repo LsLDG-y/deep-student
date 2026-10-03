@@ -1,8 +1,7 @@
 import { useThree } from '@react-three/fiber';
-import { Bloom, DepthOfField, EffectComposer, Vignette } from '@react-three/postprocessing';
+import { DepthOfField, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { ThreeCanvas } from '@remotion/three';
-import { useLayoutEffect, useMemo } from 'react';
-import { useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { AbsoluteFill } from 'remotion';
 import * as THREE from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
@@ -36,23 +35,27 @@ import {
   type Card,
 } from './archive';
 import { useArchiveAssets, type ArchiveAssets } from './assets';
-import { cellRGB, cellValue, HITS, RV, STRIP } from './beats';
+import { BAR, barLen, cellRGB, cellValue, HITS, RV, STRIP } from './beats';
 import type { CardType } from './textures';
 
 // ── 时间曲线 ──────────────────────────────────────────
-const mood = (t: number) => keys(t, [[RV.cut, 0], [7.28, 1, ease.inOutCubic], [8.12, 1], [8.36, 0, ease.inOutCubic]]);
-const fogNear = (t: number) => keys(t, [[RV.cut, 3.2], [RV.probe, 3.2], [7.42, 5, ease.outCubic], [8.14, 5], [8.36, 4.7, ease.inOutCubic]]);
-// 退场：雾向镜头合拢，只留命中卡（命中卡不受雾影响），交接给界面时画面是干净的白底
-const fogFar = (t: number) => keys(t, [[RV.cut, 3.4], [RV.probe, 3.4], [7.42, 46, ease.outCubic], [8.14, 46], [8.36, 5, ease.inOutCubic]]);
-const bloomI = (t: number) =>
-  keys(t, [[RV.cut, 0], [RV.probe - 0.07, 0.4], [RV.probe + 0.01, 1.0, ease.outCubic], [7.32, 0.35], [8.12, 0.3], [8.34, 0]]);
-const bokeh = (t: number) => keys(t, [[RV.cut, 0], [7.16, 0], [7.36, 3.2], [8.2, 3.2], [8.36, 0]]);
-const vignette = (t: number) => keys(t, [[RV.cut, 0], [7.2, 0.5], [8.12, 0.5], [8.36, 0]]);
+// 开场与 DOM 一样是白底（匹配剪辑无缝），资料展开时褪成浅灰纸面，退场回白交给界面
+const space = (t: number) => keys(t, [[RV.cut, 0], [RV.probe, 0], [7.36, 1, ease.inOutCubic], [8.12, 1], [8.36, 0, ease.inOutCubic]]);
+const fogNear = (t: number) => keys(t, [[RV.cut, 3.2], [RV.probe, 3.2], [7.42, 6, ease.outCubic], [8.14, 6], [8.36, 4.7, ease.inOutCubic]]);
+// 退场：雾向镜头合拢，只留命中卡（命中卡在 fog.near 以内不受雾影响）
+const fogFar = (t: number) => keys(t, [[RV.cut, 3.4], [RV.probe, 3.4], [7.42, 68, ease.outCubic], [8.14, 68], [8.36, 5, ease.inOutCubic]]);
+const bokeh = (t: number) => keys(t, [[RV.cut, 0], [7.16, 0], [7.36, 2.6], [8.2, 2.6], [8.36, 0]]);
+const vignette = (t: number) => keys(t, [[RV.cut, 0], [7.2, 0.22], [8.12, 0.22], [8.36, 0]]);
 const extractK = (t: number, i: number) => springAt(t, RV.extract + i * 0.06, { stiffness: 150, damping: 21 });
 
+const SRGB = THREE.SRGBColorSpace;
+const rgb = (r: number, g: number, b: number) => new THREE.Color().setRGB(r / 255, g / 255, b / 255, SRGB);
 const WHITE = new THREE.Color(1, 1, 1);
-const DUSK = new THREE.Color().setRGB(0.115, 0.125, 0.15, THREE.SRGBColorSpace);
-const GLOW_BLUE = new THREE.Vector3(0.2, 0.38, 0.85);
+const SPACE = rgb(233, 236, 241);
+const PRIMARY = rgb(30, 94, 184);
+const PRIMARY_SOFT = rgb(118, 158, 222);
+const TINT = rgb(214, 228, 250);
+const SHADOW = rgb(24, 34, 54);
 const smooth = (a: number, b: number, x: number) => {
   const k = clamp((x - a) / (b - a));
   return k * k * (3 - 2 * k);
@@ -61,50 +64,89 @@ const smooth = (a: number, b: number, x: number) => {
 // ── 纹理 ──────────────────────────────────────────────
 export const canvasTex = (c: HTMLCanvasElement) => {
   const tx = new THREE.CanvasTexture(c);
-  tx.colorSpace = THREE.SRGBColorSpace;
+  tx.colorSpace = SRGB;
   tx.anisotropy = 8;
   return tx;
 };
-const radialTex = () => {
+const paint = (w: number, h: number, fn: (g: CanvasRenderingContext2D) => void) => {
   const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  const g = c.getContext('2d')!;
-  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gr.addColorStop(0, 'rgba(255,255,255,1)');
-  gr.addColorStop(0.25, 'rgba(255,255,255,0.45)');
-  gr.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = gr;
-  g.fillRect(0, 0, 128, 128);
+  c.width = w;
+  c.height = h;
+  fn(c.getContext('2d')!);
   return canvasTex(c);
 };
-const roundedTex = (w: number, h: number, r: number, blur = 0) => {
-  const pad = blur * 2;
-  const c = document.createElement('canvas');
-  c.width = w + pad * 2;
-  c.height = h + pad * 2;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#fff';
-  if (blur) {
-    g.shadowColor = '#fff';
-    g.shadowBlur = blur;
-  }
-  g.beginPath();
-  g.roundRect(pad, pad, w, h, r);
-  g.fill();
-  return canvasTex(c);
-};
+const radialTex = () =>
+  paint(128, 128, (g) => {
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,255,255,1)');
+    gr.addColorStop(0.3, 'rgba(255,255,255,0.5)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 128, 128);
+  });
+/** 软边圆角矩形（阴影 / 光晕平面的 alpha）：边缘按 blur 渐隐。 */
+const softRectTex = (blur: number) =>
+  paint(256, 256, (g) => {
+    g.filter = `blur(${blur}px)`;
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.roundRect(blur * 2.2, blur * 2.2, 256 - blur * 4.4, 256 - blur * 4.4, 14);
+    g.fill();
+  });
+/** 柔边环带：波前用，内外都渐隐，不是一根细线。 */
+const ringTex = () =>
+  paint(512, 512, (g) => {
+    const gr = g.createRadialGradient(256, 256, 0, 256, 256, 256);
+    gr.addColorStop(0, 'rgba(255,255,255,0)');
+    gr.addColorStop(0.7, 'rgba(255,255,255,0)');
+    gr.addColorStop(0.9, 'rgba(255,255,255,0.5)');
+    gr.addColorStop(0.955, 'rgba(255,255,255,1)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 512, 512);
+  });
+const pillTex = () =>
+  paint(32, 128, (g) => {
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.roundRect(0, 0, 32, 128, 16);
+    g.fill();
+  });
 
-const glowMaterial = (map: THREE.Texture) => {
-  const m = new THREE.MeshStandardMaterial({ map, roughness: 0.68, metalness: 0 });
+/** 纸片：受光的标准材质，逐实例 aTint（相关 → 浅蓝）与 aFade（不相关 → 褪向雾色）。 */
+const paperMaterial = (map: THREE.Texture) => {
+  const m = new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0 });
   m.onBeforeCompile = (sh) => {
+    sh.uniforms.uTint = { value: TINT };
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 aGlow;\nvarying vec3 vGlow;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = aGlow;');
+      .replace('#include <common>', '#include <common>\nattribute float aFade;\nattribute float aTint;\nvarying float vFade;\nvarying float vTint;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFade = aFade;\nvTint = aTint;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vGlow;')
-      .replace('#include <opaque_fragment>', 'outgoingLight += vGlow;\n#include <opaque_fragment>');
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nvarying float vFade;\nvarying float vTint;')
+      .replace('#include <opaque_fragment>', 'outgoingLight *= mix(vec3(1.0), uTint, vTint);\n#include <opaque_fragment>')
+      .replace('#include <fog_fragment>', '#include <fog_fragment>\n#ifdef USE_FOG\ngl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, vFade);\n#endif');
   };
   return m;
+};
+
+/** 软阴影 / 光晕：不写深度的透明平面，逐实例 aAlpha。 */
+const alphaMaterial = (map: THREE.Texture, color: THREE.Color, fog: boolean) => {
+  const m = new THREE.MeshBasicMaterial({ map, color, transparent: true, depthWrite: false, toneMapped: false, fog });
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float aAlpha;\nvarying float vAlpha;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAlpha = aAlpha;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vAlpha;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vAlpha;');
+  };
+  return m;
+};
+const instancedFloat = (geom: THREE.BufferGeometry, name: string, n: number) => {
+  const a = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+  a.setUsage(THREE.DynamicDrawUsage);
+  geom.setAttribute(name, a);
+  return a;
 };
 
 // ── 每张纸片的逐帧状态 ────────────────────────────────
@@ -120,14 +162,11 @@ const pulseFlash = (pos: THREE.Vector3, t: number) => {
   return f;
 };
 
+type CardFx = { pos: THREE.Vector3; rot: THREE.Euler; tint: number; fade: number; halo: number; shadow: number };
 const _v = new THREE.Vector3();
-const cardState = (c: Card, t: number, out: { pos: THREE.Vector3; rot: THREE.Euler; bright: number; glow: THREE.Vector3 }) => {
+const cardState = (c: Card, t: number, out: CardFx) => {
   const sway = t * PACE;
-  out.pos.set(
-    c.pos.x + Math.sin(sway * 0.5 + c.phase) * 0.05,
-    c.pos.y + Math.cos(sway * 0.43 + c.phase) * 0.05,
-    c.pos.z,
-  );
+  out.pos.set(c.pos.x + Math.sin(sway * 0.5 + c.phase) * 0.05, c.pos.y + Math.cos(sway * 0.43 + c.phase) * 0.05, c.pos.z);
   // 选中后：离探针近的纸片被推开，给命中让路
   const part = prog(t, RV.select, RV.select + 0.4, ease.outCubic);
   if (part > 0) {
@@ -136,18 +175,14 @@ const cardState = (c: Card, t: number, out: { pos: THREE.Vector3; rot: THREE.Eul
     const push = Math.max(0, 1 - d / 15) * 4.5 * part;
     if (d > 1e-3) out.pos.addScaledVector(_v.normalize(), push);
   }
-  out.rot.set(
-    c.rot.x + Math.sin(sway * 0.35 + c.phase) * 0.03,
-    c.rot.y + Math.cos(sway * 0.3 + c.phase * 1.3) * 0.04,
-    c.rot.z,
-  );
-  const shown = prog(t, c.reveal, c.reveal + 0.1);
+  out.rot.set(c.rot.x + Math.sin(sway * 0.35 + c.phase) * 0.03, c.rot.y + Math.cos(sway * 0.3 + c.phase * 1.3) * 0.04, c.rot.z);
+  const shown = prog(t, c.reveal, c.reveal + 0.12);
   const rel = smooth(0.3, 0.78, c.sim);
-  const dimAfter = 1 - 0.55 * part * (1 - rel * 0.6);
-  out.bright = (1 + (0.5 + 0.56 * rel - 1) * shown) * dimAfter;
   const flash = pulseFlash(c.pos, t);
-  const g = flash * 0.34 + shown * rel * rel * 0.34 * (1 - part * 0.5);
-  out.glow.copy(GLOW_BLUE).multiplyScalar(g);
+  out.tint = clamp(flash * 0.45 + shown * rel * 0.6 * (1 - part * 0.55));
+  out.halo = clamp(flash * 0.3 + shown * rel * rel * 0.5 * (1 - part * 0.7));
+  out.fade = clamp(shown * (1 - rel) * 0.3 + part * (0.5 - rel * 0.3));
+  out.shadow = 0.9 * (1 - out.fade);
 };
 
 // ── 场景组件 ──────────────────────────────────────────
@@ -157,7 +192,7 @@ const Rig = ({ t }: { t: number }) => {
   const bg = useMemo(() => new THREE.Color(), []);
   useLayoutEffect(() => {
     applyCam(camera as THREE.PerspectiveCamera, t);
-    bg.copy(WHITE).lerp(DUSK, mood(t));
+    bg.copy(WHITE).lerp(SPACE, space(t));
     scene.background = bg;
     fog.color.copy(bg);
     fog.near = fogNear(t);
@@ -167,8 +202,11 @@ const Rig = ({ t }: { t: number }) => {
   return null;
 };
 
+const SHADOW_LOCAL = new THREE.Matrix4().compose(new THREE.Vector3(0.03, -0.055, -0.03), new THREE.Quaternion(), new THREE.Vector3(1.14, 1.11, 1));
+const HALO_LOCAL = new THREE.Matrix4().compose(new THREE.Vector3(0, 0, -0.02), new THREE.Quaternion(), new THREE.Vector3(1.22, 1.17, 1));
+
 const CardField = ({ t, assets }: { t: number; assets: ArchiveAssets }) => {
-  const groups = useMemo(() => {
+  const scene = useMemo(() => {
     const list = cards();
     const by = new Map<string, { type: CardType; variant: number; idx: number[] }>();
     list.forEach((c, i) => {
@@ -176,26 +214,33 @@ const CardField = ({ t, assets }: { t: number; assets: ArchiveAssets }) => {
       if (!by.has(key)) by.set(key, { type: c.type, variant: c.variant, idx: [] });
       by.get(key)!.idx.push(i);
     });
-    return [...by.values()].map((g) => {
+    const groups = [...by.values()].map((g) => {
       const tex = assets.cards[g.type][g.variant];
       const geom = new THREE.BoxGeometry(1, 1, 0.012);
-      const glow = new THREE.InstancedBufferAttribute(new Float32Array(g.idx.length * 3), 3);
-      glow.setUsage(THREE.DynamicDrawUsage);
-      geom.setAttribute('aGlow', glow);
-      const mesh = new THREE.InstancedMesh(geom, glowMaterial(canvasTex(tex.canvas)), g.idx.length);
+      const fade = instancedFloat(geom, 'aFade', g.idx.length);
+      const tint = instancedFloat(geom, 'aTint', g.idx.length);
+      const mesh = new THREE.InstancedMesh(geom, paperMaterial(canvasTex(tex.canvas)), g.idx.length);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      mesh.setColorAt(0, WHITE);
       mesh.frustumCulled = false;
-      return { ...g, mesh, glow, aspect: tex.aspect };
+      return { ...g, mesh, fade, tint, aspect: tex.aspect };
     });
+    const plane = (tex: THREE.Texture, color: THREE.Color, fogged: boolean) => {
+      const geom = new THREE.PlaneGeometry(1, 1);
+      const alpha = instancedFloat(geom, 'aAlpha', list.length);
+      const mesh = new THREE.InstancedMesh(geom, alphaMaterial(tex, color, fogged), list.length);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.frustumCulled = false;
+      return { mesh, alpha };
+    };
+    return { groups, shadows: plane(softRectTex(10), SHADOW, true), halos: plane(softRectTex(16), PRIMARY, true) };
   }, [assets]);
 
   useLayoutEffect(() => {
     const list = cards();
     const dummy = new THREE.Object3D();
-    const col = new THREE.Color();
-    const st = { pos: new THREE.Vector3(), rot: new THREE.Euler(), bright: 1, glow: new THREE.Vector3() };
-    for (const g of groups) {
+    const m = new THREE.Matrix4();
+    const st: CardFx = { pos: new THREE.Vector3(), rot: new THREE.Euler(), tint: 0, fade: 0, halo: 0, shadow: 1 };
+    for (const g of scene.groups) {
       g.idx.forEach((ci, n) => {
         const c = list[ci];
         cardState(c, t, st);
@@ -204,77 +249,82 @@ const CardField = ({ t, assets }: { t: number; assets: ArchiveAssets }) => {
         dummy.scale.set(c.scale, c.scale * g.aspect, 1);
         dummy.updateMatrix();
         g.mesh.setMatrixAt(n, dummy.matrix);
-        g.mesh.setColorAt(n, col.setScalar(st.bright));
-        g.glow.setXYZ(n, st.glow.x, st.glow.y, st.glow.z);
+        g.fade.setX(n, st.fade);
+        g.tint.setX(n, st.tint);
+        scene.shadows.mesh.setMatrixAt(ci, m.copy(dummy.matrix).multiply(SHADOW_LOCAL));
+        scene.shadows.alpha.setX(ci, 0.38 * st.shadow);
+        scene.halos.mesh.setMatrixAt(ci, m.copy(dummy.matrix).multiply(HALO_LOCAL));
+        scene.halos.alpha.setX(ci, 0.42 * st.halo);
       });
       g.mesh.instanceMatrix.needsUpdate = true;
-      if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true;
-      g.glow.needsUpdate = true;
+      g.fade.needsUpdate = true;
+      g.tint.needsUpdate = true;
     }
-  }, [t, groups]);
+    for (const p of [scene.shadows, scene.halos]) {
+      p.mesh.instanceMatrix.needsUpdate = true;
+      p.alpha.needsUpdate = true;
+    }
+  }, [t, scene]);
 
   return (
     <>
-      {groups.map((g) => (
+      <primitive object={scene.shadows.mesh} />
+      <primitive object={scene.halos.mesh} />
+      {scene.groups.map((g) => (
         <primitive key={`${g.type}:${g.variant}`} object={g.mesh} />
       ))}
     </>
   );
 };
 
-/** 开场：与 DOM 完全对齐的 64 格向量条，随后收拢成探针。 */
-const QueryCells = ({ t }: { t: number }) => {
-  const { mesh, base, center, quat } = useMemo(() => {
-    const { pitch, cell } = strip3D();
+/** 开场：与 DOM 完全对齐的 64 根细竖条，随后收拢成探针。 */
+const QueryBars = ({ t }: { t: number }) => {
+  const { mesh, base, center, quat, unit } = useMemo(() => {
+    const { pitch, unit: u } = strip3D();
     const m = new THREE.InstancedMesh(
       new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({ map: roundedTex(64, 64, 16), transparent: true, toneMapped: false, fog: false, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ map: pillTex(), transparent: true, toneMapped: false, fog: false, depthWrite: false }),
       STRIP.cells,
     );
     m.setColorAt(0, WHITE);
     m.frustumCulled = false;
     const b = Array.from({ length: STRIP.cells }, (_, j) => camLocal(RV.cut, (j - (STRIP.cells - 1) / 2) * pitch, 0, STRIP_D));
-    return { mesh: m, base: b, center: camLocal(RV.cut, 0, 0, STRIP_D), quat: camAtT(RV.cut).quaternion.clone(), cellSize: cell };
+    return { mesh: m, base: b, center: camLocal(RV.cut, 0, 0, STRIP_D), quat: camAtT(RV.cut).quaternion.clone(), unit: u };
   }, []);
-  const { cell } = strip3D();
 
   useLayoutEffect(() => {
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
-    const hot = new THREE.Color(0.62, 0.78, 1.0);
     for (let j = 0; j < STRIP.cells; j++) {
       const off = Math.abs(j - (STRIP.cells - 1) / 2) / ((STRIP.cells - 1) / 2);
       const k = prog(t, RV.cut + 0.02 + off * 0.07, RV.probe, ease.inCubic);
-      const glowK = prog(t, RV.cut + 0.01, RV.cut + 0.12);
+      const v = cellValue(j);
       dummy.position.copy(base[j]).lerp(center, k);
-      dummy.position.y += Math.sin(k * Math.PI) * (j % 2 ? 0.05 : -0.05) * (1 - off * 0.5);
       dummy.quaternion.copy(quat);
-      const s = cell * (1 - 0.75 * k);
-      dummy.scale.set(s, s, 1);
+      dummy.scale.set(BAR.w * unit * (1 - 0.5 * k), barLen(v) * BAR.h * unit * (1 - 0.86 * k), 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(j, dummy.matrix);
-      const [r, g, b] = cellRGB(cellValue(j));
-      col.setRGB(r, g, b, THREE.SRGBColorSpace).lerp(hot, Math.max(k, glowK * 0.08));
+      const [r, g, b] = cellRGB(v);
+      col.setRGB(r, g, b, SRGB).lerp(PRIMARY, k);
       mesh.setColorAt(j, col);
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.visible = t < RV.probe + 0.01;
-  }, [t, mesh, base, center, quat, cell]);
+  }, [t, mesh, base, center, quat, unit]);
   return <primitive object={mesh} />;
 };
 
-/** 探针：一颗实心小点 + 一道细尾迹（不发光，与收尾地形的制图线条同一语言）。 */
+/** 探针：品牌瞳点同色的实心点 + 柔光晕 + 渐隐尾迹；选中那一下从点上荡开一圈柔边环。 */
 const TRAIL_N = 40;
-const PROBE_CORE = new THREE.Color(0.86, 0.92, 1.0);
-const PROBE_TRAIL = new THREE.Color(0.62, 0.76, 1.0);
 const Probe = ({ t }: { t: number }) => {
   const parts = useMemo(() => {
     const group = new THREE.Group();
-    const core = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), new THREE.MeshBasicMaterial({ color: PROBE_CORE, toneMapped: false, fog: false }));
+    const core = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), new THREE.MeshBasicMaterial({ color: PRIMARY, toneMapped: false, fog: false }));
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTex(), color: PRIMARY, transparent: true, depthWrite: false, toneMapped: false, fog: false }));
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(1.55, 1.75, 64),
-      new THREE.MeshBasicMaterial({ color: PROBE_TRAIL, transparent: true, depthWrite: false, toneMapped: false, fog: false, side: THREE.DoubleSide }),
+      new THREE.PlaneGeometry(2, 2),
+      new THREE.MeshBasicMaterial({ map: ringTex(), color: PRIMARY, transparent: true, depthWrite: false, toneMapped: false, fog: false }),
     );
     const geom = new LineGeometry();
     geom.setPositions(new Array(TRAIL_N * 3).fill(0));
@@ -283,9 +333,8 @@ const Probe = ({ t }: { t: number }) => {
     mat.resolution.set(WIDTH, HEIGHT);
     const trail = new Line2(geom, mat);
     trail.frustumCulled = false;
-    const light = new THREE.PointLight(new THREE.Color('#5b9bff'), 0, 14, 1.2);
-    group.add(core, ring, trail, light);
-    return { group, core, ring, trail, geom, mat, light };
+    group.add(halo, core, ring, trail);
+    return { group, core, halo, ring, trail, geom };
   }, []);
 
   useLayoutEffect(() => {
@@ -297,13 +346,15 @@ const Probe = ({ t }: { t: number }) => {
     const fade = 1 - prog(t, 8.18, 8.38);
     const selectPulse = Math.exp(-Math.max(0, t - RV.select) * PACE * 4) * (t >= RV.select ? 1 : 0);
     parts.core.position.copy(p);
-    parts.core.scale.setScalar(0.04 * fade * (1 + birth * 0.8));
-    // 选中那一下：一圈细环从点上弹开
+    parts.core.scale.setScalar(0.034 * fade * (1 + birth * 0.6));
+    parts.halo.position.copy(p);
+    parts.halo.scale.setScalar(0.26 * fade * (1 + birth * 0.8 + selectPulse * 0.6));
+    (parts.halo.material as THREE.SpriteMaterial).opacity = 0.3 * fade;
     parts.ring.position.copy(p);
     parts.ring.quaternion.copy(camAtT(t).quaternion);
-    parts.ring.scale.setScalar(0.04 * (1 + (1 - selectPulse) * 5) * fade);
-    (parts.ring.material as THREE.MeshBasicMaterial).opacity = selectPulse * 0.7 * fade;
-    const bg = WHITE.clone().lerp(DUSK, mood(t));
+    parts.ring.scale.setScalar(0.05 + (1 - selectPulse) * 0.5 * fade);
+    (parts.ring.material as THREE.MeshBasicMaterial).opacity = selectPulse * 0.55 * fade;
+    const bg = WHITE.clone().lerp(SPACE, space(t));
     const cam = camPose(t).pos;
     const pos: number[] = [];
     const cols: number[] = [];
@@ -313,37 +364,28 @@ const Probe = ({ t }: { t: number }) => {
       pos.push(tp.x, tp.y, tp.z);
       // 尾迹越旧越接近底色（等于淡出）；离镜头太近的一段也隐去，免得横穿画面
       const k = (1 - i / TRAIL_N) ** 1.6 * prog(cam.distanceTo(tp), 1.2, 2.6) * prog(t - i * 0.0035, RV.probe, RV.probe + 0.06);
-      c.copy(bg).lerp(PROBE_TRAIL, k * fade);
+      c.copy(bg).lerp(PRIMARY_SOFT, k * fade);
       cols.push(c.r, c.g, c.b);
     }
     parts.geom.setPositions(pos);
     parts.geom.setColors(cols);
-    parts.light.position.copy(p);
-    parts.light.intensity = (18 + birth * 24 + selectPulse * 16) * fade;
   }, [t, parts]);
   return <primitive object={parts.group} />;
 };
 
-/** 相似度波前：从探针荡开的一圈圈细线圆环（像声呐，而不是发光的气泡）。 */
+/** 相似度波前：从探针荡开的柔边蓝环。 */
 const Pulses = ({ t }: { t: number }) => {
-  const rings = useMemo(
-    () =>
-      PULSES.map(() => {
-        const geom = new LineGeometry();
-        const pts: number[] = [];
-        for (let i = 0; i <= 128; i++) {
-          const a = (i / 128) * Math.PI * 2;
-          pts.push(Math.cos(a), Math.sin(a), 0);
-        }
-        geom.setPositions(pts);
-        const mat = new LineMaterial({ color: PROBE_TRAIL, linewidth: 1.4, transparent: true, depthWrite: false, toneMapped: false });
-        mat.resolution.set(WIDTH, HEIGHT);
-        const line = new Line2(geom, mat);
-        line.frustumCulled = false;
-        return line;
-      }),
-    [],
-  );
+  const rings = useMemo(() => {
+    const tex = ringTex();
+    return PULSES.map(() => {
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(2, 2),
+        new THREE.MeshBasicMaterial({ map: tex, color: PRIMARY, transparent: true, depthWrite: false, toneMapped: false, fog: false }),
+      );
+      m.frustumCulled = false;
+      return m;
+    });
+  }, []);
   useLayoutEffect(() => {
     const q = camAtT(t).quaternion;
     rings.forEach((m, k) => {
@@ -353,7 +395,7 @@ const Pulses = ({ t }: { t: number }) => {
       m.position.copy(pulseOrigin(k));
       m.quaternion.copy(q);
       m.scale.setScalar(Math.max(0.01, age * PULSE_SPEED));
-      (m.material as LineMaterial).opacity = 0.6 * Math.exp(-age * 2.6) * prog(age, 0, 0.04);
+      (m.material as THREE.MeshBasicMaterial).opacity = 0.26 * Math.exp(-age * 2.4) * prog(age, 0, 0.04);
     });
   }, [t, rings]);
   return (
@@ -377,76 +419,95 @@ const hitPose = (t: number, i: number) => {
 };
 
 const HitCards = ({ t, assets }: { t: number; assets: ArchiveAssets }) => {
-  const parts = useMemo(
-    () =>
-      HITS.map((_, i) => {
-        const card = new THREE.Mesh(
-          new THREE.BoxGeometry(HIT_W, HIT_H, 0.014),
-          // 受雾影响：开场时藏在雾里；抽离后离镜头 4.6 < fog.near，退场合拢的雾也盖不到它们
-          new THREE.MeshBasicMaterial({ map: canvasTex(assets.hits[i].canvas), toneMapped: false }),
-        );
-        return { card };
-      }),
-    [assets],
-  );
+  const parts = useMemo(() => {
+    const shadowTex = softRectTex(18);
+    const haloTex = softRectTex(22);
+    return HITS.map((_, i) => {
+      const group = new THREE.Group();
+      // 受雾影响：开场时藏在雾里；抽离后离镜头 4.6 < fog.near，退场合拢的雾也盖不到它们
+      const card = new THREE.Mesh(new THREE.BoxGeometry(HIT_W, HIT_H, 0.014), new THREE.MeshBasicMaterial({ map: canvasTex(assets.hits[i].canvas), toneMapped: false }));
+      const shadow = new THREE.Mesh(
+        new THREE.PlaneGeometry(HIT_W * 1.16, HIT_H * 1.12),
+        new THREE.MeshBasicMaterial({ map: shadowTex, color: SHADOW, transparent: true, depthWrite: false, toneMapped: false }),
+      );
+      shadow.position.set(0.03, -0.07, -0.04);
+      const halo = new THREE.Mesh(
+        new THREE.PlaneGeometry(HIT_W * 1.3, HIT_H * 1.24),
+        new THREE.MeshBasicMaterial({ map: haloTex, color: PRIMARY, transparent: true, depthWrite: false, toneMapped: false }),
+      );
+      halo.position.set(0, 0, -0.03);
+      group.add(shadow, halo, card);
+      return { group, shadow, halo };
+    });
+  }, [assets]);
 
   useLayoutEffect(() => {
-    parts.forEach(({ card }, i) => {
-      card.visible = t < RV.reveal;
-      if (!card.visible) return;
+    parts.forEach(({ group, shadow, halo }, i) => {
+      group.visible = t < RV.reveal;
+      if (!group.visible) return;
       const { pos, q, k } = hitPose(t, i);
-      card.position.copy(pos);
-      card.quaternion.copy(q);
-      card.scale.setScalar(i === 1 ? 1 + 0.08 * clamp(k) : 1);
+      group.position.copy(pos);
+      group.quaternion.copy(q);
+      group.scale.setScalar(i === 1 ? 1 + 0.08 * clamp(k) : 1);
       const flash = pulseFlash(HIT_BASE[i], t);
-      // 选中前与周围受光纸片同亮度（随场景压暗），选中后点亮
       const lit = prog(t, RV.select, RV.select + 0.12);
-      const pre = 0.88 - 0.42 * mood(t);
-      (card.material as THREE.MeshBasicMaterial).color.setScalar(pre + (1 - pre) * lit + flash * 0.2);
+      const settle = Math.exp(-Math.max(0, t - RV.select) * PACE * 2.2);
+      (halo.material as THREE.MeshBasicMaterial).opacity = clamp(flash * 0.3 + lit * (0.16 + 0.34 * settle));
+      (shadow.material as THREE.MeshBasicMaterial).opacity = 0.16 + 0.12 * clamp(k);
     });
   }, [t, parts]);
   return (
     <>
       {parts.map((p, i) => (
-        <primitive key={i} object={p.card} />
+        <primitive key={i} object={p.group} />
       ))}
     </>
   );
 };
 
-/** top-k 连线：探针 → 三张命中，线上有光点流动。 */
+/** top-k 连线：探针 → 三张命中，二次贝塞尔弧线，线上有光点流动。 */
+const LINK_N = 32;
 const Links = ({ t }: { t: number }) => {
   const parts = useMemo(() => {
-    const glow = radialTex();
+    const dotTex = radialTex();
     return HITS.map(() => {
       const geom = new LineGeometry();
-      geom.setPositions([0, 0, 0, 0, 0, 1]);
-      const mat = new LineMaterial({ color: new THREE.Color(0.46, 0.66, 1.0), linewidth: 2, transparent: true, depthWrite: false, toneMapped: false });
+      geom.setPositions(new Array(LINK_N * 3).fill(0));
+      const mat = new LineMaterial({ color: PRIMARY, linewidth: 1.6, transparent: true, depthWrite: false, toneMapped: false });
       mat.resolution.set(WIDTH, HEIGHT);
       const line = new Line2(geom, mat);
       line.frustumCulled = false;
-      const dot = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(0.5, 0.75, 1.3), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, transparent: true }),
-      );
+      const dot = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: PRIMARY, transparent: true, depthWrite: false, toneMapped: false, fog: false }));
       return { line, geom, mat, dot };
     });
   }, []);
   useLayoutEffect(() => {
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camAtT(t).quaternion);
     parts.forEach(({ line, geom, mat, dot }, i) => {
-      const grow = prog(t, RV.select + i * 0.035, RV.select + 0.14 + i * 0.035, ease.outCubic);
+      const grow = prog(t, RV.select + i * 0.035, RV.select + 0.16 + i * 0.035, ease.outCubic);
       const fade = 1 - prog(t, 8.12, 8.3);
       line.visible = grow > 0 && fade > 0;
       dot.visible = line.visible;
       if (!line.visible) return;
       const a = probePos(t);
       const b = hitPose(t, i).pos;
-      const end = a.clone().lerp(b, grow);
-      geom.setPositions([a.x, a.y, a.z, end.x, end.y, end.z]);
+      const ctrl = a.clone().lerp(b, 0.5).addScaledVector(up, 0.16 * a.distanceTo(b));
+      const at = (u: number) => {
+        const s = 1 - u;
+        return new THREE.Vector3().addScaledVector(a, s * s).addScaledVector(ctrl, 2 * s * u).addScaledVector(b, u * u);
+      };
+      const pts: number[] = [];
+      for (let n = 0; n < LINK_N; n++) {
+        const p = at((n / (LINK_N - 1)) * grow);
+        pts.push(p.x, p.y, p.z);
+      }
+      geom.setPositions(pts);
       line.computeLineDistances();
-      mat.opacity = 0.9 * fade;
-      const f = ((t - RV.select) * PACE * 1.8 + i * 0.3) % 1;
-      dot.position.copy(a).lerp(end, f);
-      dot.scale.setScalar(0.22 * fade);
+      mat.opacity = 0.75 * fade;
+      const f = ((t - RV.select) * PACE * 1.6 + i * 0.3) % 1;
+      dot.position.copy(at(f * grow));
+      dot.scale.setScalar(0.16 * fade);
+      (dot.material as THREE.SpriteMaterial).opacity = 0.85 * fade;
     });
   }, [t, parts]);
   return (
@@ -462,12 +523,10 @@ const Links = ({ t }: { t: number }) => {
 };
 
 type Fx = { bokehScale: number; target: THREE.Vector3 | null };
-type Intensity = { intensity: number };
 type Dark = { darkness: number };
 
 const Post = ({ t }: { t: number }) => {
   const dof = useRef<Fx>(null);
-  const bloom = useRef<Intensity>(null);
   const vig = useRef<Dark>(null);
   const target0 = useMemo<[number, number, number]>(() => [0, 0, 0], []);
   useLayoutEffect(() => {
@@ -477,34 +536,39 @@ const Post = ({ t }: { t: number }) => {
       const f = probePos(t).lerp(camLocal(t, 0, 0, HIT_D), focusHits);
       dof.current.target?.copy(f);
     }
-    if (bloom.current) bloom.current.intensity = bloomI(t);
     if (vig.current) vig.current.darkness = vignette(t);
   }, [t]);
   return (
     <EffectComposer multisampling={4}>
       <DepthOfField ref={dof as never} target={target0} worldFocusRange={5} bokehScale={0} />
-      <Bloom ref={bloom as never} mipmapBlur luminanceThreshold={1.0} luminanceSmoothing={0.25} intensity={0} radius={0.78} />
-      <Vignette ref={vig as never} offset={0.3} darkness={0} />
+      <Vignette ref={vig as never} offset={0.32} darkness={0} />
     </EffectComposer>
   );
 };
 
-const Lights = ({ t }: { t: number }) => {
-  const m = mood(t);
-  return (
-    <>
-      <hemisphereLight args={[0xffffff, 0xc9d2e0, 1.5 - 0.95 * m]} />
-      <directionalLight position={[-4, 6, 9]} intensity={1.9 - 0.7 * m} />
-    </>
-  );
-};
+const Lights = () => (
+  <>
+    <hemisphereLight args={[0xffffff, 0xdfe4ec, 2.0]} />
+    <directionalLight position={[-4, 6, 9]} intensity={2.1} />
+  </>
+);
 
-// ── DOM 叠层：相似度读数 / HUD / 命中标签 ─────────────
+// ── DOM 叠层：相似度读数 / HUD / 命中标签（浅色玻璃卡，与产品界面同一套） ──
+const GLASS = {
+  background: 'hsl(0 0% 100% / 0.86)',
+  backdropFilter: 'blur(14px) saturate(1.4)',
+  border: '1px solid hsl(220 14% 20% / 0.08)',
+  boxShadow: '0 14px 32px -12px hsl(220 30% 20% / 0.18), 0 2px 6px hsl(220 30% 20% / 0.05)',
+} as const;
+const INK = 'hsl(220 12% 16%)';
+const MUTED = 'hsl(220 8% 46%)';
+const PRIMARY_CSS = 'hsl(215 72% 42%)';
+
 const CANDIDATES = (() => {
   const list = cards()
     .map((c, i) => ({ c, i }))
-    .filter(({ c }) => c.sim > 0.3 && Math.abs(c.pos.x) < 7.5 && Math.abs(c.pos.y) < 4.2 && c.pos.z < -10 && c.pos.z > -58);
-  return list.filter((_, n) => n % Math.max(1, Math.floor(list.length / 16)) === 0).slice(0, 16);
+    .filter(({ c }) => c.sim > 0.42 && Math.abs(c.pos.x) < 6.5 && Math.abs(c.pos.y) < 3.6 && c.pos.z < -14 && c.pos.z > -56);
+  return list.filter((_, n) => n % Math.max(1, Math.floor(list.length / 6)) === 0).slice(0, 6);
 })();
 const REVEALS = cards()
   .map((c) => c.reveal)
@@ -531,7 +595,7 @@ const Overlay = ({ t }: { t: number }) => {
         const k = prog(t, c.reveal, c.reveal + 0.08, ease.brand) * (1 - prog(t, c.reveal + 0.42, c.reveal + 0.56));
         if (k <= 0) return null;
         const s = toScreen(t, c.pos.clone().add(new THREE.Vector3(0, c.scale * 0.62, 0)));
-        if (s.behind || s.x < 40 || s.x > WIDTH - 120 || s.y < 40 || s.y > HEIGHT - 40) return null;
+        if (s.behind || s.x < 60 || s.x > WIDTH - 140 || s.y < 60 || s.y > HEIGHT - 60) return null;
         const val = c.sim * prog(t, c.reveal, c.reveal + 0.12, ease.outCubic);
         return (
           <div
@@ -542,21 +606,21 @@ const Overlay = ({ t }: { t: number }) => {
               top: s.y,
               transform: `translate(-50%, -100%) translateY(${(1 - k) * 6}px)`,
               opacity: k,
-              padding: '3px 8px',
-              borderRadius: 5,
-              background: 'hsl(220 10% 11%)',
-              border: '1px solid hsl(0 0% 100% / 0.1)',
-              fontFamily: font.mono,
+              padding: '4px 10px 4px 8px',
+              borderRadius: 999,
+              ...GLASS,
               fontSize: 13,
-              color: 'hsl(0 0% 94%)',
+              fontVariantNumeric: 'tabular-nums',
+              color: INK,
               whiteSpace: 'nowrap',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
             }}
           >
-            <span style={{ width: 5, height: 5, borderRadius: 3, background: `hsl(215 72% ${70 - c.sim * 35}%)` }} />
-            cos {val.toFixed(2)}
+            <span style={{ width: 6, height: 6, borderRadius: 3, background: PRIMARY_CSS, opacity: 0.35 + c.sim * 0.8 }} />
+            <span style={{ color: MUTED }}>cos</span>
+            {val.toFixed(2)}
           </div>
         );
       })}
@@ -568,26 +632,25 @@ const Overlay = ({ t }: { t: number }) => {
             right: 96,
             top: 76,
             width: 300,
-            padding: '14px 18px',
-            borderRadius: 10,
-            background: 'hsl(220 10% 10%)',
-            border: '1px solid hsl(0 0% 100% / 0.09)',
-            boxShadow: '0 18px 40px -24px #000',
+            padding: '14px 18px 16px',
+            borderRadius: 14,
+            ...GLASS,
             opacity: hud,
             transform: `translateY(${(1 - hud) * -8}px)`,
-            color: 'hsl(0 0% 96%)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'hsl(214 30% 76%)' }}>
-            <span>{S.unifiedSearch} · {S.memorySearch}</span>
-            <span style={{ fontFamily: font.mono }}>top-k 3</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: MUTED }}>
+            <span>
+              {S.unifiedSearch} · {S.memorySearch}
+            </span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>top-k 3</span>
           </div>
-          <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 8, fontFamily: font.mono }}>
-            <span style={{ fontSize: 26, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{n.toLocaleString('en-US')}</span>
-            <span style={{ fontSize: 13, color: 'hsl(214 20% 70%)' }}>/ {TOTAL.toLocaleString('en-US')} 份资料已比对</span>
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 8, fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.01em', color: INK }}>{n.toLocaleString('en-US')}</span>
+            <span style={{ fontSize: 13, color: MUTED }}>/ {TOTAL.toLocaleString('en-US')} 份资料已比对</span>
           </div>
-          <div style={{ marginTop: 10, height: 3, borderRadius: 2, background: 'hsl(0 0% 100% / 0.12)', overflow: 'hidden' }}>
-            <div style={{ width: `${(n / TOTAL) * 100}%`, height: '100%', background: 'hsl(214 80% 66%)' }} />
+          <div style={{ marginTop: 12, height: 3, borderRadius: 2, background: 'hsl(220 14% 20% / 0.08)', overflow: 'hidden' }}>
+            <div style={{ width: `${(n / TOTAL) * 100}%`, height: '100%', background: PRIMARY_CSS }} />
           </div>
         </div>
       ) : null}
@@ -596,30 +659,40 @@ const Overlay = ({ t }: { t: number }) => {
         const k = prog(t, RV.extract + 0.16 + i * 0.05, RV.extract + 0.3 + i * 0.05, ease.brand) * (1 - prog(t, RV.reveal - 0.06, RV.reveal));
         if (k <= 0) return null;
         const r = hitScreenRect(i, t);
+        const memory = h.tag === 'memory';
         return (
           <div
             key={h.title}
             style={{
               position: 'absolute',
               left: r.x + r.w / 2,
-              top: r.y + r.h + 18,
+              top: r.y + r.h + 22,
               transform: `translateX(-50%) translateY(${(1 - k) * 8}px)`,
               opacity: k,
               textAlign: 'center',
               whiteSpace: 'nowrap',
-              padding: '10px 16px',
-              borderRadius: 8,
-              background: 'hsl(220 10% 10%)',
-              border: '1px solid hsl(0 0% 100% / 0.09)',
+              padding: '10px 16px 11px',
+              borderRadius: 12,
+              ...GLASS,
             }}
           >
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'hsl(214 30% 76%)' }}>
-              <span style={{ padding: '2px 8px', borderRadius: 999, background: h.tag === 'memory' ? 'hsl(152 56% 52% / 0.18)' : 'hsl(214 80% 66% / 0.18)', color: h.tag === 'memory' ? 'hsl(152 56% 66%)' : 'hsl(214 80% 78%)' }}>
-                {h.tag === 'memory' ? S.memorySearch : S.unifiedSearch}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <span
+                style={{
+                  padding: '2px 9px',
+                  borderRadius: 999,
+                  background: memory ? 'hsl(152 62% 36% / 0.1)' : 'hsl(215 72% 42% / 0.08)',
+                  color: memory ? 'hsl(152 62% 30%)' : PRIMARY_CSS,
+                  fontWeight: 500,
+                }}
+              >
+                {memory ? S.memorySearch : S.unifiedSearch}
               </span>
-              <span style={{ fontFamily: font.mono, color: 'hsl(0 0% 96%)', fontWeight: 600 }}>cos {h.score.toFixed(2)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', color: MUTED }}>
+                cos <span style={{ color: INK, fontWeight: 600 }}>{h.score.toFixed(2)}</span>
+              </span>
             </div>
-            <div style={{ marginTop: 6, fontSize: 17, fontWeight: 500, color: 'hsl(0 0% 96%)' }}>{h.title}</div>
+            <div style={{ marginTop: 6, fontSize: 16, fontWeight: 500, color: INK }}>{h.title}</div>
           </div>
         );
       })}
@@ -637,19 +710,20 @@ export const Archive3D = ({ t }: { t: number }) => {
         width={WIDTH}
         height={HEIGHT}
         flat
-        dpr={1}
+        // 跟随渲染倍率（--scale=2 出 4K 时 devicePixelRatio = 2），否则 4K 版这段是 1080p 放大
+        dpr={Math.min(2, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)}
         gl={{ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: true }}
         camera={{ fov: FOV, near: 0.05, far: 400, position: camPose(RV.cut).pos.toArray() }}
       >
         <Rig t={t} />
-        <Lights t={t} />
+        <Lights />
         {assets ? (
           <>
             <CardField t={t} assets={assets} />
             <HitCards t={t} assets={assets} />
           </>
         ) : null}
-        <QueryCells t={t} />
+        <QueryBars t={t} />
         <Pulses t={t} />
         <Probe t={t} />
         <Links t={t} />

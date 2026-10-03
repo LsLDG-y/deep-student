@@ -1,5 +1,5 @@
 import { font } from '../../theme';
-import { cellCss, cellValue } from './beats';
+import { barLen, cellCss, cellValue } from './beats';
 
 /**
  * 资料纵深里的纸片纹理（canvas 程序化绘制，DOM 交接替身复用同一张图，保证无缝）。
@@ -57,15 +57,25 @@ const bars = (ctx: CanvasRenderingContext2D, r: () => number, x: number, y: numb
   }
 };
 
-/** 卡片底部的小嵌入条：把"每份资料都是一个向量"画进纸面。 */
+/** 卡片底部的小向量：与查询向量同一种细竖条，把「每份资料都是一个向量」画进纸面。 */
 const embedStrip = (ctx: CanvasRenderingContext2D, seed: number, x: number, y: number, w: number) => {
-  const n = 16;
+  const n = 24;
   const pitch = w / n;
+  const h = pitch * 2.2;
   for (let i = 0; i < n; i++) {
-    ctx.fillStyle = cellCss(cellValue(seed * 17 + i * 3));
-    rr(ctx, x + i * pitch, y, pitch * 0.78, pitch * 0.78, 1.5);
+    const v = cellValue(seed * 17 + i * 3);
+    const bh = h * barLen(v);
+    ctx.fillStyle = cellCss(v);
+    rr(ctx, x + i * pitch, y + (h - bh) / 2, pitch * 0.42, bh, pitch * 0.21);
     ctx.fill();
   }
+};
+
+/** 发丝边：浅色空间里白纸贴白底，靠它和投影分出纸边。 */
+const hairline = (ctx: CanvasRenderingContext2D, W: number, H: number, u: number) => {
+  ctx.strokeStyle = 'rgba(20, 30, 50, 0.1)';
+  ctx.lineWidth = 1.2 * u;
+  ctx.strokeRect(0.6 * u, 0.6 * u, W - 1.2 * u, H - 1.2 * u);
 };
 
 const draw: Record<CardType, (ctx: CanvasRenderingContext2D, W: number, H: number, r: () => number, seed: number) => void> = {
@@ -224,13 +234,16 @@ const draw: Record<CardType, (ctx: CanvasRenderingContext2D, W: number, H: numbe
 
 export type CardTex = { canvas: HTMLCanvasElement; type: CardType; aspect: number };
 
-export const makeCardCanvas = (type: CardType, seed: number, width = 320): CardTex => {
+export const makeCardCanvas = (type: CardType, seed: number, width = 480): CardTex => {
   const aspect = CARD_ASPECT[type];
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = Math.round(width * aspect);
   const ctx = canvas.getContext('2d');
-  if (ctx) draw[type](ctx, canvas.width, canvas.height, mulberry(seed * 7919 + 13), seed);
+  if (ctx) {
+    draw[type](ctx, canvas.width, canvas.height, mulberry(seed * 7919 + 13), seed);
+    hairline(ctx, canvas.width, canvas.height, canvas.width / 320);
+  }
   return { canvas, type, aspect };
 };
 
@@ -264,14 +277,21 @@ export const makeHitCanvas = (kind: 'textbook' | 'note' | 'memory', width = 640)
     ctx.font = `italic ${12 * u}px "Times New Roman", serif`;
     const f1 = 'φ(x) = f(x) − f(a) − [f(b) − f(a)]/(b − a) · (x − a)';
     ctx.fillText(f1, W / 2 - ctx.measureText(f1).width / 2, 84 * u);
-    bars(ctx, mulberry(5), m, 104 * u, W - 2 * m, 5, 14 * u, 5 * u);
+    // 命中片段（[2]「构造辅助函数」的出处）：产品定位到句子时的琥珀色底，逐行一块（文本层按 span 高亮）
+    ctx.font = `${11 * u}px ${font.serif}`;
+    const hit = ['容易验证 φ(a) = φ(b) = 0，且 φ(x) 在闭区间 [a, b] 上', '连续、在开区间 (a, b) 内可导。根据罗尔定理，在', '(a, b) 内至少有一点 ξ，使 φ′(ξ) = 0，即'];
+    hit.forEach((s, i) => {
+      ctx.fillStyle = 'hsl(38 70% 45% / 0.42)';
+      rr(ctx, m - 1.5 * u, 104 * u + i * 18 * u, ctx.measureText(s).width + 3 * u, 15 * u, 2 * u);
+      ctx.fill();
+      ctx.fillStyle = INK;
+      ctx.fillText(s, m, 116 * u + i * 18 * u);
+    });
     const f2 = "f′(ξ) − [f(b) − f(a)]/(b − a) = 0";
     ctx.fillStyle = INK;
     ctx.font = `italic ${12 * u}px "Times New Roman", serif`;
     ctx.fillText(f2, W / 2 - ctx.measureText(f2).width / 2, 188 * u);
     bars(ctx, mulberry(6), m, 206 * u, W - 2 * m, 3, 14 * u, 5 * u);
-    ctx.fillStyle = 'hsl(215 80% 55% / 0.16)';
-    ctx.fillRect(m - 4 * u, 252 * u, W - 2 * m + 8 * u, 40 * u);
     ctx.fillStyle = INK;
     ctx.font = `${11 * u}px ${font.serif}`;
     ctx.fillText('注意 ξ 取在开区间 (a, b) 内部，定理只断言', m, 266 * u);
@@ -348,5 +368,6 @@ export const makeHitCanvas = (kind: 'textbook' | 'note' | 'memory', width = 640)
     ctx.fillText('薄弱 · 已记录 2 次', 20 * u, 300 * u);
     embedStrip(ctx, 41, 20 * u, H - 26 * u, 120 * u);
   }
+  hairline(ctx, W, H, u);
   return { canvas, type: 'page', aspect };
 };
