@@ -280,8 +280,59 @@ function __vTrPre(cmd, args) {
   }
   return __VSKIP;
 }
+// 09 懂你：记忆根目录已设置 + 6 条记忆（分类取 category_manager.rs 种子分类）、画像、MCP 服务器配置、三家模型配置
+function __vYouPre(cmd, args) {
+  const at = (h) => new Date(Date.parse('2026-10-03T21:00:00') - h * 3600e3).toISOString();
+  const M = (id, title, folderPath, hits, h, o = {}) => ({ id, title, folderPath, updatedAt: at(h), hits, isImportant: false, isStale: false, memoryType: 'fact', memoryPurpose: 'internalized', ...o });
+  const mems = [
+    M('mem_v_mvt', '中值定理易错点', '经历/学科状态', 3, 0.2),
+    M('mem_v_pref', '几何直观优先', '偏好', 6, 1.5),
+    M('mem_v_essay', '雅思写作失分点', '经历/学科状态', 2, 6),
+    M('mem_v_exam', '高数期末', '经历/时间节点', 1, 20),
+    M('mem_v_review', '复习时段', '偏好', 4, 26),
+    M('mem_v_bg', '专业与年级', '偏好/个人背景', 2, 30),
+  ];
+  const content = {
+    mem_v_mvt: 'ξ 的取值范围常写成闭区间 [a, b]，应为开区间 (a, b)。',
+    mem_v_pref: '讲概念时先看几何直观，再看严格证明。',
+    mem_v_essay: '雅思大作文主谓一致仍是主要失分点。',
+    mem_v_exam: '高数期末考试在 1 月 12 日，目标 90 分以上。',
+    mem_v_review: '习惯晚上 9 点以后复习闪卡。',
+    mem_v_bg: '大一，数学与应用数学专业。',
+  };
+  switch (cmd) {
+    case 'memory_get_config': return { memoryRootFolderId: 'fld_v_mem', memoryRootFolderTitle: '记忆', autoCreateSubfolders: true, defaultCategory: '偏好', privacyMode: false, autoExtractFrequency: 'balanced' };
+    case 'memory_list': return (args?.offset ?? 0) > 0 ? [] : mems;
+    case 'memory_read': { const m = mems.find((x) => x.id === args?.noteId); return m ? { noteId: m.id, title: m.title, content: content[m.id], folderPath: m.folderPath, updatedAt: m.updatedAt } : null; }
+    case 'memory_get_profile': return [
+      { category: '偏好', content: '先看几何直观再看严格证明；习惯晚上 9 点以后复习闪卡。' },
+      { category: '经历/学科状态', content: '中值定理里 ξ 的取值范围容易写成闭区间；雅思大作文主谓一致仍是主要失分点。' },
+      { category: '经历/时间节点', content: '高数期末 1 月 12 日，目标 90 分以上。' },
+      { category: '偏好/个人背景', content: '大一，数学与应用数学专业。' },
+    ];
+    case 'memory_get_audit_logs': return [];
+    case 'memory_get_tree': return null;
+    case 'memory_get_tags': return [];
+    case 'memory_get_related': return [];
+    case 'get_api_configurations': return [
+      ['demo-config-deepseek', '演示模型服务', 'deepseek', 'DeepSeek', 'deepseek-v4', 'https://api.deepseek.com'],
+      ['demo-config-glm', '智谱', 'zhipu', '智谱 AI', 'glm-5', 'https://open.bigmodel.cn/api/paas/v4'],
+      ['demo-config-kimi', 'Moonshot', 'moonshot', 'Moonshot AI', 'kimi-k3', 'https://api.moonshot.cn/v1'],
+    ].map(([id, name, vendorId, vendorName, model, baseUrl]) => ({ id, name, vendorId, vendorName, providerType: 'openai', apiKey: 'demo-key-not-real', baseUrl, model, isMultimodal: false, isReasoning: true, isEmbedding: false, isReranker: false, enabled: true, modelAdapter: 'openai' }));
+    case 'get_setting':
+      if (args?.key === 'mcp.tools.list') return JSON.stringify(globalThis.__vMcpCfg.map(([id, name, namespace]) => ({ id, name, namespace: namespace + ':', transportType: 'stdio' })));
+      return __VSKIP;
+    default: return __VSKIP;
+  }
+}
+globalThis.__vMcpCfg = [
+  ['mcp_arxiv', 'arxiv-mcp-server', 'arxiv', ['search_papers', 'download_paper', 'list_papers', 'read_paper']],
+  ['mcp_zotero', 'zotero', 'zotero', ['zotero_search_items', 'zotero_get_item_fulltext', 'zotero_get_annotations']],
+  ['mcp_fs', 'filesystem', 'filesystem', ['read_file', 'write_file', 'list_directory', 'search_files', 'get_file_info']],
+];
 function __vPre(cmd, args) {
   if (globalThis.__vLogIpc) console.log('[ipc] ' + cmd + ' ' + JSON.stringify(args ?? {}).slice(0, 140));
+  if (globalThis.__vYou) { const r = __vYouPre(cmd, args); if (r !== __VSKIP) return r; }
   // 演示 mock 缺省返回 null，AgentTaskPanel 有产物后会读 entries.length / downloads.length（真后端返回空页 / 空数组）
   if (cmd === 'chat_v2_list_runtime_directory') return { rootId: args?.rootId ?? 'workspace', relativePath: args?.relativePath ?? '', entries: [], nextCursor: null, truncated: false, scanned: 0 };
   if (cmd === 'browser_list_task_downloads') return [];
@@ -507,6 +558,45 @@ const RESEARCH_FIXTURE = String.raw`
 })();
 `;
 
+// 09 懂你（YOU=1）：记忆检索的回答、MCP 外部工具调用、三个模型并排（多变体静态历史，后端 multi_variant.rs 用模型名作 variant.modelId）
+const YOU_FIXTURE = String.raw`
+;(() => {
+  const T = Date.parse('2026-10-03T21:12:00');
+  const memReply = [
+    { type: 'memory', status: 'success', dwellMs: 700, toolOutput: { sources: [
+      { title: '几何直观优先', snippet: '讲概念时先看几何直观，再看严格证明。', metadata: { note_id: 'mem_v_pref' } },
+      { title: '中值定理易错点', snippet: 'ξ 的取值范围常写成闭区间 [a, b]，应为开区间 (a, b)。', metadata: { note_id: 'mem_v_mvt' } },
+    ] } },
+    { type: 'content', status: 'success', streaming: true, content: '按你的习惯，先看几何直观 [记忆-1]：连接 A、B 两点得到一条弦，曲线上一定有一点的切线和这条弦平行——那一点就是 ξ。\n\n再看严格表述：f 在 [a, b] 上连续、在 (a, b) 内可导，则存在 ξ ∈ (a, b)，使 f′(ξ) = (f(b) − f(a)) / (b − a)。注意 ξ 落在开区间里，这正是你之前容易写错的地方 [记忆-2]。' },
+  ];
+  DEMO_SESSIONS.unshift(makeFixture({ id: 'demo-v-mem', title: '拉格朗日中值定理', minutesAgo: 1, autoPrompt: globalThis.__vMemPrompt || '拉格朗日中值定理到底在说什么？', reply: memReply }));
+  const mcpReply = [
+    { type: 'mcp_tool', status: 'success', toolName: 'mcp_zotero_search_items', dwellMs: 900, toolInput: { _serverId: 'zotero', query: '中值定理' }, toolOutput: { content: [{ type: 'text', text: '找到 2 条：中值定理证明套路（笔记）；Rolle and Lagrange revisited（论文）' }] } },
+    { type: 'content', status: 'success', streaming: true, content: '在你的 Zotero 文献库里找到 2 条和中值定理相关的条目：笔记《中值定理证明套路》和论文 *Rolle and Lagrange revisited*。' },
+  ];
+  DEMO_SESSIONS.unshift(makeFixture({ id: 'demo-v-mcp', title: 'Zotero 文献', minutesAgo: 1, autoPrompt: '在我的 Zotero 文献库里找找讲中值定理的资料', reply: mcpReply }));
+  const Q = '用一句话讲清拉格朗日中值定理的几何意义';
+  const A = [
+    ['deepseek-v4', '可以把它看成罗尔定理的「倾斜版」：把弦拉平就是罗尔定理。光滑曲线上总有一点的切线平行于连接两端点的弦，而且这一点只保证存在、落在开区间 (a, b) 内。'],
+    ['glm-5', '几何上看，拉格朗日中值定理说的是：光滑曲线上，总有一点的切线平行于连接两端点的弦。它把「平均变化率」和某一点的「瞬时变化率」联系了起来。'],
+    ['kimi-k3', '把 (f(b) − f(a)) / (b − a) 看成弦的斜率，定理断言存在 ξ ∈ (a, b)，使 f′(ξ) 恰好等于这个斜率——平均速度总会在某一时刻被瞬时速度精确达到。'],
+  ];
+  const sid = 'demo-v-models';
+  const fx = makeFixture({ id: sid, title: '中值定理的几何意义', minutesAgo: 0, autoPrompt: Q, reply: [] });
+  fx.messages = [
+    { id: 'msg_v_mu', sessionId: sid, role: 'user', blockIds: ['blk_v_mu'], timestamp: T },
+    { id: 'msg_v_ma', sessionId: sid, role: 'assistant', blockIds: A.map((_, i) => 'blk_v_m' + i), timestamp: T + 1000, activeVariantId: 'var_v_0',
+      variants: A.map(([m], i) => ({ id: 'var_v_' + i, modelId: m, blockIds: ['blk_v_m' + i], status: 'success', createdAt: T + 1000 + i })) },
+  ];
+  fx.blocks = [
+    { id: 'blk_v_mu', messageId: 'msg_v_mu', type: 'content', status: 'success', content: Q },
+    ...A.map(([, text], i) => ({ id: 'blk_v_m' + i, messageId: 'msg_v_ma', variantId: 'var_v_' + i, type: 'content', status: 'success', content: text, startedAt: T + 1000, endedAt: T + 3000 + i * 300 })),
+  ];
+  fx.autoPrompt = undefined;
+  DEMO_SESSIONS.unshift(fx);
+})();
+`;
+
 const browser = await chromium.launch({
   executablePath: `${process.env.HOME}/Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell`,
 });
@@ -561,14 +651,35 @@ await page.route('**/src/demo/questionBank.ts*', async (route) => {
   console.log('[patch questionBank]', body.includes("'q_v_'"));
   await route.fulfill({ response: res, body });
 });
-if (process.env.RESEARCH) {
+if (process.env.RESEARCH || process.env.YOU) {
   await page.route('**/src/demo/fixtures.ts*', async (route) => {
     const res = await route.fetch();
     let body = await res.text();
-    body += `\n${RESEARCH_FIXTURE}\n`;
-    console.log('[patch fixtures]', body.includes('demo-v-research'));
+    if (process.env.RESEARCH) body += `\n${RESEARCH_FIXTURE}\n`;
+    if (process.env.YOU) body += `\n${YOU_FIXTURE}\n`;
+    console.log('[patch fixtures]', body.includes('demo-v-research'), body.includes('demo-v-models'));
     await route.fulfill({ response: res, body });
   });
+}
+if (process.env.YOU) {
+  await page.addInitScript(() => { globalThis.__vYou = true; });
+  if (process.env.MEM_PROMPT) await page.addInitScript((q) => { globalThis.__vMemPrompt = q; }, process.env.MEM_PROMPT);
+  // MCP：前端 SDK 的在线工具与连接状态（DialogControlContext 读 McpService.listTools / status）
+  await page.route('**/src/mcp/mcpService.ts*', async (route) => {
+    const res = await route.fetch();
+    let body = await res.text();
+    body += `
+;(() => {
+  const cfg = () => globalThis.__vMcpCfg || [];
+  McpService.listTools = async () => cfg().flatMap(([, , ns, tools]) => tools.map((t) => ({ name: ns + ':' + t, description: t })));
+  McpService.status = async () => ({ available: true, connected: true, toolsCount: cfg().reduce((n, c) => n + c[3].length, 0), servers: cfg().map(([id, , ns]) => ({ id, namespace: ns, connected: true })) });
+})();
+`;
+    console.log('[patch mcpService]', body.includes('McpService.listTools = async'));
+    await route.fulfill({ response: res, body });
+  });
+}
+if (process.env.RESEARCH) {
   if (process.env.ASK_DWELL) await page.addInitScript((k) => { globalThis.__vAskDwell = k; }, Number(process.env.ASK_DWELL));
   if (process.env.RQ) await page.addInitScript((q) => { globalThis.__vResearchPrompt = q; }, process.env.RQ);
 }
@@ -844,6 +955,9 @@ if (scenario === 'probe') {
   const N1 = Number(process.env.N1 ?? 30);
   const N2 = Number(process.env.N2 ?? 0);
   const probeAt = new Set((process.env.PROBE_AT ?? '').split(',').filter(Boolean));
+  for (let i = 0; i < 12 && !(await page.locator('[data-wb-window-id]').count()); i++) await page.waitForTimeout(250);
+  // 6c3d9fbd4 起剧本导航改走握手（未就绪时只挂起意图），工作台不再自动开对话窗口 → 点 Dock 打开，ChatV2Page 就绪后消费挂起的会话
+  if (!(await page.locator('[data-wb-window-id]').count())) await tryDo('dock chat', () => dock('chat').click({ timeout: 5000 }));
   for (let i = 0; i < 60 && !(await page.locator('[data-wb-window-id]').count()); i++) await page.waitForTimeout(250);
   const chatId = await page.locator('[data-wb-window-id]').last().getAttribute('data-wb-window-id');
   const win = page.locator(`[data-wb-window-id="${chatId}"]`);
