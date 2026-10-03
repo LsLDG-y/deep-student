@@ -615,7 +615,8 @@ await page.clock.resume();
 await page.route('**/src/demo/main.tsx*', async (route) => {
   const res = await route.fetch();
   let body = await res.text();
-  body = body.replace(/localStorage\.setItem\(WORKBENCH_KEY,\s*["']false["']\)/, 'localStorage.setItem(WORKBENCH_KEY, "true")');
+  // CLASSIC=1：保留演示壳默认的经典布局（第一幕取证）
+  if (!process.env.CLASSIC) body = body.replace(/localStorage\.setItem\(WORKBENCH_KEY,\s*["']false["']\)/, 'localStorage.setItem(WORKBENCH_KEY, "true")');
   // 不自动播放剧本、不自动跳到剧本会话（否则一开机就弹出对话窗口）
   if (!process.env.AUTOPLAY) {
     body = body.replace(/installDemoAutoPlay\(\{\s*waitForActivation:[^}]*\}\)/, 'installDemoAutoPlay({ waitForActivation: true })');
@@ -629,7 +630,7 @@ await page.route('**/src/demo/main.tsx*', async (route) => {
 await page.route('**/src/demo/mockIpc.ts*', async (route) => {
   const res = await route.fetch();
   let body = await res.text();
-  body = body.replace(/(["']desktop\.workbenchMode["']\s*:\s*)["']false["']/, '$1"true"');
+  if (!process.env.CLASSIC) body = body.replace(/(["']desktop\.workbenchMode["']\s*:\s*)["']false["']/, '$1"true"');
   body = body.replace("case 'todo_list_today':", "case '__v_todo_list_today':").replace("case 'todo_list_reminders':", "case '__v_todo_list_reminders':");
   body = body.replace(/default:\s*\n(\s*)if \(cmd\.startsWith\('qbank_'\)\)/, "default:\n$1if (cmd.startsWith('todo_') || cmd.startsWith('pomodoro_') || cmd === 'fsrs_get_stats') return __vMock(cmd, args);\n$1if (cmd.startsWith('qbank_'))");
   body = body.replace(/(const args = [^;]+;\s*)switch\s*\(cmd\)\s*\{/, '$1{ const __r = __vPre(cmd, args); if (__r !== __VSKIP) return __r; }\nswitch (cmd) {');
@@ -779,6 +780,58 @@ if (scenario === 'probe') {
     });
     return out.join('\n');
   }));
+} else if (scenario === 'classic') {
+  // CLASSIC=1 [NAV=1 SCENE=demo-xxx] PFX=… N1=… STEP_MS=… PROBE_AT=… PRE_ACT=… ACTIVATE=1：经典壳整页截图 + 整页 DOM 探针
+  const PFX = process.env.PFX ?? 'cl';
+  const probeAt = new Set((process.env.PROBE_AT ?? '').split(',').filter(Boolean));
+  const fs = await import('node:fs');
+  const pageProbe = async (label) => {
+    const txt = await page.evaluate(() => {
+      const out = ['page 1920x1080'];
+      document.body.querySelectorAll('*').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > 1080 || r.right < 0 || r.left > 1920) return;
+        const cs = getComputedStyle(el);
+        if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) return;
+        const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join('');
+        const isIcon = el.tagName.toLowerCase() === 'svg';
+        const hasBox = cs.backgroundColor !== 'rgba(0, 0, 0, 0)' || cs.borderTopWidth !== '0px' || cs.borderLeftWidth !== '0px' || cs.boxShadow !== 'none';
+        if (!own && !isIcon && !hasBox) return;
+        if (isIcon && el.closest('svg') !== el) return;
+        out.push(`${el.tagName.toLowerCase()}${own ? ` "${own.slice(0, 40)}"` : ''} x=${r.x.toFixed(1)} y=${r.y.toFixed(1)} w=${r.width.toFixed(1)} h=${r.height.toFixed(1)} f=${cs.fontSize}/${cs.fontWeight}/${cs.lineHeight} c=${cs.color} bg=${cs.backgroundColor} bd=${cs.borderTopWidth}/${cs.borderLeftWidth} ${cs.borderTopColor} rad=${cs.borderRadius}`);
+      });
+      return out.join('\n');
+    });
+    fs.writeFileSync(`${dir}/probe-${label}.txt`, txt);
+    console.log('[probe]', label, txt.split('\n').length);
+  };
+  const pAct = async (spec) => {
+    for (const a of (spec ?? '').split('|').filter(Boolean)) {
+      const [kind, ...rest] = a.split(':');
+      const arg = rest.join(':');
+      if (kind === 'text') await tryDo(a, () => page.getByText(arg, { exact: true }).last().click({ timeout: 4000 }));
+      if (kind === 'aria') await tryDo(a, () => page.locator(`[aria-label="${arg}"]`).last().click({ timeout: 4000 }));
+      if (kind === 'css') await tryDo(a, () => page.locator(arg).last().click({ timeout: 4000 }));
+      if (kind === 'hover') await tryDo(a, () => page.getByText(arg, { exact: false }).last().hover({ timeout: 4000 }));
+      if (kind === 'type') await page.keyboard.type(arg, { delay: 30 });
+      if (kind === 'press') await page.keyboard.press(arg);
+      if (kind === 'wait') await page.waitForTimeout(Number(arg));
+      if (kind === 'shot') await shot(arg);
+      if (kind === 'probe') await pageProbe(arg);
+      if (kind === 'eval') console.log('[eval]', await page.evaluate(arg));
+    }
+  };
+  await page.waitForTimeout(Number(process.env.SETTLE_MS ?? 1500));
+  await shot(`${PFX}-00`);
+  if (probeAt.has('0')) await pageProbe(`${PFX}-0`);
+  await pAct(process.env.PRE_ACT);
+  if (process.env.ACTIVATE) await page.evaluate(() => window.__vAutoPlay?.activate());
+  for (let i = 1; i <= Number(process.env.N1 ?? 0); i++) {
+    await page.waitForTimeout(Number(process.env.STEP_MS ?? 800));
+    await shot(`${PFX}-${String(i).padStart(2, '0')}`);
+    if (probeAt.has(String(i))) await pageProbe(`${PFX}-${i}`);
+  }
+  await pAct(process.env.POST_ACT);
 } else if (scenario === 'desk') {
   await shot('d2-desk');
   await shot('d2-menubar', { x: 0, y: 0, width: 1920, height: 44 });
