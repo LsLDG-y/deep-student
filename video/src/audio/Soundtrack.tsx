@@ -67,6 +67,8 @@ const CUES: Cue[] = [
   // 04 练习：卡片逐张落入 → 点「复习这批」→ 缩进 Dock → 闪卡窗口弹开 → 翻面 / 评分
   ...Array.from({ length: 12 }, (_, i): Cue => [PR.cards0 + i * PR.cardGap, 'tick', 0.1 + (i % 3) * 0.02]),
   [PR.done, 'note-mid', 0.22],
+  [PR.save, 'click', 0.33],
+  [PR.saved, 'tick', 0.18],
   [PR.reviewClick, 'click', 0.35],
   [PR.reviewClick + 0.04, 'whoosh-down', 0.32],
   [WK.open0, 'whoosh-up', 0.26],

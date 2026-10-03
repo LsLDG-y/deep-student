@@ -1,8 +1,9 @@
 import logoUrl from '@app-public/logo-black.svg';
+import { CaretDown, SquaresFour } from '@phosphor-icons/react';
 import { AbsoluteFill } from 'remotion';
 import { camAt, CameraView, project, type Cam, type CamKey } from '../lib/camera';
 import { DUR, userBubbleSpring } from '../lib/motion';
-import { clamp, ease, keys, PACE, prog, springAt } from '../lib/time';
+import { clamp, ease, keys, lerp, PACE, prog, springAt } from '../lib/time';
 import { S } from '../strings';
 import { font, light, type Tokens } from '../theme';
 import { Pupil, pathAt } from '../ui/brand';
@@ -36,12 +37,12 @@ import {
   Toast,
 } from '../ui/classic';
 import { CARD_OPEN_BTN, MindmapCard } from '../ui/mindmap';
-import type { SidebarRow } from '../ui/research';
+import { AssistantFooter, SourcesRow, type SidebarRow } from '../ui/research';
 import { PAGE_H, SELECTION_BOX, TextbookPage, THEOREM_CHARS } from '../ui/TextbookPage';
 import { Tex } from '../ui/tex';
-import { AnkiStackBlock, ankiActionCenter, ANKI_BLOCK } from '../ui/anki';
+import { AnkiBlock, ankiActionCenter, ankiLayout } from '../ui/anki';
 import { MindmapPanel, mindPanelK, MM, ORGANIZE_CLICKS, ORGANIZE_PUPIL, organizePupilOpacity } from './organize/MindmapView';
-import { CHAT_SCROLL, PR } from './practice/beats';
+import { PR } from './practice/beats';
 import { CUT_ZOOM, POST, RV, STRIP, STRIP_WORLD } from './retrieval/beats';
 import { Handoff } from './retrieval/Handoff';
 import { Vectorize } from './retrieval/Vectorize';
@@ -78,30 +79,65 @@ const TEXT_POS = { x: THREAD_X + CP.padL + 110, y: chatY(EMPTY.composerTop) + CP
 
 /** 助手块顶比原版（150）下移的量：用户消息改成「气泡 + 下方附件方块 + 复制 / 时间」后变高。 */
 const SHIFT = CLASSIC_ASSISTANT_TOP - 150;
-const MSG = { user: CLASSIC_USER_TOP, assistant: CLASSIC_ASSISTANT_TOP, answer: CLASSIC_ASSISTANT_TOP + 122, card: CLASSIC_ASSISTANT_TOP + 350 };
-/** 卡片块上滚距离：内容整体下移 SHIFT，贴底输入框高了（88 → 98），都要多滚。 */
-const SCROLL = CHAT_SCROLL + SHIFT + (COMPOSER_H_DOCKED - 88);
+/** 回答正文 16px / 27.52，段间距 18.88，公式块与段落外边距折叠（probe-clp-12）。 */
+const LH = 27.52;
+const PGAP = 18.88;
+const FORMULA_H = 28;
+const ANSWER_TOP = CLASSIC_ASSISTANT_TOP + 122;
 const ANSWER_LINES = {
-  l1: MSG.answer,
-  l2: MSG.answer + 24,
-  formula: MSG.answer + 56,
-  l3: MSG.answer + 120,
-  l4: MSG.answer + 144,
-  l5: MSG.answer + 180,
+  l1: ANSWER_TOP,
+  l2: ANSWER_TOP + LH,
+  formula: ANSWER_TOP + 2 * LH + PGAP,
+  l3: ANSWER_TOP + 2 * LH + PGAP + FORMULA_H + PGAP,
+  l4: ANSWER_TOP + 3 * LH + PGAP + FORMULA_H + PGAP,
+  l5: ANSWER_TOP + 4 * LH + 2 * PGAP + FORMULA_H + PGAP,
 };
-export const PDF_BADGE = { x: THREAD_X + 7 * 16 + 8 + 30, y: chatY(ANSWER_LINES.l5) + 12 };
-export const CARD = { x: THREAD_X, y: chatY(MSG.card), w: COMPOSER_W, h: 280 };
+/** 导图卡：段落之后 29.4（probe-clp-12 段底 → 卡顶）。 */
+const MSG = { user: CLASSIC_USER_TOP, assistant: CLASSIC_ASSISTANT_TOP, answer: ANSWER_TOP, card: ANSWER_LINES.l5 + LH + 29.4 };
+export const PDF_BADGE = { x: THREAD_X + 7 * 16 + 8 + 30, y: chatY(ANSWER_LINES.l5) + LH / 2 };
+
+/** 消息列可见底：输入框顶上 24；「产物」药丸出现后再让出一行（页脚底 → 药丸顶 23，probe-cza-bottom）。 */
+const VIS_BOTTOM = DOCK_TOP - 24;
+/** 导图卡出现时贴底滚动（stick-to-bottom），让整张卡露在输入框之上。 */
+const CARD_SCROLL = Math.max(0, MSG.card + 280 - VIS_BOTTOM);
+export const CARD = { x: THREAD_X, y: chatY(MSG.card - CARD_SCROLL), w: COMPOSER_W, h: 280 };
 export const OPEN_BTN = { x: CARD.x + CARD.w - CARD_OPEN_BTN.right, y: CARD.y + CARD_OPEN_BTN.top };
 /** 点「打开」的时刻：导图随后在右侧面板打开（MM.open）。 */
 const OPEN_CLICK = 10.5 + POST;
 
-/** 导图卡之后：一句引导语 + Anki 卡片块（聊天区局部坐标，上滚前）。 */
-const LEAD = '这一节的 12 张复习卡也备好了，已加入卡片库：';
-const LEAD_Y = MSG.card + 280 + 16;
-const ANKI_Y = LEAD_Y + 24 + 12;
-/** 卡片块上滚到位后在世界坐标里的原点。 */
-const ANKI_WORLD = { x: THREAD_X, y: chatY(ANKI_Y - SCROLL) };
-const REVIEW_BTN = { x: ANKI_WORLD.x + ankiActionCenter('review').x, y: ANKI_WORLD.y + ankiActionCenter('review').y };
+/** 导图卡之后：一句引导语（卡底 + 16.8）+ Anki 卡片块（段底 + 19.6），聊天区局部坐标。 */
+const LEAD = '接下来逐张生成卡片，先看正面回忆，再翻面核对。';
+const LEAD_Y = MSG.card + 280 + 16.8;
+const ANKI_Y = LEAD_Y + LH + 19.6;
+/** 消息收尾：卡片块下 30 是「N 个结果」，再下 37.4 是页脚（probe-cza-bottom）。 */
+const SOURCES_Y = 30;
+const FOOTER_Y = SOURCES_Y + 37.4;
+const TAIL = FOOTER_Y + 20;
+const tailK = (t: number) => prog(t, PR.done, PR.done + 0.1);
+
+const contentBottom = (t: number) => {
+  let b = MSG.card + 280;
+  if (t >= PR.lead) b = Math.max(b, LEAD_Y + LH);
+  if (t >= PR.block) b = Math.max(b, ANKI_Y + ankiLayout(t).h + TAIL * tailK(t));
+  return b;
+};
+const stickTarget = (t: number) => Math.max(CARD_SCROLL, contentBottom(t) - (VIS_BOTTOM - 19 * tailK(t)));
+/** 聊天区滚动：导图卡出现时贴底一次；回到对话后跟着流式内容贴底（use-stick-to-bottom 有缓动，这里取 0.08s 滑动平均）。 */
+const chatScroll = (t: number) => {
+  if (t < PR.scroll0) return CARD_SCROLL * prog(t, 9.5 + POST, 9.5 + POST + 0.2, ease.outCubic);
+  let s = 0;
+  for (let k = 0; k < 8; k++) s += stickTarget(t - k * 0.011);
+  return lerp(CARD_SCROLL, s / 8, prog(t, PR.scroll0, PR.scroll1, ease.inOutCubic));
+};
+/** 卡片生成完、保存时卡片块在世界坐标里的原点。 */
+const FINAL_SCROLL = stickTarget(PR.saved);
+const ANKI_WORLD = { x: THREAD_X, y: chatY(ANKI_Y - FINAL_SCROLL) };
+const actionWorld = (id: 'save' | 'review') => {
+  const c = ankiActionCenter(id, PR.saved);
+  return { x: ANKI_WORLD.x + c.x, y: ANKI_WORLD.y + c.y };
+};
+const SAVE_BTN = actionWorld('save');
+const REVIEW_BTN = actionWorld('review');
 
 export const CLASSIC_CAM: CamKey[] = [
   [0, { x: 1085, y: 560, zoom: 0.9 }],
@@ -135,14 +171,16 @@ export const CLASSIC_CAM: CamKey[] = [
   [MM.reciteClick + 0.16, { x: 1120, y: 386, zoom: 1.51 }, ease.inOutCubic],
   [MM.close0, { x: 1130, y: 390, zoom: 1.53 }, ease.linear],
   [MM.close1, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 + 40, zoom: 1.45 }, ease.inOutCubic],
-  // 04 练习：跟住上滚的卡片块，最后推向「复习这批」
-  [PR.scroll1, { x: THREAD_X + COMPOSER_W / 2, y: ANKI_WORLD.y + 170, zoom: 1.42 }, ease.inOutCubic],
-  [PR.done, { x: THREAD_X + COMPOSER_W / 2 + 4, y: ANKI_WORLD.y + 180, zoom: 1.46 }, ease.linear],
+  // 04 练习：跟住贴底滚动的卡片块，生成完先点「加入卡片库」，再推向「复习这批」
+  [PR.scroll1, { x: THREAD_X + COMPOSER_W / 2, y: ANKI_WORLD.y + 200, zoom: 1.42 }, ease.inOutCubic],
+  [PR.done, { x: THREAD_X + COMPOSER_W / 2 + 4, y: ANKI_WORLD.y + 240, zoom: 1.46 }, ease.linear],
   [PR.reviewClick, { x: REVIEW_BTN.x + 40, y: CW.h - 540 / 1.62, zoom: 1.62 }, ease.inOutCubic],
 ];
 
 const PRACTICE_PUPIL: Array<[number, number, number]> = [
-  [PR.done + 0.02, ANKI_WORLD.x + 470, ANKI_WORLD.y + 150],
+  [PR.done + 0.02, ANKI_WORLD.x + 470, ANKI_WORLD.y + 200],
+  [PR.save - 0.05, SAVE_BTN.x, SAVE_BTN.y],
+  [PR.save + 0.05, SAVE_BTN.x, SAVE_BTN.y],
   [PR.reviewClick - 0.05, REVIEW_BTN.x, REVIEW_BTN.y],
   [PR.reviewClick + 0.3, REVIEW_BTN.x, REVIEW_BTN.y],
 ];
@@ -174,7 +212,7 @@ const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
   const s5 = s4 + [...l4].length / CPS + 0.03;
   const badge = (n: number, at: number) =>
     t >= at ? <CitationBadge n={n} tk={tk} glow={1 - prog(t, at, at + 0.5, ease.outCubic)} /> : null;
-  const base = { position: 'absolute' as const, left: 32, fontSize: 16, lineHeight: '24px', color: tk.foreground, whiteSpace: 'nowrap' as const };
+  const base = { position: 'absolute' as const, left: 32, fontSize: 16, lineHeight: `${LH}px`, color: tk.foreground, whiteSpace: 'nowrap' as const };
   return (
     <div style={{ fontFamily: font.ui }}>
       <div style={{ ...base, top: ANSWER_LINES.l1 }}>{line(l1, s1)}</div>
@@ -227,7 +265,9 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
   const rowFlash = (at: number) => (t >= at ? Math.exp(-(t - at) * PACE * 3) : 0);
   const sweep = (start: number) => ((t - start) % 0.8) / 0.8;
   const cardEnter = (_n: unknown, i: number) => prog(t, 9.55 + POST + i * 0.04, 9.55 + POST + i * 0.04 + DUR.mindmapNodeEnter, ease.wbOut);
-  const scroll = SCROLL * prog(t, PR.scroll0, PR.scroll1, ease.inOutCubic);
+  const scroll = chatScroll(t);
+  const ankiH = ankiLayout(t).h;
+  const tail = tailK(t);
   const leadChars = [...LEAD];
   const leadN = Math.max(0, Math.min(leadChars.length, Math.floor(((t - PR.lead) * CPS) / 3) * 3));
   return (
@@ -283,14 +323,36 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
       ) : null}
 
       {leadN > 0 ? (
-        <div style={{ position: 'absolute', left: 32, top: LEAD_Y, fontFamily: font.ui, fontSize: 16, lineHeight: '24px', color: tk.foreground, whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'absolute', left: 32, top: LEAD_Y, fontFamily: font.ui, fontSize: 16, lineHeight: `${LH}px`, color: tk.foreground, whiteSpace: 'nowrap' }}>
           {leadChars.slice(0, leadN).join('')}
         </div>
       ) : null}
       <div style={{ position: 'absolute', left: 32, top: ANKI_Y }}>
-        <AnkiStackBlock tk={tk} t={t} reviewHover={prog(t, PR.reviewClick - 0.08, PR.reviewClick - 0.03)} reviewPress={Math.max(0, 1 - Math.abs(t - PR.reviewClick) / 0.1)} />
+        <AnkiBlock
+          tk={tk}
+          t={t}
+          saveHover={prog(t, PR.save - 0.08, PR.save - 0.03)}
+          savePress={Math.max(0, 1 - Math.abs(t - PR.save) / 0.1)}
+          reviewHover={prog(t, PR.reviewClick - 0.08, PR.reviewClick - 0.03)}
+          reviewPress={Math.max(0, 1 - Math.abs(t - PR.reviewClick) / 0.1)}
+        />
       </div>
+      {tail > 0 ? (
+        // research.tsx 的零件按对话窗坐标摆放（at() 扣掉 1px 边框与 39px 标题栏），这里补回来
+        <div style={{ position: 'absolute', left: 1, top: ANKI_Y + ankiH + 39, opacity: tail, fontFamily: font.ui }}>
+          <SourcesRow x0={32} y={SOURCES_Y} n={3} searching={false} />
+          <AssistantFooter x0={32} y={FOOTER_Y} time="21:00" />
+        </div>
+      ) : null}
       </div>
+
+      {tail > 0 ? (
+        <span style={{ position: 'absolute', left: 32 + 8.8, top: composerTop - 20, height: 15.5, display: 'inline-flex', alignItems: 'center', gap: 5, opacity: tail, fontFamily: font.ui, fontSize: 11, fontWeight: 500, color: 'rgb(59, 63, 69)' }}>
+          <SquaresFour size={12} />
+          {S.artifacts(1)}
+          <CaretDown size={10} />
+        </span>
+      ) : null}
 
       <div style={{ position: 'absolute', left: 32, top: composerTop }}>
         <Composer
@@ -487,7 +549,7 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
         </div>
       </CameraView>
       <Handoff t={t} cam={cam} />
-      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, OPEN_CLICK, ...ORGANIZE_CLICKS, PR.reviewClick]} />
+      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, OPEN_CLICK, ...ORGANIZE_CLICKS, PR.save, PR.reviewClick]} />
     </AbsoluteFill>
   );
 };

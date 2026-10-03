@@ -468,15 +468,15 @@ const TodoSnapshot = ({ y, st, t }: { y: number; st: StepSt[]; t: number }) => (
 );
 
 /** 「N 个结果」来源行：y = 图标顶。 */
-export const SourcesRow = ({ y, n, searching }: { y: number; n: number; searching: boolean }) => (
+export const SourcesRow = ({ y, n, searching, x0 = 368 }: { y: number; n: number; searching: boolean; x0?: number }) => (
   <>
-    <MagnifyingGlass size={16} color={MUTED} style={at(368, y)} />
-    <T x={390} y={y + 1.3} size={13.3} weight={600} lh={13.3} color={FG2}>
+    <MagnifyingGlass size={16} color={MUTED} style={at(x0, y)} />
+    <T x={x0 + 22} y={y + 1.3} size={13.3} weight={600} lh={13.3} color={FG2}>
       {n} 个结果
     </T>
-    <CaretRight size={16} color={MUTED} style={at(447.6, y)} />
+    <CaretRight size={16} color={MUTED} style={at(x0 + 79.6, y)} />
     {searching ? (
-      <T x={475.6} y={y - 0.3} size={11} lh={16.5} color={MUTED}>
+      <T x={x0 + 107.6} y={y - 0.3} size={11} lh={16.5} color={MUTED}>
         正在检索来源…
       </T>
     ) : null}
@@ -484,15 +484,15 @@ export const SourcesRow = ({ y, n, searching }: { y: number; n: number; searchin
 );
 
 /** 助手消息页脚：模型名 · 复制 / 重试 / 更多 · 时间。y = 图标按钮顶。 */
-export const AssistantFooter = ({ y, time = '20:05' }: { y: number; time?: string }) => (
+export const AssistantFooter = ({ y, time = '20:05', x0 = 368 }: { y: number; time?: string; x0?: number }) => (
   <>
-    <T x={368} y={y + 6.9} size={11} weight={500} lh={13.2} color="rgba(101, 105, 114, 0.7)">
+    <T x={x0} y={y + 6.9} size={11} weight={500} lh={13.2} color="rgba(101, 105, 114, 0.7)">
       deepseek-v4
     </T>
-    <Copy size={16} color={MUTED} style={at(463.4, y + 6)} />
-    <ArrowCounterClockwise size={16} color={MUTED} style={at(493.2, y + 6)} />
-    <DotsThree size={16} weight="bold" color={MUTED} style={at(522.9, y + 6)} />
-    <T x={551.9} y={y + 7.4} size={11} lh={13.2} color="rgba(101, 105, 114, 0.5)">
+    <Copy size={16} color={MUTED} style={at(x0 + 95.4, y + 6)} />
+    <ArrowCounterClockwise size={16} color={MUTED} style={at(x0 + 125.2, y + 6)} />
+    <DotsThree size={16} weight="bold" color={MUTED} style={at(x0 + 154.9, y + 6)} />
+    <T x={x0 + 183.9} y={y + 7.4} size={11} lh={13.2} color="rgba(101, 105, 114, 0.5)">
       {time}
     </T>
   </>
