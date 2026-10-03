@@ -336,7 +336,7 @@ export const TimelineRow = ({
 );
 
 /** 知识库引用角标 [n]（与 08 / 09 取证同款：17.5 高、圆角 9、11px/500）；glow 是检索落点的片中高光。 */
-export const CitationBadge = ({ n, tk, glow = 0, press = 0 }: { n: number; tk: Tokens; glow?: number; press?: number }) => (
+export const CitationBadge = ({ n, tk, glow = 0, press = 0 }: { n: number | string; tk: Tokens; glow?: number; press?: number }) => (
   <span
     style={{
       display: 'inline-block',

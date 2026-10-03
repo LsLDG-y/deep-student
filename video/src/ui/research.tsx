@@ -468,13 +468,13 @@ const TodoSnapshot = ({ y, st, t }: { y: number; st: StepSt[]; t: number }) => (
 );
 
 /** 「N 个结果」来源行：y = 图标顶。 */
-export const SourcesRow = ({ y, n, searching, x0 = 368 }: { y: number; n: number; searching: boolean; x0?: number }) => (
+export const SourcesRow = ({ y, n, searching, x0 = 368, open = 0 }: { y: number; n: number; searching: boolean; x0?: number; open?: number }) => (
   <>
     <MagnifyingGlass size={16} color={MUTED} style={at(x0, y)} />
     <T x={x0 + 22} y={y + 1.3} size={13.3} weight={600} lh={13.3} color={FG2}>
       {n} 个结果
     </T>
-    <CaretRight size={16} color={MUTED} style={at(x0 + 79.6, y)} />
+    <CaretRight size={16} color={MUTED} style={{ ...at(x0 + 79.6, y), transform: open > 0 ? `rotate(${open * 90}deg)` : undefined }} />
     {searching ? (
       <T x={x0 + 107.6} y={y - 0.3} size={11} lh={16.5} color={MUTED}>
         正在检索来源…

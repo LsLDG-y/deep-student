@@ -38,6 +38,7 @@ import {
 } from '../ui/classic';
 import { CARD_OPEN_BTN, MindmapCard } from '../ui/mindmap';
 import { AssistantFooter, SourcesRow, type SidebarRow } from '../ui/research';
+import { SourcesPanel, SOURCES_PANEL_H } from '../ui/sources';
 import { PAGE_H, quoteFlashAlpha, SELECTION_BOX, TextbookPage, THEOREM_CHARS } from '../ui/TextbookPage';
 import { Tex } from '../ui/tex';
 import { AnkiBlock, ankiActionCenter, ankiLayout } from '../ui/anki';
@@ -95,7 +96,22 @@ const ANSWER_LINES = {
 /** 导图卡：段落之后 29.4（probe-clp-12 段底 → 卡顶）。 */
 const MSG = { user: CLASSIC_USER_TOP, assistant: CLASSIC_ASSISTANT_TOP, answer: ANSWER_TOP, card: ANSWER_LINES.l5 + LH + 29.4 };
 
+/** 流式输出：按 3 字一块原位生长（产品没有逐字渐显）。 */
+const CPS = 150;
 const L3 = '证明的关键是构造辅助函数 φ(x)，把问题化归为罗尔定理';
+/** 回答四行与各行开始流出的时刻（公式块在第 2、3 行之间整块出现）。 */
+const ANS = (() => {
+  const l1 = '拉格朗日中值定理说的是：只要 f(x) 在 [a, b] 上连续、在 (a, b)';
+  const l2 = '内可导，曲线上就一定有一点的切线与两端连线平行';
+  const l4 = '你上次在 ξ 的取值上丢过分——它严格落在开区间内';
+  const s1 = 8.05 + POST;
+  const s2 = s1 + [...l1].length / CPS;
+  const sf = s2 + [...l2].length / CPS + 0.03;
+  const s3 = sf + 0.08;
+  const s4 = s3 + [...L3].length / CPS + 0.03;
+  const s5 = s4 + [...l4].length / CPS + 0.03;
+  return { l1, l2, l3: L3, l4, s1, s2, sf, s3, s4, s5 };
+})();
 let measureCtx: CanvasRenderingContext2D | null = null;
 const textW = (s: string, px: number) => {
   measureCtx ??= document.createElement('canvas').getContext('2d');
@@ -109,33 +125,57 @@ const CITE_CLICK = 9.1 + POST;
 
 /** 消息列可见底：输入框顶上 24；「产物」药丸出现后再让出一行（页脚底 → 药丸顶 23，probe-cza-bottom）。 */
 const VIS_BOTTOM = DOCK_TOP - 24;
-/** 导图卡出现时贴底滚动（stick-to-bottom），让整张卡露在输入框之上。 */
-const CARD_SCROLL = Math.max(0, MSG.card + 280 - VIS_BOTTOM);
-export const CARD = { x: THREAD_X, y: chatY(MSG.card - CARD_SCROLL), w: COMPOSER_W, h: 280 };
-export const OPEN_BTN = { x: CARD.x + CARD.w - CARD_OPEN_BTN.right, y: CARD.y + CARD_OPEN_BTN.top };
-/** 点「打开」的时刻：导图随后在右侧面板打开（MM.open）。 */
-const OPEN_CLICK = 10.5 + POST;
 
 /** 导图卡之后：一句引导语（卡底 + 16.8）+ Anki 卡片块（段底 + 19.6），聊天区局部坐标。 */
 const LEAD = '接下来逐张生成卡片，先看正面回忆，再翻面核对。';
 const LEAD_Y = MSG.card + 280 + 16.8;
 const ANKI_Y = LEAD_Y + LH + 19.6;
-/** 消息收尾：卡片块下 30 是「N 个结果」，再下 37.4 是页脚（probe-cza-bottom）。 */
-const SOURCES_Y = 30;
-const FOOTER_Y = SOURCES_Y + 37.4;
-const TAIL = FOOTER_Y + 20;
-const tailK = (t: number) => prog(t, PR.done, PR.done + 0.1);
+const CARD_AT = 9.5 + POST;
 
-const contentBottom = (t: number) => {
-  let b = MSG.card + 280;
+/**
+ * 来源面板（SourcePanelV2）：助手消息一有来源就排在所有块后面，流式期间跟着正文往下走（cap/clq-04）。
+ * 内容底下 30 是「N 个结果」折叠行（图标顶），点 [2] 后行下 29.1 展开 176.7 高的来源区（300ms），之后一直开着；
+ * 消息收尾时页脚在折叠行下 37.4（probe-cza-bottom），展开区把它整体往下推。
+ */
+const SRC = { row: 30, rowH: 16, panelTop: 29.1, footer: 37.4, tail: 20 };
+const SOURCES_Y = SRC.row;
+const FOOTER_Y = SRC.row + SRC.footer;
+const tailK = (t: number) => prog(t, PR.done, PR.done + 0.1);
+const expandK = (t: number) => prog(t, CITE_CLICK + 0.03, CITE_CLICK + 0.03 + 0.15, ease.inOutCubic);
+/** 目标卡 usp-citation-pulse：2s 真实时间。 */
+const pulseK = (t: number) => prog(t, CITE_CLICK + 0.03, CITE_CLICK + 0.03 + 2 / PACE);
+
+/** 工具行（思考 / 统一搜索 / 记忆搜索）底边，回答第一行出来之前来源行贴在它下面。 */
+const TOOLS_BOTTOM = MSG.assistant + 2 * TL_PITCH + LH;
+const answerEdge = (t: number) => {
+  if (t >= ANS.s5) return ANSWER_LINES.l5 + LH;
+  if (t >= ANS.s4) return ANSWER_LINES.l4 + LH;
+  if (t >= ANS.s3) return ANSWER_LINES.l3 + LH;
+  if (t >= ANS.sf) return ANSWER_LINES.formula + FORMULA_H;
+  if (t >= ANS.s2) return ANSWER_LINES.l2 + LH;
+  if (t >= ANS.s1) return ANSWER_LINES.l1 + LH;
+  return TOOLS_BOTTOM;
+};
+/** 消息里最后一块内容的底边（聊天区局部坐标）。 */
+const contentEdge = (t: number) => {
+  let b = answerEdge(t);
+  if (t >= CARD_AT) b = Math.max(b, MSG.card + 280);
   if (t >= PR.lead) b = Math.max(b, LEAD_Y + LH);
-  if (t >= PR.block) b = Math.max(b, ANKI_Y + ankiLayout(t).h + TAIL * tailK(t));
+  if (t >= PR.block) b = Math.max(b, ANKI_Y + ankiLayout(t).h);
   return b;
 };
+const contentBottom = (t: number) => contentEdge(t) + SRC.row + SRC.rowH + SOURCES_PANEL_H * expandK(t) + (SRC.footer + SRC.tail - SRC.rowH) * tailK(t);
+
+/** 导图卡出现时贴底滚动（stick-to-bottom），让整张卡和下面已展开的来源区露在输入框之上。 */
+const CARD_SCROLL = Math.max(0, MSG.card + 280 + SRC.row + SRC.rowH + SOURCES_PANEL_H - VIS_BOTTOM);
+export const CARD = { x: THREAD_X, y: chatY(MSG.card - CARD_SCROLL), w: COMPOSER_W, h: 280 };
+export const OPEN_BTN = { x: CARD.x + CARD.w - CARD_OPEN_BTN.right, y: CARD.y + CARD_OPEN_BTN.top };
+/** 点「打开」的时刻：导图随后在右侧面板打开（MM.open）。 */
+const OPEN_CLICK = 10.5 + POST;
 const stickTarget = (t: number) => Math.max(CARD_SCROLL, contentBottom(t) - (VIS_BOTTOM - 19 * tailK(t)));
 /** 聊天区滚动：导图卡出现时贴底一次；回到对话后跟着流式内容贴底（use-stick-to-bottom 有缓动，这里取 0.08s 滑动平均）。 */
 const chatScroll = (t: number) => {
-  if (t < PR.scroll0) return CARD_SCROLL * prog(t, 9.5 + POST, 9.5 + POST + 0.2, ease.outCubic);
+  if (t < PR.scroll0) return CARD_SCROLL * prog(t, CARD_AT, CARD_AT + 0.2, ease.outCubic);
   let s = 0;
   for (let k = 0; k < 8; k++) s += stickTarget(t - k * 0.011);
   return lerp(CARD_SCROLL, s / 8, prog(t, PR.scroll0, PR.scroll1, ease.inOutCubic));
@@ -203,22 +243,11 @@ const typedText = (t: number) => {
   return chars.slice(0, n).join('');
 };
 
-/** 流式输出：按 3 字一块原位生长（产品没有逐字渐显）。 */
-const CPS = 150;
 const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
   const reveal = (start: number, len: number) => Math.max(0, Math.min(len, Math.floor(((t - start) * CPS) / 3) * 3));
   const line = (s: string, start: number) => [...s].slice(0, reveal(start, [...s].length)).join('');
-  const l1 = '拉格朗日中值定理说的是：只要 f(x) 在 [a, b] 上连续、在 (a, b)';
-  const l2 = '内可导，曲线上就一定有一点的切线与两端连线平行';
-  const l3 = L3;
-  const l4 = '你上次在 ξ 的取值上丢过分——它严格落在开区间内';
-  const s1 = 8.05 + POST;
-  const s2 = s1 + [...l1].length / CPS;
-  const sf = s2 + [...l2].length / CPS + 0.03;
-  const s3 = sf + 0.08;
-  const s4 = s3 + [...l3].length / CPS + 0.03;
-  const s5 = s4 + [...l4].length / CPS + 0.03;
-  const badge = (n: number, at: number) =>
+  const { l1, l2, l3, l4, s1, s2, sf, s3, s4, s5 } = ANS;
+  const badge = (n: number | string, at: number) =>
     t >= at ? (
       <CitationBadge n={n} tk={tk} glow={1 - prog(t, at, at + 0.5, ease.outCubic)} press={n === 2 ? Math.max(0, 1 - Math.abs(t - CITE_CLICK) / 0.1) : 0} />
     ) : null;
@@ -250,7 +279,7 @@ const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
       </div>
       <div style={{ ...base, top: ANSWER_LINES.l4 }}>
         {line(l4, s4)}
-        {badge(3, s4 + [...l4].length / CPS)}
+        {badge('忆1', s4 + [...l4].length / CPS)}
         {t >= s4 + [...l4].length / CPS ? '。' : ''}
       </div>
       <div style={{ ...base, top: ANSWER_LINES.l5 }}>
@@ -276,7 +305,8 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
   const sweep = (start: number) => ((t - start) % 0.8) / 0.8;
   const cardEnter = (_n: unknown, i: number) => prog(t, 9.55 + POST + i * 0.04, 9.55 + POST + i * 0.04 + DUR.mindmapNodeEnter, ease.wbOut);
   const scroll = chatScroll(t);
-  const ankiH = ankiLayout(t).h;
+  const edge = contentEdge(t);
+  const open = expandK(t);
   const tail = tailK(t);
   const leadChars = [...LEAD];
   const leadN = Math.max(0, Math.min(leadChars.length, Math.floor(((t - PR.lead) * CPS) / 3) * 3));
@@ -345,11 +375,20 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
           reviewPress={Math.max(0, 1 - Math.abs(t - PR.reviewClick) / 0.1)}
         />
       </div>
-      {tail > 0 ? (
+      {t >= RV.done ? (
         // research.tsx 的零件按对话窗坐标摆放（at() 扣掉 1px 边框与 39px 标题栏），这里补回来
-        <div style={{ position: 'absolute', left: 1, top: ANKI_Y + ankiH + 39, opacity: tail, fontFamily: font.ui }}>
-          <SourcesRow x0={32} y={SOURCES_Y} n={3} searching={false} />
-          <AssistantFooter x0={32} y={FOOTER_Y} time="21:00" />
+        <div style={{ position: 'absolute', left: 1, top: edge + 39, opacity: prog(t, RV.done, RV.done + 0.08), fontFamily: font.ui }}>
+          <SourcesRow x0={32} y={SOURCES_Y} n={3} searching={false} open={open} />
+          {tail > 0 ? (
+            <div style={{ position: 'absolute', left: 0, top: SOURCES_PANEL_H * open, opacity: tail }}>
+              <AssistantFooter x0={32} y={FOOTER_Y} time="21:00" />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {open > 0 ? (
+        <div style={{ position: 'absolute', left: 32, top: edge + SRC.row + SRC.panelTop, width: COMPOSER_W, height: SOURCES_PANEL_H * open, overflow: 'hidden' }}>
+          <SourcesPanel tk={tk} width={COMPOSER_W} pulse={pulseK(t)} />
         </div>
       ) : null}
       </div>

@@ -638,7 +638,8 @@ const YOU_FIXTURE = String.raw`
 const browser = await chromium.launch({
   executablePath: `${process.env.HOME}/Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell`,
 });
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: DPR, colorScheme: THEME === 'dark' ? 'dark' : 'light' });
+// VW / VH：改视口（第一幕经典窗口是 1760 宽，开着 PDF 面板时聊天栏才是片中的 720）
+const page = await browser.newPage({ viewport: { width: Number(process.env.VW ?? 1920), height: Number(process.env.VH ?? 1080) }, deviceScaleFactor: DPR, colorScheme: THEME === 'dark' ? 'dark' : 'light' });
 page.on('pageerror', (e) => console.log('[pageerror]', process.env.STACK ? String(e.stack).slice(0, 900) : e.message.slice(0, 200)));
 if (process.env.STACK) page.on('console', (m) => { if (m.type() === 'error') console.log('[console.error]', m.text().slice(0, 900)); });
 if (process.env.LOG_IPC) {
