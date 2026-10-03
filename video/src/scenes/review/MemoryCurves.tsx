@@ -13,8 +13,8 @@ const R = (tDays: number, s: number) => (1 + (FACTOR * tDays) / s) ** -0.5;
 type Curve = { name: string; tag: string; rating: Rating; s: number; when: string };
 export const CURVES: Curve[] = [
   { name: 'ξ 的取值范围', tag: '薄弱', rating: 1, s: 0.4, when: '10 小时后' },
-  { name: '罗尔定理的三个条件', tag: '一般', rating: 3, s: 3.17, when: '3 天后' },
-  { name: '拉格朗日中值定理的条件', tag: '牢固', rating: 4, s: 15.69, when: '16 天后' },
+  { name: '拉格朗日中值定理的两个条件', tag: '一般', rating: 3, s: 3.17, when: '3 天后' },
+  { name: '构造辅助函数 φ(x)', tag: '牢固', rating: 4, s: 15.69, when: '16 天后' },
 ];
 
 const T0 = 1 / 24; // 1 小时
@@ -33,6 +33,8 @@ const TICKS: Array<[number, string]> = [
 ];
 
 export const MemoryCurves = ({ tk, t, start, rect }: { tk: Tokens; t: number; start: number; rect: { x: number; y: number; w: number; h: number } }) => {
+  // 信息图沿用评分色；「重来」在评分键上是灰字红框，曲线里用红色才看得出「薄弱」
+  const toneOf = (r: Rating) => ({ text: r === 1 ? tk.destructive : ratingTone(r).text });
   const appear = prog(t, start, start + 0.26, ease.wbOut);
   if (appear <= 0) return null;
   const plot = { x: 76, y: 196, w: rect.w - 76 - 48, h: rect.h - 196 - 74 };
@@ -113,7 +115,7 @@ export const MemoryCurves = ({ tk, t, start, rect }: { tk: Tokens; t: number; st
         </g>
         {/* 三条曲线：从左往右画出，越过 90% 时点亮复习点 */}
         {CURVES.map((c, i) => {
-          const tone = ratingTone(tk, c.rating);
+          const tone = toneOf(c.rating);
           const s0 = curveStart(start, i);
           const drawX = prog(t, s0, s0 + DRAW);
           const shown: Array<[number, number]> = [];
@@ -149,7 +151,7 @@ export const MemoryCurves = ({ tk, t, start, rect }: { tk: Tokens; t: number; st
         const at = hitAt(start, i);
         const k = prog(t, at + 0.04, at + 0.22, ease.brand);
         if (k <= 0) return null;
-        const tone = ratingTone(tk, c.rating);
+        const tone = toneOf(c.rating);
         const above = i !== 1;
         return (
           <div

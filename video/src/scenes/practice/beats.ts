@@ -15,8 +15,8 @@ export const PR = {
 
 export const ANKI_CARDS: Array<{ front: string; back: string }> = [
   { front: '拉格朗日中值定理的两个条件？', back: 'f(x) 在 [a, b] 上连续，在 (a, b) 内可导' },
-  { front: 'ξ 取在闭区间还是开区间？', back: '开区间 (a, b)，不含端点' },
   { front: '证明中如何构造辅助函数 φ(x)？', back: 'φ(x) = f(x) − 弦 AB 的直线方程' },
+  { front: 'ξ 取在闭区间还是开区间？', back: '开区间 (a, b)，不含端点' },
   { front: '罗尔定理的结论是什么？', back: '存在 ξ ∈ (a, b)，使 f′(ξ) = 0' },
   { front: '拉格朗日中值定理的几何意义？', back: '曲线上存在一点，切线平行于弦 AB' },
   { front: '柯西中值定理与它是什么关系？', back: '取 g(x) = x 即退化为拉格朗日中值定理' },

@@ -331,9 +331,44 @@ globalThis.__vMcpCfg = [
   ['zotero', 'zotero', '', ['zotero_search_items', 'zotero_get_item_fulltext', 'zotero_get_annotations']],
   ['filesystem', 'filesystem', '', ['read_file', 'write_file', 'list_directory', 'search_files', 'get_file_info']],
 ];
+// 夜里复习（FC=1）：对话「复习这批」→ 闪卡 batch 会话。enqueue 按请求顺序回 state，
+// 预览按 FSRS-5 默认参数 + 学习步 1m / 10m 的新卡首评（1m / 6m / 10m / 16d）
+function __vFcPre(cmd, args) {
+  const now = Date.now();
+  const card = (id) => (globalThis.__vFcCards || []).find((c) => c.id === id);
+  switch (cmd) {
+    case 'fsrs_enqueue_cards':
+      return { states: (args?.ankiCardIds ?? []).map((id) => ({ id: 'st_' + id, ankiCardId: id, front: card(id)?.front ?? '', back: card(id)?.back ?? '', templateId: 'tpl_demo_basic', state: 0, lastReviewMs: null, suspended: false, tags: [], images: [] })) };
+    case 'fsrs_get_scheduler_config': return { learnAheadMinutes: 20, dailyNewLimit: 20, dailyReviewLimit: 200 };
+    case 'fsrs_preview_intervals': return { previews: [[1, 60e3, 0], [2, 360e3, 0], [3, 600e3, 0], [4, 16 * 86400e3, 16]].map(([rating, ms, d]) => ({ rating, dueMs: now + ms, scheduledDays: d, intervalMs: ms })) };
+    case 'fsrs_rate': {
+      const ms = { 1: 60e3, 2: 360e3, 3: 600e3, 4: 16 * 86400e3 }[args?.rating] ?? 600e3;
+      return { logId: 'log_' + now + '_' + Math.random().toString(36).slice(2, 6), dueMs: now + ms, scheduledDays: args?.rating === 4 ? 16 : 0, cardState: { state: args?.rating === 4 ? 2 : 1, lastReviewMs: now, suspended: false } };
+    }
+    case 'fsrs_undo_last_review': return { ok: true };
+    // 复习完三张之后（良好 / 简单 / 重来）：386 张老卡 + 12 张新卡，新 9、学习中 2+2、复习中 384+1
+    case 'fsrs_get_stats': return { total: 398, due: 9, newCount: 9, learning: 4, review: 385, relearning: 0, suspended: 0, reviewsToday: 3, backlog: 0, backlogReview: 0, backlogNew: 0, learningWaiting: 2 };
+    case 'fsrs_get_due': return (globalThis.__vFcCards || []).slice(3).map((c) => ({ id: 'st_' + c.id, ankiCardId: c.id, front: c.front, back: c.back, templateId: 'tpl_demo_basic', state: 0, lastReviewMs: null, suspended: false, tags: [], images: [] }));
+    case 'fsrs_get_review_statistics': {
+      // 一年复习记录（确定性）：越近越密，最近 46 天不断档；评分分布 8 / 14 / 61 / 17%
+      const end = Date.parse('2026-10-03T12:00:00');
+      const dailyReviews = [];
+      for (let i = 364; i >= 0; i--) {
+        const r = Math.abs((Math.sin(i * 12.9898 + 78.233) * 43758.5453) % 1);
+        const recent = i < 46;
+        const base = 0.15 + 0.6 * ((364 - i) / 364) ** 1.6 + (recent ? 0.35 : 0);
+        if (!recent && r > base + 0.15) continue;
+        dailyReviews.push({ date: new Date(end - i * 86400e3).toISOString().slice(0, 10), total: i === 0 ? 3 : Math.round(8 + r * 30 + base * 25) });
+      }
+      return { dailyReviews, ratingDistribution: { again: 337, hard: 589, good: 2568, easy: 716, total: 4210 } };
+    }
+    default: return __VSKIP;
+  }
+}
 function __vPre(cmd, args) {
   if (globalThis.__vLogIpc) console.log('[ipc] ' + cmd + ' ' + JSON.stringify(args ?? {}).slice(0, 140));
   if (globalThis.__vYou) { const r = __vYouPre(cmd, args); if (r !== __VSKIP) return r; }
+  if (globalThis.__vFcCards) { const r = __vFcPre(cmd, args); if (r !== __VSKIP) return r; }
   // 演示 mock 缺省返回 null，AgentTaskPanel 有产物后会读 entries.length / downloads.length（真后端返回空页 / 空数组）
   if (cmd === 'chat_v2_list_runtime_directory') return { rootId: args?.rootId ?? 'workspace', relativePath: args?.relativePath ?? '', entries: [], nextCursor: null, truncated: false, scanned: 0 };
   if (cmd === 'browser_list_task_downloads') return [];
@@ -688,6 +723,16 @@ if (process.env.RESEARCH) {
   if (process.env.RQ) await page.addInitScript((q) => { globalThis.__vResearchPrompt = q; }, process.env.RQ);
 }
 if (process.env.NO_PAPER) await page.addInitScript(() => { globalThis.__vNoPaper = true; });
+// FC=1：片中那批卡（顺序 = 卡片块顺序 = batch 复习顺序），id 用已落库形态（chat-batch- 前缀会被拒）
+const FC_CARDS = [
+  ['拉格朗日中值定理的两个条件？', 'f(x) 在 [a, b] 上连续，在 (a, b) 内可导'],
+  ['证明中如何构造辅助函数 φ(x)？', 'φ(x) = f(x) − 弦 AB 的直线方程'],
+  ['ξ 取在闭区间还是开区间？', '开区间 (a, b)，不含端点'],
+  ['罗尔定理的结论是什么？', '存在 ξ ∈ (a, b)，使 f′(ξ) = 0'],
+  ['拉格朗日中值定理的几何意义？', '曲线上存在一点，切线平行于弦 AB'],
+  ['柯西中值定理与它是什么关系？', '取 g(x) = x 即退化为拉格朗日中值定理'],
+].map(([front, back], i) => ({ id: `card_v_${String(i + 1).padStart(2, '0')}`, front, back }));
+if (process.env.FC) await page.addInitScript((cards) => { globalThis.__vFcCards = cards; }, FC_CARDS);
 if (process.env.TR_SPEED) await page.addInitScript((k) => { globalThis.__vTrSpeed = k; }, Number(process.env.TR_SPEED));
 const qs = [THEME === 'dark' ? 'theme=dark' : '', process.env.SCENE ? `scene=${process.env.SCENE}` : ''].filter(Boolean).join('&');
 await page.goto(`http://localhost:1422/demo.html${qs ? `?${qs}` : ''}`, { waitUntil: 'networkidle', timeout: 120000 });
@@ -887,7 +932,25 @@ if (scenario === 'probe') {
 } else if (scenario === 'appx') {
   // 经「全部应用」面板打开（桌面快捷方式被空桌面引导卡挡住，见优化建议 1）
   const name = process.env.APP ?? '题目集';
-  if (process.env.DOCK) {
+  if (process.env.FC_START) {
+    // 模拟对话里点「复习这批」：与 ankiCardsBlock.handleReviewBatch 同一次 activate（未开窗走 fallbackLaunch）；等工作台外壳挂载（enabled）后再发
+    await tryDo('wait dock', () => page.locator('[data-testid="wb-dock-apps-button"]').waitFor({ timeout: 15000 }));
+    await page.waitForTimeout(1500);
+    console.log('[fc start]', await page.evaluate(async (cards) => {
+      try {
+        // 必须 import 应用实际加载的那个 URL（带 ?v= / ?t=），否则拿到的是另一份模块实例（enabled=false）
+        const url = performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/features/workbench/core/workbenchBus.ts')) ?? '/src/features/workbench/core/workbenchBus.ts';
+        const { workbenchBus } = await import(url);
+        // 演示壳把 AgentBridge 换成了空桩，总线没人打开；生产里工作台挂载时由 AgentBridge setEnabled(true)
+        workbenchBus.setEnabled(true);
+        const payload = { screen: 'session', mode: 'batch', cardIds: cards.map((c) => c.id), cards: cards.map((c) => ({ id: c.id, ankiCardId: c.id, front: c.front, back: c.back })) };
+        const r = await workbenchBus.activateDetailed({ typeId: 'flashcards', instanceKey: '', action: 'startReview', payload, fallbackLaunch: { typeId: 'flashcards', reason: 'api', payload } });
+        return JSON.stringify(r ?? null).slice(0, 200);
+      } catch (e) {
+        return 'ERR ' + String(e?.stack ?? e).slice(0, 500);
+      }
+    }, FC_CARDS));
+  } else if (process.env.DOCK) {
     // DOCK=<应用 id>：直接点 Dock 图标（files = 资源库）
     await tryDo(`dock ${process.env.DOCK}`, () => dock(process.env.DOCK).click({ timeout: 5000 }));
   } else {

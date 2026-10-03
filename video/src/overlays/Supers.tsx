@@ -34,7 +34,7 @@ export const SUPERS: Super[] = [
   { s: 15.0, e: 15.9, text: '04 练习', kind: 'chapter' },
   { s: 15.56, e: 16.34, text: '卡片自动生成', kind: 'feature' },
   { s: 17.02, e: 18.32, text: 'FSRS 帮你排好每一次复习', kind: 'feature', tone: 'dark' },
-  { s: 19.0, e: 19.9, text: '05 记住', kind: 'chapter', tone: 'dark' },
+  { s: 19.0, e: 19.9, text: '05 记住', kind: 'chapter', tone: 'dark', scrim: false },
   { s: 20.0, e: 22.3, text: '越薄弱的，越早再见', kind: 'feature', tone: 'dark' },
   // 第二幕：第二天，白天的学习桌面
   { s: 24.05, e: 25.75, text: '不止一份资料。', kind: 'title', pos: { left: 0, right: 0, top: 380 }, align: 'center', scrim: false },

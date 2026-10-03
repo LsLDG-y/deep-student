@@ -79,7 +79,8 @@ const CUES: Cue[] = [
   ]),
   // 05 记住：曲线越过 90% 依次点亮（最薄弱的最先）→ 切到统计页
   ...CURVES.map((_, i): Cue => [hitAt(WK.curves, i), CURVE_NOTES[i], 0.3]),
-  [WK.stats, 'tick', 0.24],
+  [WK.exit, 'click', 0.28],
+  [WK.stats, 'click', 0.28],
   // 夜里收场（点黄灯，闪卡窗口 genie 进 Dock）→ 清晨
   [WK.minimize, 'click', 0.3],
   [WK.out0 + 0.02, 'whoosh-down', 0.18],
