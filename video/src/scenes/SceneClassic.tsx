@@ -20,6 +20,7 @@ import {
   CW,
   HighlightMenu,
   PAGE_ORIGIN,
+  pageShadow,
   PdfPanel,
   SelectionToolbar,
   Toast,
@@ -332,7 +333,8 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
   const tk = light;
   const cam = classicCam(t);
   const chrome = prog(t, 2.25, 2.7, ease.inOutCubic);
-  const floatVisible = t < 2.62;
+  // 面板淡入到全不透明（chrome = 1）才撤掉漂浮页，交接时下面那页已经完全一样
+  const floatVisible = t < 2.7;
   const tilt = pageTilt(t);
   const selected = selectedChars(t);
   const toolbarK = prog(t, 2.55, 2.55 + 0.15, ease.brand);
@@ -406,35 +408,15 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
                 position: 'absolute',
                 left: PAGE_ORIGIN.x,
                 top: PAGE_ORIGIN.y,
-                transform: `perspective(1600px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
+                // 落平之后不再走 3D 合成层：否则文字栅格化与下面面板里的同一页对不齐，交接那一帧会跳
+                transform: tilt.rx === 0 && tilt.ry === 0 ? undefined : `perspective(1600px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
                 transformOrigin: '50% 40%',
-                boxShadow: `0 ${40 - tilt.lift * 38}px ${90 - tilt.lift * 80}px rgba(24,28,36,${0.16 - tilt.lift * 0.12})`,
+                // 落定时正好收成面板里那一页的投影
+                boxShadow: `0 ${40 - tilt.lift * 38}px ${90 - tilt.lift * 80}px rgba(24,28,36,${0.16 * (1 - tilt.lift)}), ${pageShadow(tilt.lift)}`,
                 borderRadius: 4,
               }}
             >
               <TextbookPage page={132} selected={selected} />
-              {t > 1.95 && t < 2.6 ? (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: SELECTION_BOX.x - 40,
-                    top: SELECTION_BOX.y - 20,
-                    width: SELECTION_BOX.w + 80,
-                    height: SELECTION_BOX.h + 20,
-                    overflow: 'hidden',
-                    pointerEvents: 'none',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      transform: `translateX(${-130 + prog(t, 1.95, 2.5, ease.inOutCubic) * 260}%)`,
-                      background: 'linear-gradient(105deg, transparent 38%, rgba(120,170,255,0.35) 50%, transparent 62%)',
-                    }}
-                  />
-                </div>
-              ) : null}
             </div>
           ) : null}
 

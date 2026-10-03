@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { font } from '../theme';
+import { Fragment, type CSSProperties, type ReactNode } from 'react';
+import { font, light } from '../theme';
 import { Tex } from './tex';
 
 export const PAGE_W = 688;
@@ -42,30 +42,41 @@ const Block = ({ y, children, style }: { y: number; children: ReactNode; style?:
   <div style={{ position: 'absolute', left: 64, right: 64, top: y, ...style }}>{children}</div>
 );
 
+const ITALIC: CSSProperties = { fontStyle: 'italic', fontFamily: '"Times New Roman", Times, serif', fontSize: 19 };
+
+/**
+ * 选中的部分包在同一个 span 里铺底色：每行一整条、高度一致。
+ * 逐字各铺一块半透明底时，相邻字的抗锯齿边缘会叠出深色缝，斜体字的行框又更高，镜头推拉时整条选区会闪。
+ */
 const SelectableText = ({ tokens, selected, selColor }: { tokens: Tok[]; selected: number; selColor: string }) => {
+  const on: ReactNode[] = [];
+  const off: ReactNode[] = [];
   let idx = 0;
-  const out: ReactNode[] = [];
   tokens.forEach((tk, ti) => {
-    [...tk.s].forEach((ch, ci) => {
-      const on = idx < selected;
-      out.push(
-        <span
-          key={`${ti}-${ci}`}
-          style={{
-            fontStyle: tk.i ? 'italic' : undefined,
-            fontFamily: tk.i ? '"Times New Roman", Times, serif' : undefined,
-            fontSize: tk.i ? 19 : undefined,
-            background: on ? selColor : undefined,
-          }}
-        >
-          {ch}
-        </span>,
+    const chars = [...tk.s];
+    const n = Math.max(0, Math.min(chars.length, selected - idx));
+    const piece = (s: string, key: string) =>
+      tk.i ? (
+        <span key={key} style={ITALIC}>
+          {s}
+        </span>
+      ) : (
+        <Fragment key={key}>{s}</Fragment>
       );
-      idx++;
-    });
+    if (n > 0) on.push(piece(chars.slice(0, n).join(''), `on-${ti}`));
+    if (n < chars.length) off.push(piece(chars.slice(n).join(''), `off-${ti}`));
+    idx += chars.length;
   });
-  return <>{out}</>;
+  return (
+    <>
+      {on.length > 0 ? <span style={{ background: selColor }}>{on}</span> : null}
+      {off}
+    </>
+  );
 };
+
+/** 产品 PDF 文字层的选区色：`enhanced-pdf.css` 里 `.react-pdf__Page__textContent span::selection` 为 primary / 0.4。 */
+export const PDF_SELECTION = `color-mix(in srgb, ${light.primary} 40%, transparent)`;
 
 const Figure = () => {
   const fx = (x: number) => {
@@ -125,7 +136,7 @@ const Figure = () => {
 export const TextbookPage = ({
   page = 132,
   selected = 0,
-  selColor = 'hsl(215 80% 55% / 0.28)',
+  selColor = PDF_SELECTION,
   style,
 }: {
   page?: 132 | 134;

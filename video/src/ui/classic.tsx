@@ -36,7 +36,10 @@ import { PAGE_H, TextbookPage } from './TextbookPage';
 export const CW = { w: 1760, h: 990, nav: 320, title: 40, panel: 720, chatX: 320, chatW: 720, panelX: 1040 } as const;
 export const PANEL_HEADER = 44;
 export const PDF_TOOLBAR = 36;
-export const PAGE_ORIGIN = { x: CW.panelX + 16, y: CW.title + PANEL_HEADER + 16 };
+/** 面板里第一页纸左上角（面板左侧有 1px 边框，内容从边框内侧算起）。 */
+export const PAGE_ORIGIN = { x: CW.panelX + 1 + 16, y: CW.title + PANEL_HEADER + 16 };
+/** PDF 面板里每页纸的投影；k 用于漂浮页落定时渐变成同一道投影。 */
+export const pageShadow = (k = 1) => `0 2px 8px hsl(214 62% 50% / ${0.1 * k})`;
 
 export const TrafficLights = ({ gap = 8, size = 12 }: { gap?: number; size?: number }) => (
   <div style={{ display: 'flex', gap }}>
@@ -246,9 +249,9 @@ export const PdfPanel = ({
       </div>
       <div style={{ position: 'relative', height: bodyH - PDF_TOOLBAR, overflow: 'hidden', background: tk.dark ? 'hsl(0 0% 11%)' : 'hsl(0 0% 96%)' }}>
         <div style={{ position: 'absolute', left: 16, top: 16 - scrollY }}>
-          <TextbookPage page={132} selected={selected} style={{ boxShadow: '0 2px 8px hsl(214 62% 50% / 0.1)' }} />
+          <TextbookPage page={132} selected={selected} style={{ boxShadow: pageShadow() }} />
           <FillerPage style={{ marginTop: 16 }} n={133} />
-          <TextbookPage page={134} style={{ marginTop: 16, boxShadow: '0 2px 8px hsl(214 62% 50% / 0.1)' }} />
+          <TextbookPage page={134} style={{ marginTop: 16, boxShadow: pageShadow() }} />
         </div>
         <div style={{ position: 'absolute', left: 0, bottom: 0, height: 3, width: `${((pageLabel - 1) / 486) * 100}%`, background: tk.primary }} />
       </div>
