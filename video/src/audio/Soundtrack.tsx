@@ -11,8 +11,8 @@ import { GROW, majorRingTimes } from '../scenes/finale/terrain';
 import { MM } from '../scenes/organize/MindmapView';
 import { PR } from '../scenes/practice/beats';
 import { POST, RV } from '../scenes/retrieval/beats';
-import { CURVES, hitAt } from '../scenes/review/MemoryCurves';
-import { WK } from '../scenes/review/SceneReview';
+import { REVIEW_MEMORY, REVIEW_MEMORY_FRESH, WK } from '../scenes/review/SceneReview';
+import { memoryDuePasses } from '../ui/flashcards';
 
 /**
  * 配乐 + 音效。样本由 scripts/synth-score.mjs 生成（public/audio/）；
@@ -77,10 +77,10 @@ const CUES: Cue[] = [
     [c.rate, 'click', 0.33],
     [c.rate + 0.02, RATING_NOTE[c.rating], 0.32],
   ]),
-  // 05 记住：曲线越过 90% 依次点亮（最薄弱的最先）→ 切到统计页
-  ...CURVES.map((_, i): Cue => [hitAt(WK.curves, i), CURVE_NOTES[i], 0.3]),
+  // 05 记住：退出 → 统计；记忆曲线从左展开，依次扫过本次三张卡的下次复习点（重来 1 分钟 → 良好 10 分钟 → 简单 15 天）
   [WK.exit, 'click', 0.28],
   [WK.stats, 'click', 0.28],
+  ...memoryDuePasses(REVIEW_MEMORY, WK.stats + 0.03, REVIEW_MEMORY_FRESH).map((s, i): Cue => [s, CURVE_NOTES[i], 0.3]),
   // 夜里收场（点黄灯，闪卡窗口 genie 进 Dock）→ 清晨
   [WK.minimize, 'click', 0.3],
   [WK.out0 + 0.02, 'whoosh-down', 0.18],

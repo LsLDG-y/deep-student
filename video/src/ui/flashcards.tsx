@@ -4,8 +4,10 @@ import {
   ArrowLeft,
   ArrowsClockwise,
   CalendarBlank,
+  CaretRight,
   Cards,
   ChartBar,
+  ChartLineDown,
   ChartPieSlice,
   Eye,
   Fire,
@@ -19,7 +21,18 @@ import {
   X,
 } from '@phosphor-icons/react';
 import type { CSSProperties, ReactNode } from 'react';
-import { ease, prog, rand } from '../lib/time';
+import {
+  FSRS5_CURVE,
+  MS_PER_DAY,
+  isLearningState,
+  recentFloor,
+  recentRange,
+  retrievability,
+  sampleLogCurve,
+  type CurvePoint,
+  type MemoryCard,
+} from '@app/features/flashcards/memoryCurve';
+import { PACE, ease, prog, rand } from '../lib/time';
 import { S } from '../strings';
 import { font } from '../theme';
 
@@ -398,8 +411,253 @@ const Section = ({ icon, title, sub, right, children, style }: { icon: ReactNode
 
 export type FcStatsData = { reviewsToday: number; due: number; newCount: number; learning: number; review: number; relearning: number; suspended: number; total: number; streak: number };
 
-/** 统计页（StatisticsScreen）：数据到了直接渲染，只有挂载时 ui-rise-in 150ms。 */
-export const FcStats = ({ t, start, d }: { t: number; start: number; d: FcStatsData }) => {
+// ── 统计页「记忆曲线」面板（MemoryCurvePanel）────────────
+// 取证 cap/d3-闪卡-9（FC=1：复习完三张 → 退出 → 统计）、DOM probe-fcm-stats；坐标轴、纵轴下限、曲线取样直接调用
+// 产品的 memoryCurve.ts，与应用逐点一致。动效按真实时长：图表 280ms 淡入（wb-fcx-screen-in），曲线连同标记点 0.7s 从左展开。
+
+export type FcMemoryData = {
+  nowMs: number;
+  cards: MemoryCard[];
+  memorizedCount: number;
+  averageRetrievability: number;
+  trueRetention: { windowDays: number; reviews: number; passed: number };
+  desiredRetention: number;
+};
+
+/** 暗色主题下的 --wb-fcx-* 色：曲线按卡分色（蓝 / 青 / 紫 / 琥珀 / 绿），评分徽标按评分色 */
+const MEM_SERIES = ['rgb(81, 160, 246)', 'rgb(44, 197, 221)', 'rgb(162, 117, 240)', 'rgb(247, 172, 59)', 'rgb(64, 201, 137)'];
+const MEM_RATING: Record<Rating, string> = { 1: 'rgb(238, 98, 88)', 2: 'rgb(247, 172, 59)', 3: 'rgb(64, 201, 137)', 4: 'rgb(44, 197, 221)' };
+const MEM_CHART = { w: 922, h: 216, left: 42, right: 16, top: 16, bottom: 28 } as const;
+/** 面板在统计页内容区里的总高（probe-fcm-stats section h），后面的「调度概览」排在它下面 */
+export const MEM_PANEL_H = 558.6;
+const MEM_FADE_S = 0.28 / PACE;
+const MEM_REVEAL_S = 0.7 / PACE;
+const memNum = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 });
+const memRel = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'always' });
+const memPercent = (v: number) => `${Math.round(v * 100)}%`;
+
+const memSpan = (days: number) => {
+  if (days < 1 / 24) return S.fcMemory.span('minutes', Math.max(1, Math.round(days * 1440)));
+  if (days < 1) return S.fcMemory.span('hours', memNum.format(days * 24));
+  if (days < 10) return S.fcMemory.span('days', memNum.format(days));
+  if (days < 365) return S.fcMemory.span('days', Math.round(days));
+  return S.fcMemory.span('years', memNum.format(days / 365));
+};
+
+const memFromNow = (target: number, now: number) => {
+  const diff = target - now;
+  const abs = Math.abs(diff);
+  const hour = MS_PER_DAY / 24;
+  if (abs < hour) return memRel.format(Math.round(diff / 60_000) || Math.sign(diff) || 1, 'minute');
+  if (abs < MS_PER_DAY) return memRel.format(Math.round(diff / hour), 'hour');
+  if (abs < 60 * MS_PER_DAY) return memRel.format(Math.round(diff / MS_PER_DAY), 'day');
+  if (abs < 365 * MS_PER_DAY) return memRel.format(Math.round(diff / (30 * MS_PER_DAY)), 'month');
+  return memRel.format(Math.round(diff / (365 * MS_PER_DAY)), 'year');
+};
+
+const memClip = (points: CurvePoint[], floor: number) => {
+  const out: CurvePoint[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    if (p.r >= floor) {
+      out.push(p);
+      continue;
+    }
+    const q = points[i - 1];
+    if (q && q.r > floor) out.push({ days: q.days + ((p.days - q.days) * (q.r - floor)) / (q.r - p.r), r: floor });
+    break;
+  }
+  return out;
+};
+
+type MemGeometry = {
+  x: (days: number) => number;
+  y: (r: number) => number;
+  floor: number;
+  range: ReturnType<typeof recentRange>;
+  plotW: number;
+  plotH: number;
+};
+
+const memGeometry = (m: FcMemoryData): MemGeometry => {
+  const { w, h, left, right, top, bottom } = MEM_CHART;
+  const range = recentRange(m.cards, m.nowMs);
+  const floor = recentFloor(m.cards, range.maxDays, FSRS5_CURVE);
+  const plotW = w - left - right;
+  const plotH = h - top - bottom;
+  const logSpan = Math.log(range.maxDays / range.minDays);
+  return {
+    x: (d) => left + (Math.log(Math.min(range.maxDays, Math.max(range.minDays, d)) / range.minDays) / logSpan) * plotW,
+    y: (r) => top + ((1 - Math.min(1, Math.max(floor, r))) / (1 - floor)) * plotH,
+    floor,
+    range,
+    plotW,
+    plotH,
+  };
+};
+
+/**
+ * 展开扫过各张卡「下次复习」点的时刻（脚本秒，按横向位置排序），给配乐对点。
+ * `cards` 只取本次复习的几张时传入子集即可。
+ */
+export const memoryDuePasses = (m: FcMemoryData, start: number, cards: MemoryCard[] = m.cards): number[] => {
+  const g = memGeometry(m);
+  const span = g.plotW + 16;
+  return cards
+    .flatMap((c) => (c.lastReviewMs == null ? [] : [(g.x((c.dueMs - c.lastReviewMs) / MS_PER_DAY) - MEM_CHART.left + 8) / span]))
+    .sort((a, b) => a - b)
+    .map((k) => {
+      // 反解 brand 缓动：展开进度达到 k 的时刻
+      let lo = 0;
+      let hi = 1;
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        if (ease.brand(mid) < k) lo = mid;
+        else hi = mid;
+      }
+      return start + hi * MEM_REVEAL_S;
+    });
+};
+
+const MemChart = ({ m, reveal }: { m: FcMemoryData; reveal: number }) => {
+  const { w, h, left, top } = MEM_CHART;
+  const { x, y, floor, range, plotW, plotH } = memGeometry(m);
+  const x1 = left + plotW;
+  const step = 1 - floor > 0.3 ? 0.2 : 0.1;
+  const levels: number[] = [];
+  for (let r = 1; r >= floor - 1e-9; r -= step) levels.push(Math.round(r * 100) / 100);
+  const inRange = (d: number) => d >= range.minDays && d <= range.maxDays;
+  const grid = 'rgba(46, 46, 46, 0.65)';
+  const toPath = (pts: CurvePoint[]) => pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.days).toFixed(1)} ${y(p.r).toFixed(1)}`).join(' ');
+  const labelStyle = { fill: MUTED, fontSize: 10, fontVariantNumeric: 'tabular-nums' } as const;
+  return (
+    <svg width={w} height={h} style={{ display: 'block', overflow: 'visible' }}>
+      <defs>
+        <clipPath id="fc-memory-reveal">
+          <rect x={left - 8} y={top - 8} width={(plotW + 16) * reveal} height={plotH + 16} />
+        </clipPath>
+      </defs>
+      {levels.map((r) => (
+        <g key={r}>
+          <line x1={left} x2={x1} y1={y(r)} y2={y(r)} stroke={grid} />
+          <text x={left - 8} y={y(r) + 3.5} textAnchor="end" style={labelStyle}>
+            {memPercent(r)}
+          </text>
+        </g>
+      ))}
+      {range.ticks.map((tick) => (
+        <g key={tick.days}>
+          <line x1={x(tick.days)} x2={x(tick.days)} y1={top + plotH} y2={top + plotH + 4} stroke={grid} />
+          <text x={x(tick.days)} y={top + plotH + 17} textAnchor="middle" style={labelStyle}>
+            {S.fcMemory.tick(tick.unit, tick.count)}
+          </text>
+        </g>
+      ))}
+      <line x1={left} x2={x1} y1={y(m.desiredRetention)} y2={y(m.desiredRetention)} stroke="rgba(245, 245, 245, 0.5)" strokeWidth={1.25} strokeDasharray="4 4" />
+      <text x={left + 8} y={y(m.desiredRetention) + 15} style={{ fill: 'rgba(245, 245, 245, 0.72)', fontSize: 10.5, fontVariantNumeric: 'tabular-nums' }}>
+        {S.fcMemory.desiredLine(memPercent(m.desiredRetention))}
+      </text>
+      <g clipPath="url(#fc-memory-reveal)">
+        {m.cards.map((c, i) => {
+          if (!c.stability || c.lastReviewMs == null) return null;
+          const nowDays = Math.max(0, (m.nowMs - c.lastReviewMs) / MS_PER_DAY);
+          const dueDays = c.dueMs > c.lastReviewMs ? (c.dueMs - c.lastReviewMs) / MS_PER_DAY : null;
+          const pts = memClip(sampleLogCurve(c.stability, FSRS5_CURVE, range.minDays, range.maxDays, dueDays == null ? [nowDays] : [nowDays, dueDays]), floor);
+          return pts.length > 1 ? <path key={c.cardStateId} d={toPath(pts)} fill="none" stroke={MEM_SERIES[i % 5]} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /> : null;
+        })}
+        {m.cards.map((c, i) => {
+          if (!c.stability || c.lastReviewMs == null) return null;
+          const tone = MEM_SERIES[i % 5];
+          const nowDays = Math.max(0, (m.nowMs - c.lastReviewMs) / MS_PER_DAY);
+          const nowR = retrievability(nowDays, c.stability, FSRS5_CURVE);
+          const dueDays = c.dueMs > c.lastReviewMs ? (c.dueMs - c.lastReviewMs) / MS_PER_DAY : null;
+          const dueR = dueDays == null ? null : retrievability(dueDays, c.stability, FSRS5_CURVE);
+          return (
+            <g key={c.cardStateId}>
+              {dueDays != null && dueR != null && inRange(dueDays) && dueR >= floor ? <circle cx={x(dueDays)} cy={y(dueR)} r={4.5} fill={tone} stroke={BG} strokeWidth={2} /> : null}
+              {inRange(nowDays) && nowR >= floor ? <circle cx={x(nowDays)} cy={y(nowR)} r={3.5} fill={BG} stroke={tone} strokeWidth={1.75} /> : null}
+            </g>
+          );
+        })}
+      </g>
+    </svg>
+  );
+};
+
+const FcMemoryPanel = ({ t, start, m }: { t: number; start: number; m: FcMemoryData }) => {
+  const fade = prog(t, start, start + MEM_FADE_S, ease.wbOut);
+  const reveal = prog(t, start, start + MEM_REVEAL_S, ease.brand);
+  const retention = m.trueRetention;
+  const figures: Array<[string, string, string]> = [
+    [S.fcMemory.averageLabel, memPercent(m.averageRetrievability), S.fcMemory.averageHint(m.memorizedCount)],
+    [S.fcMemory.trueRetentionLabel(retention.windowDays), memPercent(retention.passed / retention.reviews), S.fcMemory.trueRetentionHint(retention.reviews)],
+    [S.fcMemory.desiredLabel, memPercent(m.desiredRetention), S.fcMemory.desiredHint],
+  ];
+  return (
+    <section style={{ marginTop: 12, height: MEM_PANEL_H, boxSizing: 'border-box', borderTop: `1px solid ${LINE}` }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '4px 10px', padding: '12px 0 0', height: 30.5, boxSizing: 'border-box' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, lineHeight: '16.25px', color: FG }}>
+          <ChartLineDown size={14} weight="duotone" />
+          {S.fcMemory.title}
+          <span style={{ padding: '1px 6px', borderRadius: 999, background: 'rgba(81, 160, 246, 0.1)', color: 'rgb(81, 160, 246)', fontSize: 10, fontWeight: 600, lineHeight: '12.5px', letterSpacing: '0.04em' }}>FSRS</span>
+        </span>
+        <span style={{ fontSize: 11, lineHeight: '15.4px', color: MUTED, whiteSpace: 'nowrap' }}>{S.fcMemory.subtitle}</span>
+      </div>
+      <div style={{ padding: '12px 0 14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 14 }}>
+          {figures.map(([label, value, hint], i) => (
+            <div key={label} style={{ padding: '2px 12px', borderLeft: i ? '1px solid rgba(46, 46, 46, 0.55)' : undefined }}>
+              <div style={{ fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap' }}>{label}</div>
+              <div style={{ marginTop: 3, fontSize: 19, fontWeight: 650, lineHeight: '20.9px', color: FG, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+              <div style={{ marginTop: 3, fontSize: 10.5, lineHeight: '14.175px', color: MUTED }}>{hint}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginBottom: 4, fontSize: 11.5, fontWeight: 600, lineHeight: '17.25px', color: MUTED }}>{S.fcMemory.recentTitle(m.cards.length)}</div>
+        <div style={{ opacity: fade, transform: `translateY(${(1 - fade) * 6}px)` }}>
+          <MemChart m={m} reveal={reveal} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px 14px', marginTop: 6, fontSize: 10.5, lineHeight: '15.75px', color: MUTED }}>
+          <span>{S.fcMemory.axisSinceReview}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <svg width={10} height={10} style={{ overflow: 'visible' }}><circle cx={5} cy={5} r={3.5} fill={BG} stroke={MEM_SERIES[0]} strokeWidth={1.75} /></svg>
+            {S.fcMemory.keyNow}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <svg width={10} height={10} style={{ overflow: 'visible' }}><circle cx={5} cy={5} r={4} fill={MEM_SERIES[0]} stroke={BG} strokeWidth={2} /></svg>
+            {S.fcMemory.keyDue}
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 10 }}>
+          {m.cards.map((c, i) => {
+            const nowR = c.stability && c.lastReviewMs != null ? retrievability((m.nowMs - c.lastReviewMs) / MS_PER_DAY, c.stability, FSRS5_CURVE) : 0;
+            const due = c.dueMs <= m.nowMs ? S.fcMemory.overdue : memFromNow(c.dueMs, m.nowMs);
+            return (
+              <div key={c.cardStateId} style={{ display: 'grid', gridTemplateColumns: '8px minmax(0, 1fr) auto auto auto minmax(112px, auto) 12px', alignItems: 'center', gap: 10, padding: '6px 8px', fontSize: 12, lineHeight: '18px', color: FG }}>
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: MEM_SERIES[i % 5] }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.front}</span>
+                {c.lastRating ? (
+                  <span style={{ justifySelf: 'start', padding: '1px 7px', borderRadius: 999, background: MEM_RATING[c.lastRating].replace('rgb(', 'rgba(').replace(')', ', 0.12)'), color: MEM_RATING[c.lastRating], fontSize: 11, fontWeight: 600, lineHeight: '16.5px', whiteSpace: 'nowrap' }}>
+                    {S.fcMemory.ratings[c.lastRating - 1]}
+                  </span>
+                ) : <span />}
+                <span style={{ fontSize: 11.5, lineHeight: '17.25px', color: MUTED, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{S.fcMemory.stability(memSpan(c.stability ?? 0))}</span>
+                <span style={{ fontSize: 11.5, lineHeight: '17.25px', color: MUTED, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{S.fcMemory.nowValue(memPercent(nowR))}</span>
+                <span style={{ fontSize: 11.5, fontWeight: 550, lineHeight: '17.25px', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                  {isLearningState(c.state) ? S.fcMemory.nextStep(due) : S.fcMemory.nextReview(due)}
+                </span>
+                <CaretRight size={12} color={MUTED} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+/** 统计页（StatisticsScreen）：数据到了直接渲染，只有挂载时 ui-rise-in 150ms；记忆曲线面板在最顶部。 */
+export const FcStats = ({ t, start, d, memory }: { t: number; start: number; d: FcStatsData; memory?: FcMemoryData }) => {
   const k = (dt: number, len = 0.3) => prog(t, start + dt, start + dt + len, ease.outCubic);
   const metrics: Array<[string, number]> = [
     [S.fcStats.reviewsToday, d.reviewsToday],
@@ -430,6 +688,7 @@ export const FcStats = ({ t, start, d }: { t: number; start: number; d: FcStatsD
           {S.fcStats.refresh}
         </span>
       </div>
+      {memory ? <FcMemoryPanel t={t} start={start + 0.01} m={memory} /> : null}
       <Section
         style={{ marginTop: 12 }}
         icon={<ChartBar size={14} />}

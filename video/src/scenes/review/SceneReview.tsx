@@ -5,12 +5,12 @@ import { S } from '../../strings';
 import { dark } from '../../theme';
 import { Pupil, pathAt } from '../../ui/brand';
 import { AgendaWidget, BriefingWidget, DesktopShortcuts } from '../../ui/desk';
-import { exitButtonCenter, FcNav, FcSession, FcStats, FcToday, rateButtonCenter, revealButtonCenter, statsTabCenter, type FcStatsData, type Rating, type SessionState } from '../../ui/flashcards';
+import type { MemoryCard } from '@app/features/flashcards/memoryCurve';
+import { exitButtonCenter, FcNav, FcSession, FcStats, FcToday, rateButtonCenter, revealButtonCenter, statsTabCenter, type FcMemoryData, type FcStatsData, type Rating, type SessionState } from '../../ui/flashcards';
 import { TODO_ITEMS } from '../../ui/todo';
 import { Dock, dockIconCenter, type DockBadge, GENIE_S, IND_S, MenuBar, menuClock, trafficCenter, Wallpaper, WB, WbWindow, winLife } from '../../ui/workbench';
 import { wallDrift } from '../day/beats';
 import { ANKI_CARDS } from '../practice/beats';
-import { MemoryCurves } from './MemoryCurves';
 
 /** 04 练习（工作台部分）与 05 记住的节拍表，单位为脚本秒。 */
 export const WK = {
@@ -25,31 +25,59 @@ export const WK = {
     { at: 18.26, show: 18.7, rate: 19.18, rating: 1 as Rating },
   ],
   next: 19.3, // ξ 那张评「重来」后，下一张卡入场（不再交互）
-  curves: 19.74, // 记忆曲线面板入场（窗口右侧）
-  exit: 20.9, // 点「← 退出」回到今日页（会话页没有标签栏）
-  stats: 21.24, // 点「统计」标签
+  exit: 19.62, // 点「← 退出」回到今日页（会话页没有标签栏）
+  stats: 19.92, // 点「统计」标签：记忆曲线面板在统计页最顶部
   minimize: 22.5, // 点黄灯：闪卡窗口 genie 吸入 Dock
-  out0: 22.5, // 记忆曲线面板下沉
+  out0: 22.5,
   out1: 23.0,
 } as const;
 
 /** batch 复习顺序 = 卡片块顺序。 */
 const REVIEW = ANKI_CARDS.slice(0, WK.cards.length + 1);
 const N_BATCH = ANKI_CARDS.length;
-/** 新卡首评预览（FSRS-5 默认参数 + 学习步 1m / 10m）。 */
-const INTERVALS: [string, string, string, string] = ['1m', '6m', '10m', '16d'];
+/** 新卡首评预览：产品调度器（rs-fsrs 1.2 默认参数）的学习步 1m / 5m / 10m，「简单」直接毕业 15 天。 */
+const INTERVALS: [string, string, string, string] = ['1m', '5m', '10m', '15d'];
 const RATING_LABEL: Record<Rating, string> = { 1: S.fc.again, 2: S.fc.hard, 3: S.fc.good, 4: S.fc.easy };
 
-/** 窗口按级联 0 号槽落位（桌面 48, 48，下移菜单栏），闪卡默认尺寸 960×680（system/register.tsx），不随记忆曲线面板移动。 */
+/** 窗口按级联 0 号槽落位（桌面 48, 48，下移菜单栏），闪卡默认尺寸 960×680（system/register.tsx）。 */
 const WIN = { x: 48, y: WB.menubar + 48, w: 960, h: 680 } as const;
 const CONTENT = { x: WIN.x + 1, y: WIN.y + 1 + WB.titlebar };
 const STAGE = { x: CONTENT.x + 17.5, y: CONTENT.y + 125.5, w: 923, h: 437.5 };
-export const CURVE_RECT = { x: 1044, y: 176, w: 760, h: 620 };
 
 const pressAt = (t: number, at: number, w = 0.1) => Math.max(0, 1 - Math.abs(t - at) / w);
 
+// 片中时刻 → 应用里的毫秒时间（周五 21:30 前后，与菜单栏时钟一致）
+const DAY_MS = 86_400_000;
+const realMs = (t: number) => Date.UTC(2026, 9, 2, 13, 30) + (t - WK.night0) * PACE * 1000;
+/** 新卡首评（与 FC=1 取证 mock 一致）：[到期间隔 ms, 状态, 首评后稳定性 S = w0..w3 天] */
+const FIRST: Record<Rating, [number, number, number]> = { 1: [60e3, 1, 0.4072], 2: [300e3, 1, 1.1829], 3: [600e3, 1, 3.1262], 4: [15 * DAY_MS, 2, 15.4722] };
+/**
+ * 记忆曲线面板：「最近复习的 5 张卡」= 本次三张（最近评的在前）+ 昨晚复习过的两张错题本老卡；
+ * 全部已学 389 张（386 张老卡平均可提取率 0.931）；近 30 天真实保留率 1066 / 1162。
+ */
+const MEMORY: FcMemoryData = (() => {
+  const nowMs = realMs(WK.stats + 0.02);
+  const card = (id: string, front: string, rating: Rating, state: number, stability: number, lastReviewMs: number, dueMs: number, reps: number, lapses: number): MemoryCard => ({
+    cardStateId: id, ankiCardId: id, front, text: null, extraFields: {}, state, stability, difficulty: 5, lastReviewMs, dueMs, reps, lapses, lastRating: rating,
+  });
+  const fresh = WK.cards
+    .map((c, i) => {
+      const [ms, state, s] = FIRST[c.rating];
+      return card(`st_v_${i}`, REVIEW[i].front, c.rating, state, s, realMs(c.rate), realMs(c.rate) + ms, 1, 0);
+    })
+    .reverse();
+  const old = [
+    card('st_old_lhopital', '洛必达法则使用前要先确认什么？', 3, 2, 24.23, nowMs - 0.93 * DAY_MS, nowMs + 23 * DAY_MS, 5, 1),
+    card('st_old_taylor', 'eˣ 在 x = 0 处的三阶麦克劳林展开是什么？', 3, 2, 47.79, nowMs - 0.95 * DAY_MS, nowMs + 47 * DAY_MS, 4, 0),
+  ];
+  return { nowMs, cards: [...fresh, ...old], memorizedCount: 389, averageRetrievability: (386 * 0.931 + 3) / 389, trueRetention: { windowDays: 30, reviews: 1162, passed: 1066 }, desiredRetention: 0.9 };
+})();
+export const REVIEW_MEMORY = MEMORY;
+export const REVIEW_MEMORY_FRESH = MEMORY.cards.slice(0, WK.cards.length);
+
 // 复习时镜头推近到卡面 + 评分行：上沿切在批次提示条与工具行之间（y≈207），评分键下缘落在屏幕 y≈870，
-// 给左下角字幕留位；x 被 clampCam 钳在桌面左缘。记忆曲线出来时拉开看全
+// 给左下角字幕留位；x 被 clampCam 钳在桌面左缘。退出 / 点统计时拉开看见窗口左上（窗口顶落在「05 记住」章节标签下方），
+// 再推近记忆曲线面板：1.8 倍下面板 922 宽整幅入画，三数字 + 曲线 + 本次三张卡的行都在字幕之上，两张老卡的行垫在字幕底下
 const REVIEW_CAM: CamKey[] = [
   [WK.night0, { x: 960, y: 540, zoom: 1 }],
   [WK.open1, { x: 940, y: 532, zoom: 1.02 }, ease.linear],
@@ -57,10 +85,12 @@ const REVIEW_CAM: CamKey[] = [
   [WK.cards[1].rate, { x: 600, y: 549, zoom: 1.58 }, ease.linear],
   [WK.cards[2].show - 0.14, { x: 600, y: 542, zoom: 1.61 }, ease.inOutCubic],
   [WK.cards[2].rate + 0.06, { x: 600, y: 540, zoom: 1.62 }, ease.linear],
-  [WK.curves + 0.1, { x: 960, y: 526, zoom: 1.0 }, ease.inOutCubic],
-  [WK.stats, { x: 960, y: 526, zoom: 1.01 }, ease.linear],
-  [WK.out0, { x: 960, y: 528, zoom: 1.02 }, ease.linear],
-  [WK.out1 - 0.06, { x: 960, y: 540, zoom: 1.0 }, ease.inOutCubic],
+  [WK.exit - 0.06, { x: 640, y: 415, zoom: 1.3 }, ease.inOutCubic],
+  [WK.stats + 0.04, { x: 640, y: 415, zoom: 1.3 }, ease.linear],
+  [WK.stats + 0.5, { x: 533, y: 520, zoom: 1.8 }, ease.inOutCubic],
+  [WK.minimize - 0.32, { x: 533, y: 523, zoom: 1.82 }, ease.linear],
+  [WK.minimize - 0.06, { x: 960, y: 540, zoom: 1.0 }, ease.inOutCubic],
+  [WK.out1 - 0.06, { x: 960, y: 540, zoom: 1.0 }, ease.linear],
 ];
 
 const ratedAt = (t: number) => WK.cards.filter((c) => t >= c.rate + 0.02).length;
@@ -98,14 +128,15 @@ const REVIEW_PUPIL: Array<[number, number, number]> = (() => {
     at(c.rate - 0.05, rb);
     at(c.rate + 0.08, rb);
   });
-  // 记忆曲线之后：退出会话 → 统计标签 → 黄灯
+  // 评完三张：退出会话 → 统计标签（记忆曲线）→ 黄灯
   const exit = world(exitButtonCenter());
   const tab = world(statsTabCenter());
-  at(WK.exit - 0.3, { x: exit.x + 140, y: exit.y + 160 });
+  at(WK.exit - 0.24, { x: exit.x + 140, y: exit.y + 160 });
   at(WK.exit - 0.04, exit);
   at(WK.exit + 0.06, exit);
   at(WK.stats - 0.05, tab);
   at(WK.stats + 0.08, tab);
+  at(WK.stats + 0.4, { x: tab.x + 120, y: tab.y + 260 });
   pts.push([WK.minimize - 0.4, MIN_BTN.x + 160, MIN_BTN.y + 150]);
   pts.push([WK.minimize - 0.05, MIN_BTN.x, MIN_BTN.y]);
   pts.push([WK.minimize + 0.3, MIN_BTN.x + 50, MIN_BTN.y + 60]);
@@ -159,8 +190,6 @@ export const SceneReview = ({ t }: { t: number }) => {
   const chrome = springChrome(t);
   const dock = nightDock(t);
   const flash = winLife(t, WIN, { openAt: WK.open0, openFrom: null, minimizeAt: WK.minimize, minimizeTo: dockIconCenter('flashcards', dock.running) });
-  // 记忆曲线面板（片中的信息图，不是产品界面）与窗口同时下沉淡出
-  const curvesOut = prog(t, WK.out0, WK.out0 + 0.26, ease.inCubic);
   const toToday = prog(t, WK.exit + 0.02, WK.exit + 0.1, ease.brand);
   const onStats = t >= WK.stats + 0.02;
   const session = sessionAt(t);
@@ -169,9 +198,10 @@ export const SceneReview = ({ t }: { t: number }) => {
 
   const pw = pathAt(t, REVIEW_PUPIL);
   const pScreen = project(cam, pw.x, pw.y);
+  // 指针从评分一路走到「统计」，推近面板时淡出；点黄灯前再回来
   const pOpacity = Math.max(
-    prog(t, WK.cards[0].at + 0.04, WK.cards[0].at + 0.14) * (1 - prog(t, WK.cards[2].rate + 0.12, WK.cards[2].rate + 0.22)),
-    prog(t, WK.exit - 0.3, WK.exit - 0.2) * (1 - prog(t, WK.minimize + 0.2, WK.minimize + 0.32)),
+    prog(t, WK.cards[0].at + 0.04, WK.cards[0].at + 0.14) * (1 - prog(t, WK.stats + 0.2, WK.stats + 0.34)),
+    prog(t, WK.minimize - 0.42, WK.minimize - 0.32) * (1 - prog(t, WK.minimize + 0.2, WK.minimize + 0.32)),
   );
 
   return (
@@ -195,7 +225,7 @@ export const SceneReview = ({ t }: { t: number }) => {
                 <div style={{ position: 'absolute', inset: 0, opacity: toToday }}>
                   <FcNav active={onStats ? 'statistics' : 'today'} todayBadge={AFTER.due} />
                   {onStats ? (
-                    <FcStats t={t} start={WK.stats + 0.02} d={AFTER} />
+                    <FcStats t={t} start={WK.stats + 0.02} d={AFTER} memory={MEMORY} />
                   ) : (
                     <FcToday
                       due={AFTER.due}
@@ -212,11 +242,6 @@ export const SceneReview = ({ t }: { t: number }) => {
                 </div>
               ) : null}
             </WbWindow>
-          ) : null}
-          {curvesOut < 1 ? (
-            <div style={{ opacity: 1 - curvesOut, transform: `translateY(${curvesOut * 28}px)` }}>
-              <MemoryCurves tk={tk} t={t} start={WK.curves} rect={CURVE_RECT} />
-            </div>
           ) : null}
           <div style={{ position: 'absolute', inset: 0, opacity: clamp(chrome * 1.4), transform: `translateY(${(1 - chrome) * -WB.menubar}px)` }}>
             <MenuBar tk={tk} app={bar.app} clock={bar.clock} due={bar.due} />
