@@ -879,8 +879,9 @@ const GridPane = ({ tk, s }: { tk: Tokens; s: ExamState }) => {
 };
 
 // ── 做题 ──────────────────────────────────────────────
-/** 做题卡：左对齐 16、宽 644（内容 614，probe-kzf）；统计行四格铺在卡片宽度里 */
+/** 做题卡：x 16、宽 644（内容 614），整栏再右移 COL_DX 到与底栏同一条 672 居中栏（probe-kzx）；统计行四格铺在卡片宽度里 */
 const CARD_W = 644;
+const COL_DX = 102.5;
 const CARD_IN = 614;
 const OPT_Y = 344.5;
 const OPT_PITCH = 54;
@@ -1016,7 +1017,7 @@ const PracticePane = ({ tk, s }: { tk: Tokens; s: ExamState }) => {
         <span style={{ display: 'block', width: (MAIN_W * 7) / QUESTIONS.length, height: '100%', background: tk.primary }} />
       </span>
       <span style={{ ...at(MAIN_X, 93.5), width: MAIN_W, height: EXAM_H - 1 - 93.5, overflow: 'hidden' }}>
-        <span style={{ position: 'absolute', left: -MAIN_X + 1, top: -93.5 + 39 - s.scroll, width: EXAM_W, height: 1400 }}>
+        <span style={{ position: 'absolute', left: -MAIN_X + 1 + COL_DX, top: -93.5 + 39 - s.scroll, width: EXAM_W, height: 1400 }}>
           {stats.map(([icon, value, label], i) => (
             <span key={label}>
               <span style={{ ...at(statX[i], 132), display: 'inline-flex' }}>{icon}</span>
@@ -1262,13 +1263,13 @@ export const EXAM_PT = {
   view: { x: 590.2, y: 513.9 },
   /** 3 列网格里第 7 题在第 3 行第 1 列 */
   q7: { x: 150, y: 540 },
-  optA: { x: 250, y: 366.3 },
-  submit: { x: 338, y: 586.8 },
+  optA: { x: 352.5, y: 366.3 },
+  submit: { x: 440.5, y: 586.8 },
   /** 判错后结果面板整块压在底栏下面，在选项区滚动（滚完「AI 解析」按钮就在指针上方） */
-  wheel: { x: 330, y: 560 },
-  /** 读解析时瞳点停在题卡右侧的空白里，不挡字 */
-  aside: { x: 760, y: 420 },
-  ai: { x: 74, y: 750.6 },
+  wheel: { x: 432.5, y: 560 },
+  /** 读解析时瞳点停在题卡右侧的空白里（762.5–879），不挡字 */
+  aside: { x: 818, y: 420 },
+  ai: { x: 176.5, y: 750.6 },
 } as const;
 /** 解析进度里逐页识别完成、逐题入库起止的位置（0–1），音效按它对点。 */
 export const EXAM_PARSE_MARKS = { pages: PAGE_AT, q0: P_PARSE, q1: P_PARSED } as const;
