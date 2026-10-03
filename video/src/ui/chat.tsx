@@ -12,6 +12,8 @@ import {
   X,
 } from '@phosphor-icons/react';
 import deepseekIcon from '@app-public/icons/providers/deepseek.svg';
+import photoAux from '../assets/photos/aux.webp';
+import photoMvt from '../assets/photos/mvt.webp';
 import type { CSSProperties } from 'react';
 import { Img } from 'remotion';
 import { brand, font, type Tokens } from '../theme';
@@ -81,15 +83,10 @@ export const RefChip = ({ label, tk, removable = true, style }: { label: string;
   </span>
 );
 
-/** 用户拍的错题照片（片中内容素材，不是产品界面）：米色纸 + 手写行 + 红笔圈改。 */
+/** 用户拍的两张错题照片（片中内容素材，不是产品界面；scripts/photos/make-photos.py 程序渲染）：0 = 中值定理，1 = 辅助函数。 */
+export const PHOTO_SRC = [photoMvt, photoAux];
 export const PhotoThumb = ({ seed, size }: { seed: number; size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" style={{ display: 'block' }} preserveAspectRatio="xMidYMid slice">
-    <rect width={20} height={20} fill={seed % 2 ? '#efe9dc' : '#f4f1e8'} />
-    {[4.5, 8, 11.5, 15].map((y, i) => (
-      <path key={y} d={`M2.5 ${y} q3 ${-1.2 + ((seed + i) % 3) * 0.8} 6 0 t6 0 t4 0`} stroke="#3b4a6b" strokeWidth={0.7} fill="none" opacity={0.75} />
-    ))}
-    <circle cx={seed % 2 ? 6 : 14.5} cy={seed % 2 ? 12 : 13.5} r={2.6} fill="none" stroke="#d64545" strokeWidth={0.8} />
-  </svg>
+  <Img src={PHOTO_SRC[seed % PHOTO_SRC.length]} style={{ display: 'block', width: size, height: size, objectFit: 'cover' }} />
 );
 
 /** 输入框里的附件药丸（AttachmentPreviewChips：26.3 高、20px 圆形缩略图 + 文件名 11px/600）。 */

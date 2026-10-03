@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react';
 import { continueRender, delayRender } from 'remotion';
+import { PHOTO_SRC } from '../../ui/chat';
 import { HITS } from './beats';
-import { makeCardCanvas, makeHitCanvas, type CardTex, type CardType } from './textures';
+import { makeCardCanvas, makeHitCanvas, setPhotoImages, type CardTex, type CardType } from './textures';
 import { VARIANTS } from './archive';
+
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 
 export type ArchiveAssets = {
   cards: Record<CardType, CardTex[]>;
@@ -25,7 +34,7 @@ let pending: Promise<ArchiveAssets> | null = null;
 
 /** 纸片纹理必须在字体就绪后绘制（canvas 不会回头重排），全局只画一次。 */
 const load = () =>
-  (pending ??= Promise.all(FONTS.map((f) => document.fonts.load(f, '中ξφ′Ag1')))
+  (pending ??= Promise.all([...FONTS.map((f) => document.fonts.load(f, '中ξφ′Ag1')), Promise.all(PHOTO_SRC.map(loadImage)).then(setPhotoImages)])
     .catch(() => undefined)
     .then(() => {
       const cards = Object.fromEntries(

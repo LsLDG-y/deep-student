@@ -34,6 +34,12 @@ const MEMOS = [
 const ANKI_Q = ['罗尔定理的三个条件？', '何时可用洛必达法则？', '泰勒公式的拉格朗日余项？', '曲率公式是什么？', '特征值之积等于？'];
 const FORMULAS = ["f'(x₀) = lim Δy/Δx", '∫ u dv = uv − ∫ v du', 'κ = |y″| / (1+y′²)^{3/2}', 'f(x) = Σ fⁿ(x₀)/n! · (x−x₀)ⁿ', 'F(b) − F(a)'];
 
+let PHOTO_IMAGES: HTMLImageElement[] = [];
+/** 资料堆里的「照片」纸片用片中那两张错题照片（assets 里预加载后注入，canvas 只能画已解码的图）。 */
+export const setPhotoImages = (imgs: HTMLImageElement[]) => {
+  PHOTO_IMAGES = imgs;
+};
+
 const mulberry = (seed: number) => () => {
   seed |= 0;
   seed = (seed + 0x6d2b79f5) | 0;
@@ -163,6 +169,17 @@ const draw: Record<CardType, (ctx: CanvasRenderingContext2D, W: number, H: numbe
   },
   photo: (ctx, W, H, r, seed) => {
     const u = W / 320;
+    const img = PHOTO_IMAGES[seed % Math.max(1, PHOTO_IMAGES.length)];
+    if (img) {
+      const s = Math.max(W / img.width, H / img.height) * (1.04 + r() * 0.16);
+      const dw = img.width * s;
+      const dh = img.height * s;
+      ctx.drawImage(img, (W - dw) / 2 + (r() - 0.5) * 18 * u, (H - dh) / 2 + (r() - 0.5) * 18 * u, dw, dh);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, H - 34 * u, W, 34 * u);
+      embedStrip(ctx, seed, 20 * u, H - 24 * u, 120 * u);
+      return;
+    }
     const g = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, '#f3efe4');
     g.addColorStop(1, '#e4dfd2');
