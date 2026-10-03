@@ -48,18 +48,27 @@ const load = () =>
       return STORE;
     }));
 
+/**
+ * 纹理就绪后再放行截图，并多等两帧：3D 画布要等拿到纹理才挂载（见 Archive3D），
+ * 挂载后 ThreeCanvas 自己的 delayRender 才登记上；放行得太早会截到一张空画布。
+ */
+const release = (handle: number | null) => {
+  if (handle === null) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => continueRender(handle)));
+};
+
 export const useArchiveAssets = () => {
   const [assets, setAssets] = useState<ArchiveAssets | null>(STORE);
   const [handle] = useState(() => (STORE ? null : delayRender('archive textures')));
   useEffect(() => {
     if (STORE) {
       setAssets(STORE);
-      if (handle !== null) continueRender(handle);
+      release(handle);
       return;
     }
     load().then((s) => {
       setAssets(s);
-      if (handle !== null) continueRender(handle);
+      release(handle);
     });
   }, [handle]);
   return assets;

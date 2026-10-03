@@ -98,7 +98,8 @@ export const probePos = (t: number) => {
 };
 
 // ── 扫描脉冲 ──────────────────────────────────────────
-export const PULSE_SPEED = 46;
+/** 波前速度（世界单位 / 脚本秒）：扫描窗口 7.12–7.82 内要扫过雾里看得见的整片纸（约 70 单位深）。 */
+export const PULSE_SPEED = 95;
 export const PULSES = Array.from({ length: 8 }, (_, k) => RV.scan + k * 0.085);
 const PULSE_ORIGINS = PULSES.map((e) => probePos(e));
 export const pulseOrigin = (k: number) => PULSE_ORIGINS[k];

@@ -31,7 +31,6 @@ import {
   PULSES,
   STRIP_D,
   strip3D,
-  toScreen,
   type Card,
 } from './archive';
 import { useArchiveAssets, type ArchiveAssets } from './assets';
@@ -156,7 +155,7 @@ const pulseFlash = (pos: THREE.Vector3, t: number) => {
     const age = t - PULSES[k];
     if (age <= 0) continue;
     const d = pulseOrigin(k).distanceTo(pos);
-    const x = (d - age * PULSE_SPEED) / 1.3;
+    const x = (d - age * PULSE_SPEED) / 5;
     f = Math.max(f, Math.exp(-x * x) * Math.exp(-age * 1.1));
   }
   return f;
@@ -553,7 +552,7 @@ const Lights = () => (
   </>
 );
 
-// ── DOM 叠层：相似度读数 / HUD / 命中标签（浅色玻璃卡，与产品界面同一套） ──
+// ── DOM 叠层：HUD / 命中标签（浅色玻璃卡，与产品界面同一套） ──
 const GLASS = {
   background: 'hsl(0 0% 100% / 0.86)',
   backdropFilter: 'blur(14px) saturate(1.4)',
@@ -564,12 +563,8 @@ const INK = 'hsl(220 12% 16%)';
 const MUTED = 'hsl(220 8% 46%)';
 const PRIMARY_CSS = 'hsl(215 72% 42%)';
 
-const CANDIDATES = (() => {
-  const list = cards()
-    .map((c, i) => ({ c, i }))
-    .filter(({ c }) => c.sim > 0.42 && Math.abs(c.pos.x) < 6.5 && Math.abs(c.pos.y) < 3.6 && c.pos.z < -14 && c.pos.z > -56);
-  return list.filter((_, n) => n % Math.max(1, Math.floor(list.length / 6)) === 0).slice(0, 6);
-})();
+// 不给扫描中的纸片挂 cos 读数：镜头在扫描窗口里冲过约 60 个单位，波前扫到时还在画面里的纸片
+// 0.16 脚本秒内就飞出安全区（读数只闪一下），且都离命中簇很远、相似度只有 0.02–0.2
 const REVEALS = cards()
   .map((c) => c.reveal)
   .sort((a, b) => a - b);
@@ -591,40 +586,6 @@ const Overlay = ({ t }: { t: number }) => {
   const n = scannedAt(t);
   return (
     <AbsoluteFill style={{ pointerEvents: 'none', fontFamily: font.ui }}>
-      {CANDIDATES.map(({ c, i }) => {
-        const k = prog(t, c.reveal, c.reveal + 0.08, ease.brand) * (1 - prog(t, c.reveal + 0.42, c.reveal + 0.56));
-        if (k <= 0) return null;
-        const s = toScreen(t, c.pos.clone().add(new THREE.Vector3(0, c.scale * 0.62, 0)));
-        if (s.behind || s.x < 60 || s.x > WIDTH - 140 || s.y < 60 || s.y > HEIGHT - 60) return null;
-        const val = c.sim * prog(t, c.reveal, c.reveal + 0.12, ease.outCubic);
-        return (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              left: s.x,
-              top: s.y,
-              transform: `translate(-50%, -100%) translateY(${(1 - k) * 6}px)`,
-              opacity: k,
-              padding: '4px 10px 4px 8px',
-              borderRadius: 999,
-              ...GLASS,
-              fontSize: 13,
-              fontVariantNumeric: 'tabular-nums',
-              color: INK,
-              whiteSpace: 'nowrap',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: 3, background: PRIMARY_CSS, opacity: 0.35 + c.sim * 0.8 }} />
-            <span style={{ color: MUTED }}>cos</span>
-            {val.toFixed(2)}
-          </div>
-        );
-      })}
-
       {hud > 0 ? (
         <div
           style={{
@@ -703,7 +664,8 @@ const Overlay = ({ t }: { t: number }) => {
 export const Archive3D = ({ t }: { t: number }) => {
   const assets = useArchiveAssets();
   const fade = 1 - prog(t, RV.reveal, RV.reveal + 0.14);
-  if (fade <= 0) return null;
+  // 纹理到了再挂 3D 画布：画布先挂、网格后加时，R3F 不会为这次状态更新补画一帧，截图里纸片全缺
+  if (fade <= 0 || !assets) return null;
   return (
     <AbsoluteFill style={{ opacity: fade }}>
       <ThreeCanvas
@@ -717,12 +679,8 @@ export const Archive3D = ({ t }: { t: number }) => {
       >
         <Rig t={t} />
         <Lights />
-        {assets ? (
-          <>
-            <CardField t={t} assets={assets} />
-            <HitCards t={t} assets={assets} />
-          </>
-        ) : null}
+        <CardField t={t} assets={assets} />
+        <HitCards t={t} assets={assets} />
         <QueryBars t={t} />
         <Pulses t={t} />
         <Probe t={t} />
