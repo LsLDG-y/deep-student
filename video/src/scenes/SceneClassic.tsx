@@ -12,7 +12,9 @@ import {
   COMPOSER_W,
   PdfBadge,
   RefChip,
-  TimelineRow,
+  ThinkLine,
+  TL_PITCH,
+  ToolLine,
   UserMessage,
 } from '../ui/chat';
 import {
@@ -246,35 +248,15 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
 
       {t >= 5.5 ? (
         <div style={{ position: 'absolute', left: 32, top: MSG.assistant, opacity: asstK, transform: `translateY(${(1 - asstK) * 4}px)` }}>
-          <TimelineRow
-            tk={tk}
-            kind="thinking"
-            t={t}
-            shimmer={!retrievalDone}
-            label={retrievalDone ? S.thought(thinkingSec) : S.thinking(thinkingSec)}
-          />
+          <ThinkLine tk={tk} t={t} shimmer={!retrievalDone} label={retrievalDone ? S.thought(thinkingSec) : S.thinking(thinkingSec)} />
           {t >= 6.0 ? (
-            <div style={{ marginTop: 12, opacity: prog(t, 6.0, 6.15), borderRadius: 8, background: `hsl(215 72% 42% / ${0.12 * rowFlash(RV.land2)})` }}>
-              <TimelineRow
-                tk={tk}
-                kind="search"
-                t={t}
-                label={S.unifiedSearch}
-                status={row0Done ? S.retrievalSummary(2) : S.searching}
-                sweepK={row0Done ? undefined : sweep(6.0)}
-              />
+            <div style={{ marginTop: TL_PITCH - 27.52, opacity: prog(t, 6.0, 6.15), borderRadius: 8, background: `hsl(215 72% 42% / ${0.12 * rowFlash(RV.land2)})` }}>
+              <ToolLine tk={tk} label={S.unifiedSearch} done={row0Done} ms="1.1s" sweepK={row0Done ? undefined : sweep(6.0)} />
             </div>
           ) : null}
           {t >= 6.1 ? (
-            <div style={{ marginTop: 12, opacity: prog(t, 6.1, 6.25), borderRadius: 8, background: `hsl(152 60% 36% / ${0.12 * rowFlash(RV.land3)})` }}>
-              <TimelineRow
-                tk={tk}
-                kind="search"
-                t={t}
-                label={S.memorySearch}
-                status={row1Done ? S.retrievalSummary(1) : S.searching}
-                sweepK={row1Done ? undefined : sweep(6.1)}
-              />
+            <div style={{ marginTop: TL_PITCH - 27.52, opacity: prog(t, 6.1, 6.25), borderRadius: 8, background: `hsl(152 60% 36% / ${0.12 * rowFlash(RV.land3)})` }}>
+              <ToolLine tk={tk} label={S.memorySearch} done={row1Done} ms="718ms" sweepK={row1Done ? undefined : sweep(6.1)} />
             </div>
           ) : null}
         </div>

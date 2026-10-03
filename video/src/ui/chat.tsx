@@ -3,6 +3,7 @@ import {
   Brain,
   CaretDown,
   CaretRight,
+  CheckCircle,
   Lightning,
   MagnifyingGlass,
   Plus,
@@ -320,24 +321,24 @@ export const TimelineRow = ({
   </div>
 );
 
+/** 知识库引用角标 [n]（与 08 / 09 取证同款：17.5 高、圆角 9、11px/500）；glow 是检索落点的片中高光。 */
 export const CitationBadge = ({ n, tk, glow = 0 }: { n: number; tk: Tokens; glow?: number }) => (
   <span
     style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: 20,
-      minWidth: 20,
-      padding: '0 4px',
-      margin: '0 2px',
-      borderRadius: 4,
-      verticalAlign: 'text-bottom',
-      background: `color-mix(in hsl, ${tk.primary} ${10 + glow * 20}%, transparent)`,
-      color: tk.primary,
+      display: 'inline-block',
+      height: 17.5,
+      padding: '0 4.5px',
+      margin: '0 4px',
+      borderRadius: 9,
+      verticalAlign: 'middle',
+      position: 'relative',
+      top: -1.5,
+      background: `color-mix(in srgb, rgb(30, 94, 184) ${10 + glow * 20}%, transparent)`,
+      color: tk.dark ? tk.primary : 'rgb(30, 94, 184)',
       fontFamily: font.ui,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: 500,
-      lineHeight: '20px',
+      lineHeight: '17.5px',
       boxShadow: glow > 0 ? `0 0 ${16 * glow}px ${tk.primary}` : undefined,
     }}
   >
@@ -345,32 +346,66 @@ export const CitationBadge = ({ n, tk, glow = 0 }: { n: number; tk: Tokens; glow
   </span>
 );
 
+/** PDF 页码角标「第N页」（probe-clr-pdf：9.8px/500 蓝字、细框、圆角 5.25，无图标）。 */
 export const PdfBadge = ({ page, tk, press = 0 }: { page: number; tk: Tokens; press?: number }) => {
-  const c = tk.dark ? 'hsl(215 80% 72%)' : 'hsl(215 80% 50%)';
+  const c = tk.dark ? 'hsl(215 80% 72%)' : 'rgb(26, 111, 230)';
   return (
     <span
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 3,
-        padding: '1.6px 7.2px',
-        margin: '0 2px',
-        borderRadius: 6,
-        verticalAlign: 'text-bottom',
+        display: 'inline-block',
+        height: 18.5,
+        boxSizing: 'border-box',
+        padding: '0 6.5px',
+        margin: '0 4px',
+        borderRadius: 5.25,
+        verticalAlign: 'middle',
+        position: 'relative',
+        top: -1.5,
         fontFamily: font.ui,
-        fontSize: 11.2,
-        lineHeight: '16px',
+        fontSize: 9.8,
+        fontWeight: 500,
+        lineHeight: '16.5px',
         color: c,
-        background: `hsl(210 85% 55% / ${0.1 + press * 0.12})`,
-        border: `1px solid ${c.replace(')', ' / 0.2)')}`,
+        background: `rgba(48, 125, 232, ${0.08 + press * 0.12})`,
+        border: '1px solid rgba(48, 125, 232, 0.2)',
         transform: `scale(${1 - press * 0.06})`,
       }}
     >
-      <svg width={12} height={12} viewBox="0 0 12 12" fill="none">
-        <path d="M3 1.5h4l2.5 2.5v6.5H3z" stroke={c} strokeWidth={1} />
-        <path d="M7 1.5V4h2.5" stroke={c} strokeWidth={1} />
-      </svg>
       第{page}页
     </span>
   );
 };
+
+const TL_MUTED = 'rgb(101, 105, 114)';
+/** 时间线行间距（probe-clr-pdf：思考行文字顶 262.8 → 工具行 299.5）。 */
+export const TL_PITCH = 36.7;
+
+/** 思考摘要行：思考中「正在思考 N 秒…」（扫光），结束后收起为「已用时 N 秒」。 */
+export const ThinkLine = ({ tk, label, shimmer, t }: { tk: Tokens; label: string; shimmer: boolean; t: number }) => (
+  <div style={{ height: 27.52, display: 'flex', alignItems: 'center', fontFamily: font.ui, fontSize: 16, lineHeight: '27.52px', color: TL_MUTED, whiteSpace: 'nowrap' }}>
+    <Brain size={15} color="rgb(30, 94, 184)" style={{ marginLeft: 4.8, flexShrink: 0 }} />
+    <span style={{ marginLeft: 11 }}>{shimmer ? <Shimmer text={label} t={t} tk={tk} /> : label}</span>
+    <CaretRight size={12} color="rgba(101, 105, 114, 0.5)" style={{ marginLeft: 5.4 }} />
+  </div>
+);
+
+/** 工具行：图标 + 工具名 + 「执行中... 1s」→「⊙ 执行完成 耗时」。 */
+export const ToolLine = ({ tk, label, done, ms, sweepK }: { tk: Tokens; label: string; done: boolean; ms: string; sweepK?: number }) => (
+  <div style={{ position: 'relative', height: 27.52, display: 'flex', alignItems: 'center', fontFamily: font.ui, fontSize: 16, lineHeight: '27.52px', color: TL_MUTED, whiteSpace: 'nowrap' }}>
+    <MagnifyingGlass size={14} color={TL_MUTED} style={{ marginLeft: 5.3, flexShrink: 0 }} />
+    <span style={{ marginLeft: 11.5 }}>{label}</span>
+    {done ? (
+      <>
+        <CheckCircle size={14} color={TL_MUTED} style={{ marginLeft: 5.2 }} />
+        <span style={{ marginLeft: 5.3, fontSize: 12, lineHeight: '21px', color: 'rgb(37, 147, 95)' }}>执行完成</span>
+        <span style={{ marginLeft: 5.2, fontSize: 12, lineHeight: '21px', color: 'rgba(101, 105, 114, 0.7)' }}>{ms}</span>
+      </>
+    ) : (
+      <>
+        <span style={{ marginLeft: 5.2, fontSize: 12, lineHeight: '21px', color: 'rgb(30, 94, 184)' }}>执行中...</span>
+        <span style={{ marginLeft: 5.2, fontSize: 12, lineHeight: '21px', color: 'rgba(101, 105, 114, 0.7)' }}>1s</span>
+      </>
+    )}
+    {sweepK !== undefined ? <Sweep k={sweepK} radius={6} /> : null}
+  </div>
+);

@@ -64,7 +64,7 @@ export const S = {
     addAsContext: tr('chatV2', 'selectionToolbar.addAsContext'),
   },
   thinking: (s: number) => tr('chatV2', 'timeline.thinking.inProgress', { seconds: s }),
-  thought: (s: number) => tr('chatV2', 'timeline.thinking.completed', { seconds: s }),
+  thought: (s: number) => tr('chatV2', 'timeline.thinking.collapsed', { seconds: s }),
   searching: tr('chatV2', 'timeline.retrieval.searching'),
   retrievalSummary: (n: number) => tr('chatV2', 'timeline.retrieval.summary', { count: n }),
   unifiedSearch: tr('common', 'mcp.tools.unified_search'),
