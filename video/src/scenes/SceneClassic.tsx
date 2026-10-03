@@ -129,15 +129,14 @@ const chatScroll = (t: number) => {
   for (let k = 0; k < 8; k++) s += stickTarget(t - k * 0.011);
   return lerp(CARD_SCROLL, s / 8, prog(t, PR.scroll0, PR.scroll1, ease.inOutCubic));
 };
-/** 卡片生成完、保存时卡片块在世界坐标里的原点。 */
-const FINAL_SCROLL = stickTarget(PR.saved);
+/** 卡片生成完、贴底滚动稳定后卡片块在世界坐标里的原点。 */
+const SETTLED = PR.done + 0.2;
+const FINAL_SCROLL = stickTarget(SETTLED);
 const ANKI_WORLD = { x: THREAD_X, y: chatY(ANKI_Y - FINAL_SCROLL) };
-const actionWorld = (id: 'save' | 'review') => {
-  const c = ankiActionCenter(id, PR.saved);
+const REVIEW_BTN = (() => {
+  const c = ankiActionCenter('review', SETTLED);
   return { x: ANKI_WORLD.x + c.x, y: ANKI_WORLD.y + c.y };
-};
-const SAVE_BTN = actionWorld('save');
-const REVIEW_BTN = actionWorld('review');
+})();
 
 export const CLASSIC_CAM: CamKey[] = [
   [0, { x: 1085, y: 560, zoom: 0.9 }],
@@ -171,7 +170,7 @@ export const CLASSIC_CAM: CamKey[] = [
   [MM.reciteClick + 0.16, { x: 1120, y: 386, zoom: 1.51 }, ease.inOutCubic],
   [MM.close0, { x: 1130, y: 390, zoom: 1.53 }, ease.linear],
   [MM.close1, { x: CARD.x + CARD.w / 2, y: CARD.y + CARD.h / 2 + 40, zoom: 1.45 }, ease.inOutCubic],
-  // 04 练习：跟住贴底滚动的卡片块，生成完先点「加入卡片库」，再推向「复习这批」
+  // 04 练习：跟住贴底滚动的卡片块，生成完推向「复习这批」
   [PR.scroll1, { x: THREAD_X + COMPOSER_W / 2, y: ANKI_WORLD.y + 200, zoom: 1.42 }, ease.inOutCubic],
   [PR.done, { x: THREAD_X + COMPOSER_W / 2 + 4, y: ANKI_WORLD.y + 240, zoom: 1.46 }, ease.linear],
   [PR.reviewClick, { x: REVIEW_BTN.x + 40, y: CW.h - 540 / 1.62, zoom: 1.62 }, ease.inOutCubic],
@@ -179,8 +178,6 @@ export const CLASSIC_CAM: CamKey[] = [
 
 const PRACTICE_PUPIL: Array<[number, number, number]> = [
   [PR.done + 0.02, ANKI_WORLD.x + 470, ANKI_WORLD.y + 200],
-  [PR.save - 0.05, SAVE_BTN.x, SAVE_BTN.y],
-  [PR.save + 0.05, SAVE_BTN.x, SAVE_BTN.y],
   [PR.reviewClick - 0.05, REVIEW_BTN.x, REVIEW_BTN.y],
   [PR.reviewClick + 0.3, REVIEW_BTN.x, REVIEW_BTN.y],
 ];
@@ -331,8 +328,6 @@ const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
         <AnkiBlock
           tk={tk}
           t={t}
-          saveHover={prog(t, PR.save - 0.08, PR.save - 0.03)}
-          savePress={Math.max(0, 1 - Math.abs(t - PR.save) / 0.1)}
           reviewHover={prog(t, PR.reviewClick - 0.08, PR.reviewClick - 0.03)}
           reviewPress={Math.max(0, 1 - Math.abs(t - PR.reviewClick) / 0.1)}
         />
@@ -549,7 +544,7 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
         </div>
       </CameraView>
       <Handoff t={t} cam={cam} />
-      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, OPEN_CLICK, ...ORGANIZE_CLICKS, PR.save, PR.reviewClick]} />
+      <Pupil x={pupilScreen.x} y={pupilScreen.y} t={t} opacity={hidePupil ? 0 : clamp(pupilOpacity)} clicks={[3.0, 4.5, 9.1 + POST, OPEN_CLICK, ...ORGANIZE_CLICKS, PR.reviewClick]} />
     </AbsoluteFill>
   );
 };

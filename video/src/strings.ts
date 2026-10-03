@@ -114,6 +114,8 @@ export const S = {
     added: tr('chatV2', 'blocks.ankiCards.addedToLibrary'),
     review: tr('chatV2', 'blocks.ankiCards.reviewBatch'),
     edit: tr('chatV2', 'blocks.ankiCards.edit'),
+    pause: tr('chatV2', 'blocks.ankiCards.pause'),
+    cancel: tr('chatV2', 'blocks.ankiCards.cancel'),
     total: (n: number) => tr('anki', 'chatV2.totalCards', { count: n }),
     clickToEdit: tr('anki', 'chatV2.clickToEdit'),
     saved: tr('anki', 'chatV2.saved'),

@@ -12,9 +12,11 @@ import {
   DownloadSimple,
   FloppyDisk,
   ListChecks,
+  Pause,
   Pencil,
   Play,
   Stack,
+  Stop,
 } from '@phosphor-icons/react';
 import type { CSSProperties, ReactNode } from 'react';
 import { ease, lerp, PACE, prog } from '../lib/time';
@@ -25,8 +27,9 @@ import { font, type Tokens } from '../theme';
 /**
  * 对话里的 Anki 卡片块（ankiCardsBlock → AnkiCardStackPreview → Card3DPreview .chat-card3d-compact + chatanki-bottom-actions）。
  * 取证 cza-*（demo-anki-cards，probe-cza-6 / cza-bottom）：≤3 张平铺内联卡，第 4 张起 3D 叠放（自动播放默认关）；
- * 进度卡在生成中带「正在生成第 N 张卡片…」，完成后多出小结条；操作行生成中整体禁用（opacity 0.4），
- * 「复习这批」要等「加入卡片库」拿到真实卡片 id 才可用（canReviewBatch）。
+ * 进度卡从一开始就在（后端先检测 AnkiConnect 并发 routing 进度），生成中带「正在生成第 N 张卡片…」，完成后多出小结条；
+ * 生成中操作行前面有「暂停 / 取消」（有 documentId 时），卡片操作禁用（opacity 0.4）。
+ * 真实后端卡片以 UUID 入库并在完成时自动入队，「复习这批」完成即可点；演示壳卡片 id 是 chat-batch-demo-N 占位，取证里那颗按钮是灰的。
  */
 export const AK = {
   w: 656,
@@ -70,26 +73,37 @@ const flatListH = (t: number) => {
 };
 const STACK_H = AK.cardTop + AK.cardH + AK.navGap + AK.navH;
 
-/** 各段在块内的纵向位置（块局部坐标）。 */
+/** 生成阶段：先 routing（检测 AnkiConnect / 路由），首张卡前进入 generating。 */
+const generating = (t: number) => t >= PR.cards0 - 0.03;
+
+/** 各段在块内的纵向位置（块局部坐标）。首张卡到达前列表区只有一行「正在生成卡片...」、没有张数行。 */
 export const ankiLayout = (t: number) => {
-  const sk = stackK(t);
-  // 第一张卡到达前只有一行「正在生成卡片...」
-  if (t < PR.cards0) return { list: 21, row: 0, status: 0, statusK: 0, prog: 0, progH: 0, act: 0, h: 21 };
-  const list = lerp(flatListH(t), STACK_H, sk);
+  const started = t >= PR.cards0;
+  const list = started ? lerp(flatListH(t), STACK_H, stackK(t)) : 21;
   const row = list + 7;
   const statusK = prog(t, PR.done, PR.done + 0.075, ease.brand);
-  const status = row + AK.rowH + 7;
+  const status = (started ? row + AK.rowH : list) + 7;
   const prog0 = status + (AK.statusH + 7) * statusK;
-  const progH = AK.progH + AK.tickerH * (1 - statusK);
+  const progH = AK.progH + (generating(t) ? AK.tickerH * (1 - statusK) : 0);
   const act = prog0 + progH + 10.5;
   return { list, row, status, statusK, prog: prog0, progH, act, h: act + AK.actH };
 };
 
-/** 操作行按钮（块局部坐标，取自 probe-cza-bottom）。 */
-const ACTIONS = { edit: { x: 0, w: 73.5 }, save: { x: 80.5, w: 114.5 }, review: { x: 202, w: 101.5 }, deck: { x: 310.5, w: 149.5 }, more: { x: 467, w: 35 } } as const;
-export const ankiActionCenter = (id: 'save' | 'review', t: number) => ({ x: ACTIONS[id].x + ACTIONS[id].w / 2, y: ankiLayout(t).act + 11.5 + 17.5 });
+/** 操作行（DsButton ghost，13px，间距 7；宽度取自 probe-cza-bottom，牌组按钮按「高数 · 中值定理」字宽）。 */
+type ActId = 'pause' | 'cancel' | 'edit' | 'save' | 'review' | 'deck' | 'more';
+const ACT_W: Record<ActId, number> = { pause: 73.5, cancel: 73.5, edit: 73.5, save: 114.5, review: 101.5, deck: 135.5, more: 35 };
+const actRow = (busy: boolean, hasCards: boolean): ActId[] => [...(busy ? (['pause', 'cancel'] as const) : []), ...(hasCards ? (['edit', 'save', 'review', 'deck', 'more'] as const) : [])];
+const actX = (row: ActId[], id: ActId) => {
+  let x = 0;
+  for (const a of row) {
+    if (a === id) return x;
+    x += ACT_W[a] + 7;
+  }
+  return x;
+};
+export const ankiActionCenter = (id: 'review', t: number) => ({ x: actX(actRow(t < PR.done, true), id) + ACT_W[id] / 2, y: ankiLayout(t).act + 11.5 + 17.5 });
 
-const ActBtn = ({ x, w, icon, label, disabled, hover = 0, press = 0 }: { x: number; w: number; icon: ReactNode; label: string; disabled?: boolean; hover?: number; press?: number }) => (
+const ActBtn = ({ x, w, icon, label, disabled, hover = 0, press = 0, color }: { x: number; w: number; icon: ReactNode; label: string; disabled?: boolean; hover?: number; press?: number; color?: string }) => (
   <span
     style={{
       ...at(x, 11.5),
@@ -102,7 +116,7 @@ const ActBtn = ({ x, w, icon, label, disabled, hover = 0, press = 0 }: { x: numb
       gap: 7,
       fontSize: 13,
       fontWeight: 500,
-      color: hover > 0.5 ? FG : MUTED,
+      color: color ?? (hover > 0.5 ? FG : MUTED),
       whiteSpace: 'nowrap',
       opacity: disabled ? 0.4 : 1,
       background: hover > 0 ? `rgba(240, 240, 240, ${0.9 * hover})` : 'transparent',
@@ -174,15 +188,15 @@ const ProgressStep = ({ x, idx, label, state, t }: { x: number; idx: number; lab
   );
 };
 
-export const AnkiBlock = ({ tk, t, saveHover = 0, savePress = 0, reviewHover = 0, reviewPress = 0 }: { tk: Tokens; t: number; saveHover?: number; savePress?: number; reviewHover?: number; reviewPress?: number }) => {
+export const AnkiBlock = ({ tk, t, reviewHover = 0, reviewPress = 0 }: { tk: Tokens; t: number; reviewHover?: number; reviewPress?: number }) => {
   const appear = prog(t, PR.block, PR.block + 0.075, ease.brand);
   if (appear <= 0) return null;
   const n = countAt(t);
   const done = t >= PR.done;
   const L = ankiLayout(t);
   const sk = stackK(t);
-  const saving = t >= PR.save && t < PR.saved;
-  const saved = t >= PR.saved;
+  const gen = generating(t);
+  const row = actRow(!done, n > 0);
   // 进度百分比：Progress 宽度 duration-500 ease-out 平滑
   const pct = done ? 100 : Math.round((n / N) * 100);
   const barPct = Math.min(100, ANKI_CARDS.reduce((s, _, i) => s + prog(t, arrive(i), arrive(i) + 0.25, ease.outCubic), 0) / N * 100);
@@ -280,71 +294,68 @@ export const AnkiBlock = ({ tk, t, saveHover = 0, savePress = 0, reviewHover = 0
 
       {n > 0 ? (
         <>
-          {/* 共 N 张卡片（保存后「已保存」）… 点击编辑 → */}
-          <span style={{ ...at(0, L.row + 9.3), fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap' }}>
-            {S.anki.total(n)}
-            {saved ? <span style={{ marginLeft: 7, color: OK }}>{S.anki.saved}</span> : null}
-          </span>
+          {/* 共 N 张卡片 … 点击编辑 → */}
+          <span style={{ ...at(0, L.row + 9.3), fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap' }}>{S.anki.total(n)}</span>
           <span style={{ ...at(W - 73.3, L.row), width: 73.3, height: 35, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: MUTED, whiteSpace: 'nowrap' }}>{S.anki.clickToEdit}→</span>
-
-          {/* 完成态小结条（ui-rise-in） */}
-          {L.statusK > 0.001 ? (
-            <div style={{ ...at(0, L.status), width: W, height: AK.statusH, boxSizing: 'border-box', borderRadius: 7, background: 'rgba(37, 147, 95, 0.05)', border: '1px solid rgba(37, 147, 95, 0.25)', opacity: L.statusK, transform: `translateY(${(1 - L.statusK) * 4}px)` }}>
-              <CheckCircle size={16} weight="fill" color={OK} style={at(11.5, 11.3)} />
-              <span style={{ ...at(36.3, 11), display: 'inline-flex', gap: 8, fontSize: 11, lineHeight: '16.5px', whiteSpace: 'nowrap' }}>
-                <span style={{ fontWeight: 500, color: FG }}>{S.anki.summary(N)}</span>
-                <span style={{ color: MUTED }}>{S.anki.duration(secs)}</span>
-              </span>
-              <span style={{ ...at(W - 195.1, 5.3), width: 87, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 500, color: MUTED }}>
-                <ListChecks size={13} />
-                {S.anki.taskCenter}
-              </span>
-              <span style={{ ...at(W - 104.6, 5.3), width: 98.3, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 500, color: MUTED }}>
-                <DownloadSimple size={13} />
-                {S.anki.exportApkg}
-              </span>
-            </div>
-          ) : null}
-
-          {/* 进度卡：路由 → 生成 → 完成 · AnkiConnect · 百分比 · 进度条 · 生成第 N 张 · 卡片：N */}
-          <div style={{ ...at(0, L.prog), width: W, height: L.progH, boxSizing: 'border-box', borderRadius: 7, background: 'rgba(240, 240, 240, 0.1)', border: '1px solid rgba(224, 224, 224, 0.5)', overflow: 'hidden' }}>
-            {S.anki.steps.map((label, i) => {
-              const state = done || i === 0 ? 'done' : i === 1 ? 'active' : 'pending';
-              return (
-                <span key={label}>
-                  <ProgressStep x={11.5 + i * 93.8} idx={i} label={label} state={state} t={t} />
-                  {i < 2 ? <span style={{ ...at(11.5 + i * 93.8 + 58.8, 25), width: 21, height: 1, background: state === 'done' ? 'rgba(37, 147, 95, 0.6)' : 'rgba(30, 94, 184, 0.4)' }} /> : null}
-                </span>
-              );
-            })}
-            <span style={{ ...at(W - 249, 15.5), width: 122.2, height: 20, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: WARN, background: 'rgba(195, 136, 34, 0.1)', whiteSpace: 'nowrap' }}>{S.anki.ankiConnect}</span>
-            <ArrowClockwise size={16} color={MUTED} style={at(W - 110.2, 17.5)} />
-            <span style={{ ...at(W - 77.7, 17.3), fontSize: 11, lineHeight: '16.5px', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
-            <CaretDown size={14} color={MUTED} style={{ ...at(W - 32.5, 18.5), transform: 'rotate(180deg)' }} />
-            <span style={{ ...at(11.5, 50), width: W - 23, height: 8, borderRadius: 9999, background: 'rgba(240, 240, 240, 0.5)', overflow: 'hidden' }}>
-              <span style={{ display: 'block', height: '100%', width: `${done ? 100 : barPct}%`, background: PRI, borderRadius: 9999 }} />
-            </span>
-            {!done ? <span style={{ ...at(11.5, 65), fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap' }}>{S.anki.generatingNth(Math.min(N, n + 1))}</span> : null}
-            <span style={{ ...at(11.5, done ? 65 : 65 + AK.tickerH), fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap' }}>{S.anki.cardsValue(n)}</span>
-          </div>
-
-          {/* 操作行：生成中整体禁用；「复习这批」等保存拿到真实 id */}
-          <div style={{ ...at(0, L.act), width: W, height: AK.actH, borderTop: '1px solid rgba(224, 224, 224, 0.5)' }}>
-            <ActBtn {...ACTIONS.edit} icon={<Pencil size={14} />} label={S.anki.edit} disabled={!done} />
-            <ActBtn
-              {...ACTIONS.save}
-              icon={saving ? <CircleNotch size={16} style={{ transform: `rotate(${t * 720}deg)` }} /> : saved ? <Check size={16} color={OK} /> : <FloppyDisk size={16} />}
-              label={saved ? S.anki.added : S.anki.add}
-              disabled={!done}
-              hover={saved ? 0 : saveHover}
-              press={savePress}
-            />
-            <ActBtn {...ACTIONS.review} icon={<Stack size={16} />} label={S.anki.review} disabled={!saved} hover={reviewHover} press={reviewPress} />
-            <ActBtn {...ACTIONS.deck} icon={<Cards size={14} />} label="高数 · 中值定理" disabled={!done} />
-            <ActBtn {...ACTIONS.more} icon={<DotsThree size={20} />} label="" disabled={!done} />
-          </div>
         </>
       ) : null}
+
+      {/* 完成态小结条（ui-rise-in） */}
+      {L.statusK > 0.001 ? (
+        <div style={{ ...at(0, L.status), width: W, height: AK.statusH, boxSizing: 'border-box', borderRadius: 7, background: 'rgba(37, 147, 95, 0.05)', border: '1px solid rgba(37, 147, 95, 0.25)', opacity: L.statusK, transform: `translateY(${(1 - L.statusK) * 4}px)` }}>
+          <CheckCircle size={16} weight="fill" color={OK} style={at(11.5, 11.3)} />
+          <span style={{ ...at(36.3, 11), display: 'inline-flex', gap: 8, fontSize: 11, lineHeight: '16.5px', whiteSpace: 'nowrap' }}>
+            <span style={{ fontWeight: 500, color: FG }}>{S.anki.summary(N)}</span>
+            <span style={{ color: MUTED }}>{S.anki.duration(secs)}</span>
+          </span>
+          <span style={{ ...at(W - 195.1, 5.3), width: 87, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 500, color: MUTED }}>
+            <ListChecks size={13} />
+            {S.anki.taskCenter}
+          </span>
+          <span style={{ ...at(W - 104.6, 5.3), width: 98.3, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 500, color: MUTED }}>
+            <DownloadSimple size={13} />
+            {S.anki.exportApkg}
+          </span>
+        </div>
+      ) : null}
+
+      {/* 进度卡：路由 → 生成 → 完成 · AnkiConnect · 百分比 · 进度条 · 正在生成第 N 张 · 卡片：N */}
+      <div style={{ ...at(0, L.prog), width: W, height: L.progH, boxSizing: 'border-box', borderRadius: 7, background: 'rgba(240, 240, 240, 0.1)', border: '1px solid rgba(224, 224, 224, 0.5)', overflow: 'hidden' }}>
+        {S.anki.steps.map((label, i) => {
+          const active = done ? 3 : gen ? 1 : 0;
+          const state = i < active ? 'done' : i === active ? 'active' : 'pending';
+          return (
+            <span key={label}>
+              <ProgressStep x={11.5 + i * 93.8} idx={i} label={label} state={state} t={t} />
+              {i < 2 ? <span style={{ ...at(11.5 + i * 93.8 + 58.8, 25), width: 21, height: 1, background: state === 'done' ? 'rgba(37, 147, 95, 0.6)' : state === 'active' ? 'rgba(30, 94, 184, 0.4)' : 'rgb(224, 224, 224)' }} /> : null}
+            </span>
+          );
+        })}
+        <span style={{ ...at(W - 249, 15.5), width: 122.2, height: 20, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: WARN, background: 'rgba(195, 136, 34, 0.1)', whiteSpace: 'nowrap' }}>{S.anki.ankiConnect}</span>
+        <ArrowClockwise size={16} color={MUTED} style={at(W - 110.2, 17.5)} />
+        <span style={{ ...at(W - 77.7, 17.3), fontSize: 11, lineHeight: '16.5px', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
+        <CaretDown size={14} color={MUTED} style={{ ...at(W - 32.5, 18.5), transform: 'rotate(180deg)' }} />
+        <span style={{ ...at(11.5, 50), width: W - 23, height: 8, borderRadius: 9999, background: 'rgba(240, 240, 240, 0.5)', overflow: 'hidden' }}>
+          <span style={{ display: 'block', height: '100%', width: `${done ? 100 : barPct}%`, background: PRI, borderRadius: 9999 }} />
+        </span>
+        {gen && !done ? <span style={{ ...at(11.5, 65), fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap' }}>{S.anki.generatingNth(Math.min(N, n + 1))}</span> : null}
+        <span style={{ ...at(11.5, gen && !done ? 65 + AK.tickerH : 65), fontSize: 11, lineHeight: '16.5px', color: MUTED, whiteSpace: 'nowrap' }}>{S.anki.cardsValue(n)}</span>
+      </div>
+
+      {/* 操作行：生成中前面是「暂停 / 取消」，卡片操作禁用；完成后「复习这批」可用 */}
+      <div style={{ ...at(0, L.act), width: W, height: AK.actH, borderTop: '1px solid rgba(224, 224, 224, 0.5)' }}>
+        {row.includes('pause') ? <ActBtn x={actX(row, 'pause')} w={ACT_W.pause} icon={<Pause size={14} />} label={S.anki.pause} /> : null}
+        {row.includes('cancel') ? <ActBtn x={actX(row, 'cancel')} w={ACT_W.cancel} icon={<Stop size={14} />} label={S.anki.cancel} color={tk.destructive} /> : null}
+        {n > 0 ? (
+          <>
+            <ActBtn x={actX(row, 'edit')} w={ACT_W.edit} icon={<Pencil size={14} />} label={S.anki.edit} />
+            <ActBtn x={actX(row, 'save')} w={ACT_W.save} icon={<FloppyDisk size={16} />} label={S.anki.add} disabled={!done} />
+            <ActBtn x={actX(row, 'review')} w={ACT_W.review} icon={<Stack size={16} />} label={S.anki.review} disabled={!done} hover={reviewHover} press={reviewPress} />
+            <ActBtn x={actX(row, 'deck')} w={ACT_W.deck} icon={<Cards size={14} />} label="高数 · 中值定理" />
+            <ActBtn x={actX(row, 'more')} w={ACT_W.more} icon={<DotsThree size={20} />} label="" />
+          </>
+        ) : null}
+      </div>
     </div>
   );
 };
