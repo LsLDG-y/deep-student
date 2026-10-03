@@ -167,7 +167,7 @@ export const ChatTitlebar = ({ title, next, k }: { title: string; next?: string;
 );
 
 // ── 侧栏 ──────────────────────────────────────────────
-const StreamingRing = ({ x, y, t }: { x: number; y: number; t: number }) => {
+export const StreamingRing = ({ x, y, t }: { x: number; y: number; t: number }) => {
   const r = 6.75;
   const c = 2 * Math.PI * r;
   return (

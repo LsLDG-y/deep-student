@@ -18,6 +18,7 @@ import {
 import {
   ClassicWindow,
   CW,
+  OLD_SESSIONS,
   HighlightMenu,
   PAGE_ORIGIN,
   pageShadow,
@@ -26,6 +27,7 @@ import {
   Toast,
 } from '../ui/classic';
 import { MindmapCard } from '../ui/mindmap';
+import type { SidebarRow } from '../ui/research';
 import { PAGE_H, SELECTION_BOX, TextbookPage, THEOREM_CHARS } from '../ui/TextbookPage';
 import { Tex } from '../ui/tex';
 import { AnkiStackBlock, ankiActionCenter, ANKI_BLOCK } from '../ui/anki';
@@ -39,6 +41,7 @@ export const REF_LABEL = '高等数学（第七版）上册 page:132';
 export const PHOTOS = ['错题-中值定理.jpg', '错题-辅助函数.jpg'];
 export const PROMPT = '讲透这一节：画导图、出卡片';
 export const SESSION_TITLE = '讲透拉格朗日中值定理';
+const SENT_AT = 4.5;
 
 const THREAD_X = CW.chatX + 32;
 const chatY = (localY: number) => CW.title + localY;
@@ -197,7 +200,7 @@ const Answer = ({ tk, t }: { tk: Tokens; t: number }) => {
 };
 
 const ChatColumn = ({ tk, t }: { tk: Tokens; t: number }) => {
-  const sent = t >= 4.5;
+  const sent = t >= SENT_AT;
   const emptyFade = 1 - prog(t, 4.5, 4.66);
   const dockK = prog(t, 4.5, 4.5 + 0.2 + 0.1, ease.brand);
   const composerTop = sent ? EMPTY.composerTop + (DOCK_TOP - EMPTY.composerTop) * dockK : EMPTY.composerTop;
@@ -377,6 +380,12 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
   ]);
   const practice = t >= PR.scroll0;
   const organize = t >= MM.open0 && !practice;
+  // 新会话是草稿、不进侧栏；发出后顶到「对话」最上面显示「未命名会话」+ 转圈，首轮（到卡片生成完）结束后自动起名
+  const titled = t >= PR.done + 0.12;
+  const sessions: SidebarRow[] =
+    t < SENT_AT
+      ? OLD_SESSIONS
+      : [{ title: titled ? SESSION_TITLE : '未命名会话', time: '刚刚', active: true, streaming: !titled, enter: prog(t, SENT_AT + 0.01, SENT_AT + 0.085) }, ...OLD_SESSIONS];
   const trackWorld = practice ? pathAt(t, PRACTICE_PUPIL) : organize ? pathAt(t, ORGANIZE_PUPIL) : pupilWorld;
   const pupilScreen = project(cam, trackWorld.x, trackWorld.y);
   const pupilOpacity = practice
@@ -391,8 +400,10 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
         <div style={{ position: 'absolute', left: 0, top: 0, width: CW.w, height: CW.h }}>
           <ClassicWindow
             tk={tk}
-            title={t < 5.3 ? S.nav.newChat : openAt(t) > 0.5 ? '微分中值定理' : SESSION_TITLE}
-            activeSession={t >= 4.6 ? (t < 5.3 ? S.nav.newChat : SESSION_TITLE) : undefined}
+            t={t}
+            title={openAt(t) > 0.5 ? '微分中值定理' : titled ? SESSION_TITLE : undefined}
+            terminal={t >= SENT_AT && openAt(t) <= 0.5}
+            sessions={sessions}
             chromeOpacity={chrome}
             style={{ opacity: chrome > 0 ? 1 : 0, background: chrome < 1 ? 'transparent' : tk.background, boxShadow: chrome < 1 ? 'none' : undefined }}
             chat={<ChatColumn tk={tk} t={t} />}

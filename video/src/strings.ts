@@ -183,6 +183,7 @@ export const S = {
     pinned: tr('sidebar', 'sections.pinned'),
     topics: tr('sidebar', 'sections.topics'),
     conversations: tr('sidebar', 'sections.conversations'),
+    showMore: tr('sidebar', 'actions.expand_group_sessions'),
     search: tr('sidebar', 'search.placeholder'),
     workbenchMode: tr('sidebar', 'navigation.workbench_mode'),
   },

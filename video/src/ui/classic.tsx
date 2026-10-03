@@ -1,11 +1,13 @@
 import {
   ArrowSquareOut,
+  CaretDown,
   CaretLeft,
   CaretRight,
   ChatDots,
   Cards,
   Copy,
   FileText,
+  FolderPlus,
   FunnelSimple,
   MagnifyingGlass,
   MagnifyingGlassMinus,
@@ -22,7 +24,6 @@ import {
   StudyBooksIcon,
   StudyCardsIcon,
   StudyChatIcon,
-  StudyComposeIcon,
   StudyMagicWandIcon,
   StudySettingsIcon,
   StudyStackIcon,
@@ -31,6 +32,7 @@ import {
 import type { CSSProperties, ReactNode } from 'react';
 import { font, TRAFFIC, type Tokens } from '../theme';
 import { S } from '../strings';
+import { StreamingRing, type SidebarRow } from './research';
 import { PAGE_H, TextbookPage } from './TextbookPage';
 
 export const CW = { w: 1760, h: 990, nav: 320, title: 40, panel: 720, chatX: 320, chatW: 720, panelX: 1040 } as const;
@@ -59,6 +61,7 @@ const SidebarFrameIcon = ({ color }: { color: string }) => (
   </svg>
 );
 
+/** 经典壳左栏导航（「设置」不在这里，贴在左栏最底）。 */
 const NAV: Array<{ label: string; Icon: (p: { className?: string }) => JSX.Element }> = [
   { label: S.nav.newChat, Icon: StudyChatIcon },
   { label: S.nav.learningHub, Icon: StudyBooksIcon },
@@ -67,84 +70,64 @@ const NAV: Array<{ label: string; Icon: (p: { className?: string }) => JSX.Eleme
   { label: S.nav.anki, Icon: StudyStackIcon },
   { label: S.nav.flashcards, Icon: StudyCardsIcon },
   { label: S.nav.templates, Icon: StudyBlocksIcon },
-  { label: S.nav.settings, Icon: StudySettingsIcon },
 ];
 
-export const SESSIONS = {
-  pinned: ['高数期末复习计划'],
-  recent: ['线性代数：特征值的直觉', '英语作文批改 · Task 2', '有机化学反应机理整理', '概率论错题复盘', '机器学习系统 · 第 3 章'],
-};
+/** 第一幕（10-02 21:00）侧栏里已有的会话：与 08 侧栏同一批，相对时间往前推一天。 */
+export const OLD_SESSIONS: SidebarRow[] = [
+  { title: '线性代数：特征值的直觉', time: '1天前' },
+  { title: '英语作文批改 · Task 2', time: '2天前' },
+  { title: '有机化学反应机理整理', time: '3天前' },
+  { title: '概率论错题复盘', time: '5天前' },
+  { title: '机器学习系统 · 第 3 章', time: '6天前' },
+];
 
-const Row = ({ tk, active, children, style }: { tk: Tokens; active?: boolean; children: ReactNode; style?: CSSProperties }) => (
-  <div
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-      padding: '6px 10px',
-      borderRadius: 10,
-      background: active ? tk.selected : 'transparent',
-      fontSize: 14,
-      lineHeight: '20px',
-      color: tk.foreground,
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      ...style,
-    }}
-  >
+const SB_SECTION = 'rgba(101, 105, 114, 0.72)';
+const SB_SEL = 'rgba(42, 45, 50, 0.1)';
+const sb = (x: number, y: number): CSSProperties => ({ position: 'absolute', left: x, top: y });
+const sbText = (size: number, lh: number, color: string, weight = 400): CSSProperties => ({ fontSize: size, lineHeight: `${lh}px`, fontWeight: weight, color, whiteSpace: 'nowrap' });
+const SbIcon = ({ x, y, children }: { x: number; y: number; children: ReactNode }) => (
+  <span className="ds-icon" style={{ ...sb(x, y), width: 18, height: 18, display: 'inline-flex', color: 'rgb(42, 45, 50)' }}>
     {children}
-  </div>
+  </span>
 );
 
-export const ClassicSidebar = ({ tk, activeTitle }: { tk: Tokens; activeTitle?: string }) => (
-  <div
-    style={{
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      width: CW.nav,
-      height: CW.h,
-      background: tk.nav,
-      paddingTop: CW.title + 14,
-      boxSizing: 'border-box',
-      fontFamily: font.ui,
-    }}
-  >
-    <div style={{ display: 'flex', alignItems: 'center', padding: '0 20px 0 22px', height: 36 }}>
-      <span style={{ fontSize: 18, fontWeight: 600, color: tk.foreground, letterSpacing: '-0.01em' }}>DeepStudent</span>
-      <span style={{ flex: 1 }} />
-      <span style={{ display: 'flex', gap: 14, color: tk.mutedFg }}>
-        <FunnelSimple size={16} />
-        <MagnifyingGlass size={16} />
-      </span>
-    </div>
-    <div style={{ padding: '10px 12px 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {NAV.map(({ label, Icon }) => (
-        <Row key={label} tk={tk}>
-          <span style={{ width: 16, height: 16, display: 'inline-flex', color: tk.foreground }}>
-            <Icon className="ds-icon" />
-          </span>
-          {label}
-        </Row>
-      ))}
-    </div>
-    <div style={{ padding: '18px 22px 6px', fontSize: 12, color: tk.mutedFg }}>{S.nav.pinned}</div>
-    <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {SESSIONS.pinned.map((s) => (
-        <Row key={s} tk={tk}>
-          {s}
-        </Row>
-      ))}
-    </div>
-    <div style={{ padding: '18px 22px 6px', fontSize: 12, color: tk.mutedFg }}>{S.nav.conversations}</div>
-    <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {(activeTitle ? [activeTitle, ...SESSIONS.recent] : SESSIONS.recent).map((s) => (
-        <Row key={s} tk={tk} active={s === activeTitle}>
-          {s}
-        </Row>
-      ))}
-    </div>
+/** 几何取自真机经典壳（probe-cla-0，左栏 320 宽，坐标即窗口坐标）。 */
+export const ClassicSidebar = ({ tk, rows, t }: { tk: Tokens; rows: SidebarRow[]; t: number }) => (
+  <div style={{ position: 'absolute', left: 0, top: 0, width: CW.nav, height: CW.h, background: tk.nav, fontFamily: font.ui, color: 'rgb(42, 45, 50)' }}>
+    <span style={{ ...sb(14, 60.8), ...sbText(18, 18, 'rgb(42, 45, 50)', 600), fontFamily: font.display }}>DeepStudent</span>
+    <FunnelSimple size={15} color={tk.mutedFg} style={sb(254.8, 62.3)} />
+    <MagnifyingGlass size={16} weight="bold" color={tk.mutedFg} style={sb(284, 61.8)} />
+    {NAV.map(({ label, Icon }, i) => (
+      <div key={label}>
+        <SbIcon x={14.8} y={99.5 + 33.75 * i}>
+          <Icon className="ds-icon" />
+        </SbIcon>
+        <span style={{ ...sb(39.5, 101.5 + 33.75 * i), ...sbText(14, 14, 'rgb(42, 45, 50)') }}>{label}</span>
+      </div>
+    ))}
+    <span style={{ ...sb(18.5, 357.8), ...sbText(13, 18, SB_SECTION) }}>{S.nav.topics}</span>
+    <CaretDown size={12.3} color={tk.mutedFg} style={sb(264.9, 360.6)} />
+    <FolderPlus size={12.3} color={tk.mutedFg} style={sb(289.4, 360.6)} />
+    <span style={{ ...sb(18.5, 397), ...sbText(13, 18, SB_SECTION) }}>{S.nav.conversations}</span>
+    {rows.slice(0, 5).map((r, i) => {
+      const y = 419.5 + 33.75 * i;
+      return (
+        <div key={`${r.title}-${i}`} style={{ position: 'absolute', inset: 0, opacity: r.enter ?? 1, transform: `translateY(${(1 - (r.enter ?? 1)) * 4}px)` }}>
+          {r.active ? <span style={{ ...sb(7, y), width: 306, height: 32, borderRadius: 14, background: SB_SEL }} /> : null}
+          <span style={{ ...sb(39.5, y + 9), ...sbText(14, 14, 'rgb(42, 45, 50)'), width: 211.5, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</span>
+          {r.streaming ? (
+            <StreamingRing x={289.3} y={y + 8.7} t={t} />
+          ) : (
+            <span style={{ ...sb(203.3, y + 9.4), ...sbText(11, 13.2, tk.mutedFg), width: 100, textAlign: 'right' }}>{r.time}</span>
+          )}
+        </div>
+      );
+    })}
+    {rows.length > 5 ? <span style={{ ...sb(38.5, 591.8), ...sbText(12, 12, tk.mutedFg) }}>{S.nav.showMore}</span> : null}
+    <SbIcon x={14.8} y={CW.h - 35.5}>
+      <StudySettingsIcon className="ds-icon" />
+    </SbIcon>
+    <span style={{ ...sb(39.5, CW.h - 33.5), ...sbText(14, 14, 'rgb(42, 45, 50)') }}>{S.nav.settings}</span>
   </div>
 );
 
@@ -164,35 +147,40 @@ const TitleButton = ({ children, tk }: { children: ReactNode; tk: Tokens }) => (
   </span>
 );
 
-export const ClassicTitlebar = ({ tk, title }: { tk: Tokens; title: string }) => (
+/**
+ * 标题行：左栏顶上「边栏开关 / ← / →」（x=84 / 121.3 / 157.3）；主区「>_」+ 会话名（x=340 / 386）。
+ * 新会话草稿时主区是空的；发出第一条后出现「>_」，首轮结束起名后才有会话名（probe-cls-new / cls-sent）。
+ */
+export const ClassicTitlebar = ({ tk, title, terminal = true }: { tk: Tokens; title?: string; terminal?: boolean }) => (
   <div style={{ position: 'absolute', left: 0, top: 0, width: CW.w, height: CW.title, fontFamily: font.ui }}>
     <div style={{ position: 'absolute', left: 0, top: 0, width: CW.nav, height: CW.title, background: tk.nav }} />
     <div style={{ position: 'absolute', left: CW.nav, top: 0, right: 0, height: CW.title, background: tk.background }} />
     <div style={{ position: 'absolute', left: 20, top: 14 }}>
       <TrafficLights />
     </div>
-    <div style={{ position: 'absolute', left: 68 + 12, top: 4 }}>
+    <div style={{ position: 'absolute', left: 84, top: 4 }}>
       <TitleButton tk={tk}>
         <SidebarFrameIcon color={tk.mutedFg} />
       </TitleButton>
     </div>
-    <div style={{ position: 'absolute', left: CW.nav + 16, top: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+    <div style={{ position: 'absolute', left: 121.3, top: 4, color: tk.foreground }}>
       <TitleButton tk={tk}>
-        <CaretLeft size={16} />
+        <CaretLeft size={16} color={tk.foreground} />
       </TitleButton>
-      <TitleButton tk={tk}>
-        <CaretRight size={16} />
-      </TitleButton>
-      <TitleButton tk={tk}>
-        <span style={{ width: 16, height: 16, display: 'inline-flex' }}>
-          <StudyComposeIcon className="ds-icon" />
-        </span>
-      </TitleButton>
-      <TitleButton tk={tk}>
-        <Terminal size={16} />
-      </TitleButton>
-      <span style={{ marginLeft: 6, fontSize: 14, fontWeight: 500, color: tk.foreground }}>{title}</span>
     </div>
+    <div style={{ position: 'absolute', left: 157.3, top: 4 }}>
+      <TitleButton tk={tk}>
+        <CaretRight size={16} color={tk.foreground} />
+      </TitleButton>
+    </div>
+    {terminal ? (
+      <div style={{ position: 'absolute', left: CW.nav + 20, top: 4 }}>
+        <TitleButton tk={tk}>
+          <Terminal size={16} color={tk.foreground} />
+        </TitleButton>
+      </div>
+    ) : null}
+    {title ? <span style={{ position: 'absolute', left: CW.nav + 66, top: 11.3, fontSize: 14, fontWeight: 500, lineHeight: '17.5px', color: tk.foreground, whiteSpace: 'nowrap' }}>{title}</span> : null}
   </div>
 );
 
@@ -411,16 +399,20 @@ export const Toast = ({ tk, text, sub, style }: { tk: Tokens; text: string; sub?
 
 export const ClassicWindow = ({
   tk,
+  t,
   title,
-  activeSession,
+  terminal,
+  sessions,
   chat,
   panel,
   chromeOpacity = 1,
   style,
 }: {
   tk: Tokens;
-  title: string;
-  activeSession?: string;
+  t: number;
+  title?: string;
+  terminal?: boolean;
+  sessions: SidebarRow[];
   chat: ReactNode;
   panel?: ReactNode;
   chromeOpacity?: number;
@@ -441,8 +433,8 @@ export const ClassicWindow = ({
     }}
   >
     <div style={{ opacity: chromeOpacity }}>
-      <ClassicSidebar tk={tk} activeTitle={activeSession} />
-      <ClassicTitlebar tk={tk} title={title} />
+      <ClassicSidebar tk={tk} rows={sessions} t={t} />
+      <ClassicTitlebar tk={tk} title={title} terminal={terminal} />
     </div>
     <div style={{ position: 'absolute', left: CW.chatX, top: CW.title, width: CW.chatW, height: CW.h - CW.title, overflow: 'hidden' }}>
       <div style={{ opacity: chromeOpacity, position: 'absolute', inset: 0 }}>{chat}</div>
