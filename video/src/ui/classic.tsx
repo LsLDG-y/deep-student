@@ -20,7 +20,6 @@ import {
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
   NotePencil,
-  Quotes,
   Sparkle,
   Terminal,
   Translate,
@@ -326,8 +325,12 @@ export const SELECTION_ACTIONS = [
   { label: S.sel.saveAsNote, Icon: NotePencil },
   { label: S.sel.makeCards, Icon: Cards },
   { label: S.sel.addToChat, Icon: ChatDots },
-  { label: S.sel.addAsContext, Icon: Quotes },
 ];
+/** PDF 里「添加到聊天」= 选区引用（PdfSelectionActions 不传 onAddAsContext，「引用到聊天」那项不渲染）。 */
+export const SEL_ADD_TO_CHAT = 5;
+/** 工具条宽（probe-clt-sel1：6 项 425.5）与「添加到聊天」项中心。 */
+export const SEL_TOOLBAR_W = 425.5;
+export const SEL_ADD_CX = 378.5;
 
 export const SelectionToolbar = ({
   tk,
@@ -344,30 +347,33 @@ export const SelectionToolbar = ({
     style={{
       display: 'inline-flex',
       alignItems: 'center',
-      borderRadius: 8,
-      border: `1px solid color-mix(in hsl, ${tk.border} 50%, transparent)`,
-      background: `color-mix(in hsl, ${tk.background} ${tk.dark ? 90 : 80}%, transparent)`,
+      height: 29,
+      boxSizing: 'border-box',
+      borderRadius: 7,
+      border: '1px solid rgba(224, 224, 224, 0.5)',
+      background: tk.dark ? 'rgba(30, 30, 30, 0.9)' : 'rgba(255, 255, 255, 0.8)',
       backdropFilter: 'blur(24px)',
-      boxShadow: tk.shadowFloating,
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
       fontFamily: font.ui,
       ...style,
     }}
   >
     {SELECTION_ACTIONS.map(({ label, Icon }, i) => (
-      <span key={label} style={{ display: 'inline-flex', alignItems: 'center' }}>
-        {i > 0 ? <span style={{ width: 1, height: 20, background: `color-mix(in hsl, ${tk.border} 50%, transparent)` }} /> : null}
+      <span key={label} style={{ display: 'inline-flex', alignItems: 'center', height: '100%' }}>
+        {i > 0 ? <span style={{ width: 1, height: 17.5, background: 'rgba(224, 224, 224, 0.5)' }} /> : null}
         <span
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6,
-            padding: '6px 10px',
-            fontSize: 12,
+            gap: 5.2,
+            height: '100%',
+            padding: '0 9.7px',
+            fontSize: 11,
             fontWeight: 500,
-            lineHeight: '16px',
-            color: `color-mix(in hsl, ${tk.foreground} 80%, transparent)`,
+            lineHeight: '16.5px',
+            color: 'rgba(42, 45, 50, 0.8)',
             background: i === hot ? `color-mix(in hsl, ${tk.accent} ${60 + press * 40}%, transparent)` : 'transparent',
-            borderRadius: i === 0 ? '8px 0 0 8px' : i === SELECTION_ACTIONS.length - 1 ? '0 8px 8px 0' : 0,
+            borderRadius: i === 0 ? '6px 0 0 6px' : i === SELECTION_ACTIONS.length - 1 ? '0 6px 6px 0' : 0,
           }}
         >
           <Icon size={14} />

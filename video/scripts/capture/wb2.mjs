@@ -818,6 +818,20 @@ if (scenario === 'probe') {
       if (kind === 'wait') await page.waitForTimeout(Number(arg));
       if (kind === 'shot') await shot(arg);
       if (kind === 'probe') await pageProbe(arg);
+      // drag:x1,y1,x2,y2 —— 鼠标拖选（PDF 文字层划选）
+      if (kind === 'drag') {
+        const [x1, y1, x2, y2] = arg.split(',').map(Number);
+        await page.mouse.move(x1, y1);
+        await page.mouse.down();
+        await page.mouse.move(x2, y2, { steps: 12 });
+        await page.mouse.up();
+      }
+      if (kind === 'click') {
+        const [x, y] = arg.split(',').map(Number);
+        await page.mouse.click(x, y);
+      }
+      // file:a.jpg,b.jpg —— 往页面上第一个文件框塞附件（out/cap 下的相对路径）
+      if (kind === 'file') await tryDo(a, () => page.locator('input[type=file]').first().setInputFiles(arg.split(',').map((f) => path.resolve(dir, f)), { timeout: 5000 }));
       if (kind === 'eval') console.log('[eval]', await page.evaluate(arg));
     }
   };

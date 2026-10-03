@@ -21,6 +21,9 @@ import {
   ClassicWindow,
   CW,
   OLD_SESSIONS,
+  SEL_ADD_CX,
+  SEL_ADD_TO_CHAT,
+  SEL_TOOLBAR_W,
   HighlightMenu,
   PAGE_ORIGIN,
   pageShadow,
@@ -39,7 +42,8 @@ import { CUT_ZOOM, POST, RV, STRIP_WORLD } from './retrieval/beats';
 import { Handoff } from './retrieval/Handoff';
 import { Vectorize } from './retrieval/Vectorize';
 
-export const REF_LABEL = '高等数学（第七版）上册 page:132';
+/** 选区引用显示名 = 资源标题 + 「第 N 页」（selectionRef.buildSelectionDisplayName，locator page:132）。 */
+export const REF_LABEL = '高等数学（第七版）上册 第 132 页';
 export const PHOTOS = ['错题-中值定理.jpg', '错题-辅助函数.jpg'];
 export const PROMPT = '讲透这一节：画导图、出卡片';
 export const SESSION_TITLE = '讲透拉格朗日中值定理';
@@ -61,9 +65,8 @@ const SEL = {
   h: SELECTION_BOX.h,
 };
 const TOOLBAR_Y = SEL.y + SEL.h + 8;
-const TOOLBAR_W = 572;
-const TOOLBAR_X = SEL.x + SEL.w / 2 - TOOLBAR_W / 2;
-const QUOTE_BTN = { x: TOOLBAR_X + TOOLBAR_W - 44, y: TOOLBAR_Y + 14 };
+const TOOLBAR_X = SEL.x + SEL.w / 2 - SEL_TOOLBAR_W / 2;
+const QUOTE_BTN = { x: TOOLBAR_X + SEL_ADD_CX, y: TOOLBAR_Y + 14.5 };
 const CHIP_SLOT = { x: THREAD_X + 16, y: chatY(EMPTY.composerTop) + 12 + 32 + 8 };
 const SEND_BTN = { x: THREAD_X + COMPOSER_W - 12 - 16, y: chatY(EMPTY.composerTop) + COMPOSER_H_FULL - 12 - 16 };
 const TEXT_POS = { x: THREAD_X + 120, y: chatY(EMPTY.composerTop) + 12 + 32 + 8 + 24 + 8 + 12 };
@@ -419,7 +422,7 @@ export const SceneClassic = ({ t, hidePupil = false }: { t: number; hidePupil?: 
                 <HighlightMenu tk={tk} />
               </div>
               <div style={{ position: 'absolute', left: TOOLBAR_X, top: TOOLBAR_Y, opacity: toolbarK * selUiFade, transform: `translateY(${(1 - toolbarK) * 4}px)` }}>
-                <SelectionToolbar tk={tk} hot={t > 2.85 ? 6 : -1} press={Math.max(0, 1 - Math.abs(t - 3.0) / 0.1)} />
+                <SelectionToolbar tk={tk} hot={t > 2.85 ? SEL_ADD_TO_CHAT : -1} press={Math.max(0, 1 - Math.abs(t - 3.0) / 0.1)} />
               </div>
             </>
           ) : null}
