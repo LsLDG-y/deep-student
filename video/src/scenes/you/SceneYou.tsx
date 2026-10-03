@@ -33,16 +33,19 @@ const SKILL_RECT = centered(SKILL_CX, SKILL_W, SKILL_H);
 const MCP_RECT = centered(MCP_CX, CHAT_W, CHAT_H);
 const MODELS_RECT = centered(MODELS_CX, CHAT_W, CHAT_H);
 
+// 每块面板都推到让内容看得清：对话窗基本框满（章节标签淡出后才推，免得压住红绿灯）；
+// 技能窗下缘停在屏幕 y≈905，不让左下角字幕压住最下一排卡片；MCP 内容只有上半截，裁掉下面的空白
 const CAM: CamKey[] = [
-  [YOU.in0 - 0.1, { x: MEM_CX, y: 590, zoom: 1.02 }],
-  [YOU.memory + 0.5, { x: MEM_CX, y: 590, zoom: 1.12 }, ease.outCubic],
-  [YOU.skills - 0.2, { x: MEM_CX + 40, y: 590, zoom: 1.16 }, ease.linear],
-  [YOU.skills + 0.08, { x: SKILL_CX, y: 590, zoom: 1.14 }, ease.inOutCubic],
-  [YOU.mcp - 0.2, { x: SKILL_CX + 30, y: 590, zoom: 1.18 }, ease.linear],
-  [YOU.mcp + 0.06, { x: MCP_CX, y: 590, zoom: 1.12 }, ease.inOutCubic],
-  [YOU.models - 0.2, { x: MCP_CX + 30, y: 590, zoom: 1.16 }, ease.linear],
-  [YOU.models + 0.08, { x: MODELS_CX + 60, y: 590, zoom: 1.12 }, ease.inOutCubic],
-  [YOU.out1, { x: MODELS_CX + 80, y: 590, zoom: 1.16 }, ease.linear],
+  [YOU.in0 - 0.1, { x: MEM_CX, y: 580, zoom: 1.06 }],
+  [YOU.memory + 0.55, { x: MEM_CX, y: 578, zoom: 1.14 }, ease.outCubic],
+  [YOU.answer + 0.1, { x: MEM_CX, y: 562, zoom: 1.38 }, ease.inOutCubic],
+  [YOU.skills - 0.2, { x: MEM_CX + 20, y: 560, zoom: 1.43 }, ease.linear],
+  [YOU.skills + 0.08, { x: SKILL_CX, y: 619, zoom: 1.28 }, ease.inOutCubic],
+  [YOU.mcp - 0.2, { x: SKILL_CX + 20, y: 619, zoom: 1.3 }, ease.linear],
+  [YOU.mcp + 0.06, { x: MCP_CX, y: 470, zoom: 1.6 }, ease.inOutCubic],
+  [YOU.models - 0.2, { x: MCP_CX + 20, y: 468, zoom: 1.66 }, ease.linear],
+  [YOU.models + 0.08, { x: MODELS_CX, y: 560, zoom: 1.42 }, ease.inOutCubic],
+  [YOU.out1, { x: MODELS_CX + 20, y: 560, zoom: 1.47 }, ease.linear],
 ];
 
 const rise = (t: number, at: number) => {
