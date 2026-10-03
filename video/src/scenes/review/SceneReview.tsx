@@ -48,14 +48,15 @@ export const CURVE_RECT = { x: 1044, y: 176, w: 760, h: 620 };
 
 const pressAt = (t: number, at: number, w = 0.1) => Math.max(0, 1 - Math.abs(t - at) / w);
 
-// 复习时镜头推到窗口上（窗口下缘压在 y≈912 以上，给左下角字幕留位），记忆曲线出来时拉开看全
+// 复习时镜头推近到卡面 + 评分行：上沿切在批次提示条与工具行之间（y≈207），评分键下缘落在屏幕 y≈870，
+// 给左下角字幕留位；x 被 clampCam 钳在桌面左缘。记忆曲线出来时拉开看全
 const REVIEW_CAM: CamKey[] = [
   [WK.night0, { x: 960, y: 540, zoom: 1 }],
   [WK.open1, { x: 940, y: 532, zoom: 1.02 }, ease.linear],
-  [WK.cards[0].at + 0.3, { x: 528, y: 470, zoom: 1.25 }, ease.inOutCubic],
-  [WK.cards[1].rate, { x: 530, y: 474, zoom: 1.27 }, ease.linear],
-  [WK.cards[2].show - 0.14, { x: 532, y: 478, zoom: 1.3 }, ease.inOutCubic],
-  [WK.cards[2].rate + 0.06, { x: 532, y: 480, zoom: 1.31 }, ease.linear],
+  [WK.cards[0].at + 0.3, { x: 600, y: 555, zoom: 1.55 }, ease.inOutCubic],
+  [WK.cards[1].rate, { x: 600, y: 549, zoom: 1.58 }, ease.linear],
+  [WK.cards[2].show - 0.14, { x: 600, y: 542, zoom: 1.61 }, ease.inOutCubic],
+  [WK.cards[2].rate + 0.06, { x: 600, y: 540, zoom: 1.62 }, ease.linear],
   [WK.curves + 0.1, { x: 960, y: 526, zoom: 1.0 }, ease.inOutCubic],
   [WK.stats, { x: 960, y: 526, zoom: 1.01 }, ease.linear],
   [WK.out0, { x: 960, y: 528, zoom: 1.02 }, ease.linear],
