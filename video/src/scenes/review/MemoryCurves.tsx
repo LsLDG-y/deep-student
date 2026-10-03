@@ -106,7 +106,8 @@ export const MemoryCurves = ({ tk, t, start, rect }: { tk: Tokens; t: number; st
             strokeWidth={1.25}
             strokeDasharray="5 6"
           />
-          <text x={plot.x + plot.w} y={lineY - 12} textAnchor="end" fontSize={13} fill="hsl(0 0% 86%)">
+          {/* 左端线下：红线在交点左侧还在线上方，这一角是空的 */}
+          <text x={plot.x + 10} y={lineY + 24} textAnchor="start" fontSize={13} fill="hsl(0 0% 86%)">
             期望保留率 90%
           </text>
         </g>
@@ -161,6 +162,10 @@ export const MemoryCurves = ({ tk, t, start, rect }: { tk: Tokens; t: number; st
               opacity: k,
               whiteSpace: 'nowrap',
               textAlign: 'center',
+              // 标注压在其它曲线上时用面板底色垫一块，线从字后面穿过
+              padding: '3px 8px 4px',
+              borderRadius: 6,
+              background: tk.card,
             }}
           >
             <div style={{ fontSize: 14, color: tone.text, fontWeight: 600, letterSpacing: '0.02em' }}>

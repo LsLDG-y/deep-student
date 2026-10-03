@@ -40,12 +40,13 @@ export const SUPERS: Super[] = [
   { s: 24.05, e: 25.75, text: '不止一份资料。', kind: 'title', pos: { left: 0, right: 0, top: 380 }, align: 'center', scrim: false },
   { s: 25.6, e: 27.3, text: '今天要复习的、要做的，一屏看清', kind: 'feature' },
   { s: 27.5, e: 28.9, text: '开一个番茄钟，进入专注', kind: 'feature' },
-  { s: 30.0, e: 30.9, text: '06 检验', kind: 'chapter' },
+  // 章节标签压在题目集 / 作文窗口左上角：不铺柔光底，免得把窗口角和红绿灯洗白
+  { s: 30.0, e: 30.9, text: '06 检验', kind: 'chapter', scrim: false },
   { s: 30.95, e: 33.05, text: '试卷拖进来，题目集就有了', kind: 'feature' },
   // 答错时后端自动建复习计划、下次复习日 = 今天（题目进复习，不是「知识点」）
   { s: 34.5, e: 35.95, text: '答错的题，自动排进今日复习', kind: 'feature' },
   { s: 36.05, e: 37.85, text: 'AI 讲清楚错在哪', kind: 'feature' },
-  { s: 38.0, e: 38.9, text: '07 写作与精读', kind: 'chapter' },
+  { s: 38.0, e: 38.9, text: '07 写作与精读', kind: 'chapter', scrim: false },
   { s: 39.15, e: 41.1, text: '作文按考试标准逐项打分', kind: 'feature' },
   { s: 41.3, e: 42.65, text: '逐句润色，改在哪一看就懂', kind: 'feature' },
   { s: 43.75, e: 45.4, text: '整篇翻译，逐段对照精读', kind: 'feature' },
@@ -188,7 +189,7 @@ const SuperView = ({ sp, t }: { sp: Super; t: number }) => {
     const rule = prog(t, sp.s + 0.04, sp.s + 0.4, ease.outExpo);
     return (
       <>
-        <Scrim at="tl" w={760} h={260} color={dark ? ground : 'hsl(0 0% 97% / 0.98)'} edge={groundEdge} solid={0.52} opacity={prog(t, sp.s - 0.05, sp.s + 0.25) * (1 - out)} />
+        {sp.scrim === false ? null : <Scrim at="tl" w={760} h={260} color={dark ? ground : 'hsl(0 0% 97% / 0.98)'} edge={groundEdge} solid={0.52} opacity={prog(t, sp.s - 0.05, sp.s + 0.25) * (1 - out)} />}
         <div
           style={{
             position: 'absolute',
