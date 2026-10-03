@@ -113,3 +113,25 @@ ui-bridge-server.mjs  ←──WebSocket──→  uiAutomationBridge.ts
 | iphone-15-pro | 393×852 | |
 | breakpoint-edge | 767×1024 | 移动断点上沿 |
 | tablet-portrait | 768×1024 | 平板竖屏 |
+
+## ds-test：真机测试通用驱动（推荐）
+
+`scripts/dev/ds-test.mjs` 在桥之上提供「不会把测试卡住」的命令：每条命令有超时（`--timeout` 秒，默认 20），
+失败以非零码退出并输出一行 JSON 原因；点击默认精确匹配、歧义时列出候选；等待一律是「等到条件成立」
+（长等待每 5 秒打进度）；输入走受控组件可识别的原生 setter 并回读校验。
+
+```bash
+scripts/dev/ds-test.mjs status                      # 桥 / 窗口 / 页面是否可用
+scripts/dev/ds-test.mjs snap '翻译'                  # 按名称过滤的可交互元素
+scripts/dev/ds-test.mjs open 语法笔记_虚拟语气        # 学习资源里打开并确认标签激活
+scripts/dev/ds-test.mjs menu 考研英语核心词汇 用这份资料制卡
+scripts/dev/ds-test.mjs send                         # 发送输入框现有内容（空则拒发），确认气泡出现
+scripts/dev/ds-test.mjs answer 每词一张 --timeout 30  # 回答提问卡片，确认后端已收到
+scripts/dev/ds-test.mjs select 'The letter arrived'  # 页面或同源 iframe 中划词
+off=$(scripts/dev/ds-test.mjs mark | jq .offset)
+scripts/dev/ds-test.mjs wait-log '生成的卡已加入复习' --since $off --timeout 300
+scripts/dev/ds-test.mjs shot epub --crop 684,40,515,60   # 裁剪坐标为 CSS 像素
+```
+
+日志位置默认 `~/Library/Logs/com.deepstudent.app/deep-student.log`（`DS_APP_LOG` 覆盖），按字节偏移读取，
+不受时区与行号影响。
