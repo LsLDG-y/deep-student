@@ -320,15 +320,16 @@ function __vYouPre(cmd, args) {
       ['demo-config-kimi', 'Moonshot', 'moonshot', 'Moonshot AI', 'kimi-k3', 'https://api.moonshot.cn/v1'],
     ].map(([id, name, vendorId, vendorName, model, baseUrl]) => ({ id, name, vendorId, vendorName, providerType: 'openai', apiKey: 'demo-key-not-real', baseUrl, model, isMultimodal: false, isReasoning: true, isEmbedding: false, isReranker: false, enabled: true, modelAdapter: 'openai' }));
     case 'get_setting':
-      if (args?.key === 'mcp.tools.list') return JSON.stringify(globalThis.__vMcpCfg.map(([id, name, namespace]) => ({ id, name, namespace: namespace + ':', transportType: 'stdio' })));
+      if (args?.key === 'mcp.tools.list') return JSON.stringify(globalThis.__vMcpCfg.map(([id, name, namespace]) => ({ id, name, ...(namespace ? { namespace: namespace + ':' } : {}), transportType: 'stdio' })));
       return __VSKIP;
     default: return __VSKIP;
   }
 }
+// 按导入标准 mcpServers JSON 的默认形态：id = 键名、不设命名空间（McpToolsSection 新建 / 导入的 namespace 缺省为空）
 globalThis.__vMcpCfg = [
-  ['mcp_arxiv', 'arxiv-mcp-server', 'arxiv', ['search_papers', 'download_paper', 'list_papers', 'read_paper']],
-  ['mcp_zotero', 'zotero', 'zotero', ['zotero_search_items', 'zotero_get_item_fulltext', 'zotero_get_annotations']],
-  ['mcp_fs', 'filesystem', 'filesystem', ['read_file', 'write_file', 'list_directory', 'search_files', 'get_file_info']],
+  ['arxiv', 'arxiv', '', ['search_papers', 'download_paper', 'list_papers', 'read_paper']],
+  ['zotero', 'zotero', '', ['zotero_search_items', 'zotero_get_item_fulltext', 'zotero_get_annotations']],
+  ['filesystem', 'filesystem', '', ['read_file', 'write_file', 'list_directory', 'search_files', 'get_file_info']],
 ];
 function __vPre(cmd, args) {
   if (globalThis.__vLogIpc) console.log('[ipc] ' + cmd + ' ' + JSON.stringify(args ?? {}).slice(0, 140));
@@ -571,7 +572,9 @@ const YOU_FIXTURE = String.raw`
   ];
   DEMO_SESSIONS.unshift(makeFixture({ id: 'demo-v-mem', title: '拉格朗日中值定理', minutesAgo: 1, autoPrompt: globalThis.__vMemPrompt || '拉格朗日中值定理到底在说什么？', reply: memReply }));
   const mcpReply = [
-    { type: 'mcp_tool', status: 'success', toolName: 'mcp_zotero_search_items', dwellMs: 900, toolInput: { _serverId: 'zotero', query: '中值定理' }, toolOutput: { content: [{ type: 'text', text: '找到 2 条：中值定理证明套路（笔记）；Rolle and Lagrange revisited（论文）' }] } },
+    // 后端对内置与外部 MCP 工具一律发 tool_call 事件（前端没有 mcp_tool 事件处理器，块类型由 toolCall 处理器建成 mcp_tool）；
+    // 外部工具内部名 = mcp_ + 工具名（canonical_tools prepare_external_tool），参数注入 _serverId
+    { type: 'tool_call', status: 'success', toolName: 'mcp_zotero_search_items', dwellMs: 900, toolInput: { _serverId: 'zotero', query: '中值定理' }, toolOutput: { content: [{ type: 'text', text: '找到 2 条：中值定理证明套路（笔记）；Rolle and Lagrange revisited（论文）' }] } },
     { type: 'content', status: 'success', streaming: true, content: '在你的 Zotero 文献库里找到 2 条和中值定理相关的条目：笔记《中值定理证明套路》和论文 *Rolle and Lagrange revisited*。' },
   ];
   DEMO_SESSIONS.unshift(makeFixture({ id: 'demo-v-mcp', title: 'Zotero 文献', minutesAgo: 1, autoPrompt: '在我的 Zotero 文献库里找找讲中值定理的资料', reply: mcpReply }));
@@ -671,7 +674,7 @@ if (process.env.YOU) {
     body += `
 ;(() => {
   const cfg = () => globalThis.__vMcpCfg || [];
-  McpService.listTools = async () => cfg().flatMap(([, , ns, tools]) => tools.map((t) => ({ name: ns + ':' + t, description: t })));
+  McpService.listTools = async () => cfg().flatMap(([, , ns, tools]) => tools.map((t) => ({ name: (ns ? ns + ':' : '') + t, description: t })));
   McpService.status = async () => ({ available: true, connected: true, toolsCount: cfg().reduce((n, c) => n + c[3].length, 0), servers: cfg().map(([id, , ns]) => ({ id, namespace: ns, connected: true })) });
 })();
 `;
@@ -968,16 +971,18 @@ if (scenario === 'probe') {
     if (!b) return console.log('[win] none');
     await shot(name, { x: Math.max(0, b.x), y: Math.max(0, b.y), width: Math.min(b.width, 1920 - b.x), height: Math.min(b.height, 1080 - b.y) });
   };
-  const probe = async (label, target = win) => {
+  // portals：给了选择器就改探页面级浮层（菜单 / 弹层），坐标仍相对窗口
+  const probe = async (label, target = win, portals = '') => {
     const tid = await target.getAttribute('data-wb-window-id');
-    const txt = await page.evaluate((id) => {
+    const txt = await page.evaluate(([id, sel]) => {
       const out = [];
       const root = document.querySelector(`[data-wb-window-id="${id}"]`);
       const r0 = root.getBoundingClientRect();
-      out.push(`window ${root.getAttribute('data-wb-window-id')}: x=${r0.x} y=${r0.y} w=${r0.width} h=${r0.height}`);
-      root.querySelectorAll('*').forEach((el) => {
+      out.push(`window ${root.getAttribute('data-wb-window-id')}: x=${r0.x} y=${r0.y} w=${r0.width} h=${r0.height}${sel ? ` portals=${document.querySelectorAll(sel).length}` : ''}`);
+      const els = sel ? [...document.querySelectorAll(sel)].flatMap((p) => [p, ...p.querySelectorAll('*')]) : [...root.querySelectorAll('*')];
+      els.forEach((el) => {
         const r = el.getBoundingClientRect();
-        if (r.width < 1 || r.height < 1 || r.bottom < r0.y || r.top > r0.bottom) return;
+        if (r.width < 1 || r.height < 1 || (!sel && (r.bottom < r0.y || r.top > r0.bottom))) return;
         const cs = getComputedStyle(el);
         const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join('');
         const isIcon = el.tagName.toLowerCase() === 'svg';
@@ -987,7 +992,7 @@ if (scenario === 'probe') {
         out.push(`${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').filter((c) => /^(activity|todo|ask|chat|input|composer|message|note|paper|wb-)/.test(c)).slice(0, 2).join('.') : ''}${own ? ` "${own.slice(0, 34)}"` : ''} x=${(r.x - r0.x).toFixed(1)} y=${(r.y - r0.y).toFixed(1)} w=${r.width.toFixed(1)} h=${r.height.toFixed(1)} f=${cs.fontSize}/${cs.fontWeight}/${cs.lineHeight} c=${cs.color} bg=${cs.backgroundColor} bd=${cs.borderTopWidth}/${cs.borderLeftWidth} ${cs.borderTopColor} rad=${cs.borderRadius}${cs.boxShadow !== 'none' ? ' sh=' + cs.boxShadow.slice(0, 60) : ''}`);
       });
       return out.join('\n');
-    }, tid);
+    }, [tid, portals]);
     fs.writeFileSync(`${dir}/probe-${label}.txt`, txt);
     console.log('[probe]', label, txt.split('\n')[0]);
   };
@@ -1008,6 +1013,9 @@ if (scenario === 'probe') {
       if (kind === 'wait') await page.waitForTimeout(Number(arg));
       if (kind === 'shot') await winShot(arg);
       if (kind === 'probe') await probe(arg);
+      // 菜单 / 子菜单 / 弹层渲染在页面级浮层里，窗口内的 text: / probe: 够不着
+      if (kind === 'ptext') await tryDo(a, () => page.getByText(arg, { exact: true }).last().click({ timeout: 4000 }));
+      if (kind === 'pprobe') await probe(arg, win, '[role="menu"], [data-radix-popper-content-wrapper], [role="dialog"]');
       if (kind === 'eval') console.log('[eval]', await page.evaluate(arg));
     }
   };

@@ -3,7 +3,7 @@ import { camAt, CameraView, type CamKey } from '../../lib/camera';
 import { clamp, ease, FPS, PACE, prog } from '../../lib/time';
 import { brand, light } from '../../theme';
 import { CHAT_H, CHAT_W, ChatTitlebar } from '../../ui/research';
-import { MCP_H, MCP_W, McpPanel, MEM_TITLE, MemoryChat, memoryTL, MODELS_TITLE, ModelsChat, modelsDoneAt, SKILL_H, SKILL_W, SkillsToolbar, SkillsWindow } from '../../ui/you';
+import { MCP_TITLE, McpChat, mcpTL, MEM_TITLE, MemoryChat, memoryTL, MODELS_TITLE, ModelsChat, modelsDoneAt, SKILL_H, SKILL_W, SkillsToolbar, SkillsWindow } from '../../ui/you';
 import { WbWindow } from '../../ui/workbench';
 
 /**
@@ -30,7 +30,7 @@ const MCP_CX = SKILL_CX + 1350;
 const MODELS_CX = MCP_CX + 1450;
 const MEM_RECT = centered(MEM_CX, CHAT_W, CHAT_H);
 const SKILL_RECT = centered(SKILL_CX, SKILL_W, SKILL_H);
-const MCP_RECT = centered(MCP_CX, MCP_W, MCP_H);
+const MCP_RECT = centered(MCP_CX, CHAT_W, CHAT_H);
 const MODELS_RECT = centered(MODELS_CX, CHAT_W, CHAT_H);
 
 const CAM: CamKey[] = [
@@ -39,8 +39,8 @@ const CAM: CamKey[] = [
   [YOU.skills - 0.2, { x: MEM_CX + 40, y: 590, zoom: 1.16 }, ease.linear],
   [YOU.skills + 0.08, { x: SKILL_CX, y: 590, zoom: 1.14 }, ease.inOutCubic],
   [YOU.mcp - 0.2, { x: SKILL_CX + 30, y: 590, zoom: 1.18 }, ease.linear],
-  [YOU.mcp + 0.06, { x: MCP_CX, y: 560, zoom: 1.34 }, ease.inOutCubic],
-  [YOU.models - 0.2, { x: MCP_CX + 30, y: 560, zoom: 1.4 }, ease.linear],
+  [YOU.mcp + 0.06, { x: MCP_CX, y: 590, zoom: 1.12 }, ease.inOutCubic],
+  [YOU.models - 0.2, { x: MCP_CX + 30, y: 590, zoom: 1.16 }, ease.linear],
   [YOU.models + 0.08, { x: MODELS_CX + 60, y: 590, zoom: 1.12 }, ease.inOutCubic],
   [YOU.out1, { x: MODELS_CX + 80, y: 590, zoom: 1.16 }, ease.linear],
 ];
@@ -99,8 +99,13 @@ export const SceneYou = ({ t }: { t: number }) => {
         <WbWindow tk={tk} rect={SKILL_RECT} toolbar={<SkillsToolbar />} style={rise(t, YOU.skills - 0.1)}>
           <SkillsWindow />
         </WbWindow>
-        <WbWindow tk={tk} rect={MCP_RECT} title="MCP 工具" style={rise(t, YOU.mcp - 0.1)}>
-          <McpPanel tk={tk} k={prog(t, YOU.mcp, YOU.mcp + 0.3)} toggles={prog(t, YOU.mcp + 0.15, YOU.mcp + 0.6)} call={prog(t, YOU.mcp + 0.6, YOU.models - 0.2)} />
+        <WbWindow
+          tk={tk}
+          rect={MCP_RECT}
+          toolbar={<ChatTitlebar title="新对话" next={MCP_TITLE} k={prog(t, mcpTL(YOU.mcp).title, mcpTL(YOU.mcp).title + 0.06)} />}
+          style={rise(t, YOU.mcp - 0.1)}
+        >
+          <McpChat t={t} at={YOU.mcp} />
         </WbWindow>
         <WbWindow
           tk={tk}

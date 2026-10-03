@@ -1,9 +1,7 @@
 import {
   ArrowCounterClockwise,
-  Brain,
   CaretLeft,
   CaretRight,
-  CheckCircle,
   Copy,
   DotsThree,
   GitBranch,
@@ -12,7 +10,6 @@ import {
   MagnifyingGlass,
   Package,
   Pencil,
-  PlugsConnected,
   Plus,
   Square,
   Trash,
@@ -20,8 +17,8 @@ import {
 } from '@phosphor-icons/react';
 import { lobeIconData } from '@app/utils/lobeIconData';
 import type { CSSProperties, ReactNode } from 'react';
-import { clamp, ease, PACE, prog } from '../lib/time';
-import { font, type Tokens } from '../theme';
+import { clamp, PACE } from '../lib/time';
+import { font } from '../theme';
 import { AssistantFooter, ChatSidebar, DockComposer, FG, LINE_SOFT, MUTED, PRI, SourcesRow, T, ToolRow, UserBubble, type SidebarRow } from './research';
 import { at } from './resource';
 
@@ -34,7 +31,7 @@ import { at } from './resource';
 /** 取证 probe-ymc-10：新会话里问概念，先跑记忆搜索，回答按画像里的偏好与易错点作答并带 [忆N] 角标，末尾「2 个结果」。 */
 export const MEM_Q = '拉格朗日中值定理到底在说什么？';
 export const MEM_TITLE = '拉格朗日中值定理';
-type Seg = string | { cite: string };
+type Seg = string | { cite: string } | { em: string };
 const MEM_P1: Seg[][] = [['按你的习惯，先看几何直观', { cite: '[忆1]' }, '：连接 A、B 两点得到一条弦，曲线上一定有一点的'], ['切线和这条弦平行——那一点就是 ξ。']];
 const MEM_P2: Seg[][] = [['再看严格表述：f 在 [a, b] 上连续、在 (a, b) 内可导，则存在 ξ ∈ (a, b)，使 f′(ξ) ='], ['(f(b) − f(a)) / (b − a)。注意 ξ 落在开区间里，这正是你之前容易写错的地方', { cite: '[忆2]' }, '。']];
 
@@ -54,7 +51,8 @@ const Cite = ({ label }: { label: string }) => (
 
 /** 按字数流式展开一段（角标算一个单位，流到它才出现）；返回已开始的行。 */
 const streamLines = (lines: Seg[][], k: number) => {
-  const units = lines.map((l) => l.reduce((s, g) => s + (typeof g === 'string' ? [...g].length : 1), 0));
+  const len = (g: Seg) => (typeof g === 'string' ? [...g].length : 'em' in g ? [...g.em].length : 1);
+  const units = lines.map((l) => l.reduce((s, g) => s + len(g), 0));
   let left = Math.round(units.reduce((s, u) => s + u, 0) * k);
   const out: ReactNode[][] = [];
   for (const l of lines) {
@@ -63,13 +61,17 @@ const streamLines = (lines: Seg[][], k: number) => {
     for (const g of l) {
       if (left <= 0) break;
       if (typeof g === 'string') {
-        const cs = [...g];
-        row.push(cs.slice(0, left).join(''));
-        left -= cs.length;
+        row.push([...g].slice(0, left).join(''));
+      } else if ('em' in g) {
+        row.push(
+          <em key={g.em} style={{ color: MUTED }}>
+            {[...g.em].slice(0, left).join('')}
+          </em>,
+        );
       } else {
         row.push(<Cite key={g.cite} label={g.cite} />);
-        left -= 1;
       }
+      left -= len(g);
     }
     out.push(row);
   }
@@ -228,56 +230,42 @@ export const SkillsWindow = () => (
   </div>
 );
 
-// ── MCP 工具 ──────────────────────────────────────────
-export const MCP_W = 980;
-export const MCP_H = 560;
-const SERVERS: Array<[string, string, string]> = [
-  ['内置工具', '题库 · 知识库搜索 · 导图 · 闪卡 · 记忆 等 40+ 组', '内置'],
-  ['Context7', 'Resolve Library Id · Query Docs', 'OAuth'],
-  ['arxiv-mcp-server', 'Search Papers · Download Paper · List Papers', 'stdio'],
-  ['filesystem', 'Read File · Write File · List Directory', 'stdio'],
-];
+// ── MCP（对话里调用外部 MCP 服务器的工具） ──────────────────
+/**
+ * 取证 probe-ymq-3 / ymq-8：连接器里选了 zotero 服务器后提问，工具行显示「服务器 id · 可读工具名」
+ * （toolDisplayName.getExternalToolDisplayName：_serverId + humanizeToolName('mcp_zotero_search_items')）。
+ */
+export const MCP_Q = '在我的 Zotero 文献库里找找讲中值定理的资料';
+export const MCP_TITLE = 'Zotero 文献';
+const MCP_P: Seg[][] = [['在你的 Zotero 文献库里找到 2 条和中值定理相关的条目：笔记《中值定理证明套路》'], ['和论文 ', { em: 'Rolle and Lagrange revisited' }, '。']];
 
-export const McpPanel = ({ tk, k, toggles, call }: { tk: Tokens; k: number; toggles: number; call: number }) => (
-  <div style={{ position: 'absolute', inset: 0, fontFamily: font.ui, background: tk.background, padding: '22px 26px', boxSizing: 'border-box' }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <PlugsConnected size={18} color={tk.primary} />
-      <span style={{ fontSize: 16, fontWeight: 600, color: tk.foreground }}>MCP 工具</span>
-      <span style={{ fontSize: 13, color: tk.mutedFg }}>选择 MCP / 外部工具连接</span>
+export const mcpTL = (a0: number) => {
+  const tool = a0 + 0.08;
+  const toolDone = tool + 0.909 / PACE;
+  const p = toolDone + 0.04;
+  const done = p + 0.36;
+  return { tool, toolDone, p, done, title: done + 0.12 };
+};
+
+export const McpChat = ({ t, at: a0 }: { t: number; at: number }) => {
+  const tl = mcpTL(a0);
+  const streaming = t >= tl.tool && t < tl.done;
+  const lines = streamLines(MCP_P, clamp((t - tl.p) / (tl.done - tl.p)));
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: '#fff', fontFamily: font.ui, color: FG }}>
+      <ChatSidebar rows={youSidebar('mcp', { title: t >= tl.title ? MCP_TITLE : '未命名会话', time: '刚刚', active: true, streaming })} t={t} />
+      <UserBubble y={60} text={MCP_Q} time={YOU_CLOCK.mcp} />
+      {t >= tl.tool ? <ToolRow y={172.4} label="zotero · Zotero Search Items" w={205.8} icon={MagnifyingGlass} done={t >= tl.toolDone} ms="909ms" /> : null}
+      {lines.map((row, j) => (
+        <T key={j} x={368} y={208.9 + j * LH} size={16} lh={LH}>
+          {row}
+        </T>
+      ))}
+      {t >= tl.done ? <AssistantFooter y={208.9 + MCP_P.length * LH + 23.1} time={YOU_CLOCK.mcp} /> : null}
+      <DockComposer text="" caret={false} mode={streaming ? 'stop' : 'idle'} press={0} />
     </div>
-    <div style={{ marginTop: 16, height: 38, borderRadius: 9, border: `1px solid ${tk.border}`, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', fontSize: 13, color: tk.mutedFg }}>
-      <MagnifyingGlass size={14} />
-      搜索服务器或工具
-    </div>
-    {SERVERS.map(([name, tools, kind], i) => {
-      const kk = clamp(k * 4 - i * 0.6);
-      const on = clamp(toggles * 4 - i);
-      return (
-        <div key={name} style={{ marginTop: 10, height: 64, borderRadius: 10, border: `1px solid ${on > 0.5 ? `color-mix(in hsl, ${tk.primary} 35%, ${tk.border})` : tk.border}`, background: on > 0.5 ? `color-mix(in hsl, ${tk.primary} 5%, ${tk.background})` : tk.background, display: 'flex', alignItems: 'center', gap: 14, padding: '0 16px', opacity: kk, transform: `translateY(${(1 - kk) * 8}px)` }}>
-          <span style={{ width: 18, height: 18, borderRadius: 5, boxSizing: 'border-box', border: `1.5px solid ${on > 0.5 ? tk.primary : tk.border}`, background: on > 0.5 ? tk.primary : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-            {on > 0.5 ? (
-              <svg width={10} height={10} viewBox="0 0 10 10">
-                <path d="M2 5.2 L4.2 7.3 L8 3" fill="none" stroke="#fff" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : null}
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: tk.foreground }}>{name}</span>
-            <span style={{ display: 'block', marginTop: 3, fontSize: 12, color: tk.mutedFg, whiteSpace: 'nowrap' }}>{tools}</span>
-          </span>
-          <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, color: tk.mutedFg, background: tk.muted }}>{kind}</span>
-        </div>
-      );
-    })}
-    {call > 0 ? (
-      <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, opacity: clamp(call * 4) }}>
-        {call >= 1 ? <CheckCircle size={16} weight="fill" color={tk.success} /> : <Wrench size={16} color={tk.mutedFg} />}
-        <span style={{ color: tk.foreground }}>工具调用 · Context7 / Query Docs</span>
-        <span style={{ fontSize: 13, color: call >= 1 ? tk.success : tk.mutedFg }}>{call >= 1 ? '完成 (1.2s)' : '执行中...'}</span>
-      </div>
-    ) : null}
-  </div>
-);
+  );
+};
 
 // ── 多模型并排（对话窗口里的并行变体 ParallelVariantView） ──────────
 /** 片中这段的会话时刻：接在 08（20:05）之后，记忆 → MCP → 多模型各隔两分钟。 */
