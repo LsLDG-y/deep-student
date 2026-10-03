@@ -263,6 +263,11 @@ const examState = (t: number): ExamState => {
   return {
     stage,
     enter: stage === 'home' ? 1 : prog(t, since, since + 0.05),
+    collapse: prog(t, DAY.examNew + 0.02, DAY.examNew + 0.02 + SIDEBAR_COLLAPSE_S),
+    timer: (() => {
+      const sec = Math.max(0, Math.floor((t - DAY.examQ7) * PACE));
+      return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+    })(),
     created: t >= DAY.examNew + 0.02,
     renamed: prog(t, DAY.examParsed + 0.06, DAY.examParsed + 0.16),
     drag: t < DAY.examDrop + 0.02 ? prog(t, DRAG_IN, DRAG_IN + 0.04) : 0,
@@ -311,18 +316,18 @@ const DAY_CAM: CamKey[] = [
   // 06：窗口 + 右侧桌面（试卷从屏幕右缘拖进来）→ 推进识别导入 → 题库全貌 → 做题（取景含屏幕顶部，提示在那里）→ 推近 AI 解析
   [DAY.examNew - 0.12, { x: 800, y: 500, zoom: 1.15 }, ease.inOutCubic],
   [DAY.examGrab + 0.05, { x: 860, y: 500, zoom: 1.15 }, ease.linear],
-  [DAY.examDrop + 0.22, { x: 672, y: 470, zoom: 1.55 }, ease.inOutCubic],
-  [DAY.examParse + 0.1, { x: 672, y: 470, zoom: 1.55 }, ease.linear],
-  [DAY.examParse + 0.5, { x: 672, y: 462, zoom: 1.6 }, ease.inOutCubic],
-  [DAY.examParsed - 0.02, { x: 672, y: 462, zoom: 1.6 }, ease.linear],
-  [DAY.examParsed + 0.2, { x: 672, y: 440, zoom: 1.65 }, ease.inOutCubic],
-  [DAY.examView - 0.02, { x: 672, y: 442, zoom: 1.65 }, ease.linear],
-  [DAY.examView + 0.24, { x: 686, y: 466, zoom: 1.4 }, ease.inOutCubic],
-  [DAY.examQ7 - 0.02, { x: 686, y: 466, zoom: 1.4 }, ease.linear],
-  [DAY.examQ7 + 0.26, { x: 722, y: 406, zoom: 1.33 }, ease.inOutCubic],
-  [TOAST_AT + TOAST_DUR - 0.25, { x: 722, y: 406, zoom: 1.33 }, ease.linear],
-  [TOAST_AT + TOAST_DUR + 0.3, { x: 672, y: 606, zoom: 1.75 }, ease.inOutCubic],
-  [DAY.essayLaunch - 0.62, { x: 676, y: 610, zoom: 1.77 }, ease.linear],
+  [DAY.examDrop + 0.22, { x: 536, y: 470, zoom: 1.55 }, ease.inOutCubic],
+  [DAY.examParse + 0.1, { x: 536, y: 470, zoom: 1.55 }, ease.linear],
+  [DAY.examParse + 0.5, { x: 536, y: 462, zoom: 1.6 }, ease.inOutCubic],
+  [DAY.examParsed - 0.02, { x: 536, y: 462, zoom: 1.6 }, ease.linear],
+  [DAY.examParsed + 0.2, { x: 536, y: 440, zoom: 1.65 }, ease.inOutCubic],
+  [DAY.examView - 0.02, { x: 536, y: 442, zoom: 1.65 }, ease.linear],
+  [DAY.examView + 0.24, { x: 536, y: 466, zoom: 1.4 }, ease.inOutCubic],
+  [DAY.examQ7 - 0.02, { x: 536, y: 466, zoom: 1.4 }, ease.linear],
+  [DAY.examQ7 + 0.26, { x: 500, y: 406, zoom: 1.33 }, ease.inOutCubic],
+  [TOAST_AT + TOAST_DUR - 0.25, { x: 500, y: 406, zoom: 1.33 }, ease.linear],
+  [TOAST_AT + TOAST_DUR + 0.3, { x: 450, y: 606, zoom: 1.75 }, ease.inOutCubic],
+  [DAY.essayLaunch - 0.62, { x: 450, y: 610, zoom: 1.77 }, ease.linear],
   [DAY.essayLaunch - 0.25, FULL, ease.inOutCubic],
   [DAY.essayOpen + 0.1, FULL, ease.linear],
   // 07：作文窗口 → 新建 → 输入区（粘贴）→ 模型行（开始批改）→ 结果区（流式批注）→ 分数卡 / 雷达 → 润色提升
@@ -641,7 +646,7 @@ export const SceneDay = ({ t }: { t: number }) => {
             </WbWindow>
           ) : null}
           {exam.visible ? (
-            <WbWindow tk={tk} rect={EXAM_RECT} title={APP_NAMES.exam} focused={t < DAY.essayOpen} style={exam.style}>
+            <WbWindow tk={tk} rect={EXAM_RECT} toolbar={<ResourceTitlebar title={APP_NAMES.exam} rail={t < DAY.examNew + 0.02} />} focused={t < DAY.essayOpen} style={exam.style}>
               <ExamView tk={tk} s={examState(t)} />
             </WbWindow>
           ) : null}
