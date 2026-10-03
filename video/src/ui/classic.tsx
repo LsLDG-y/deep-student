@@ -1,13 +1,20 @@
 import {
+  ArrowClockwise,
   ArrowSquareOut,
+  BookmarkSimple,
+  BookOpen,
   CaretDown,
   CaretLeft,
   CaretRight,
   ChatDots,
   Cards,
   Copy,
-  FileText,
+  CornersOut,
+  File as FileIcon,
   FolderPlus,
+  Highlighter,
+  Moon,
+  SquaresFour,
   FunnelSimple,
   MagnifyingGlass,
   MagnifyingGlassMinus,
@@ -36,7 +43,7 @@ import { StreamingRing, type SidebarRow } from './research';
 import { PAGE_H, TextbookPage } from './TextbookPage';
 
 export const CW = { w: 1760, h: 990, nav: 320, title: 40, panel: 720, chatX: 320, chatW: 720, panelX: 1040 } as const;
-export const PANEL_HEADER = 44;
+export const PANEL_HEADER = 40.5;
 export const PDF_TOOLBAR = 36;
 /** 面板里第一页纸左上角（面板左侧有 1px 边框，内容从边框内侧算起）。 */
 export const PAGE_ORIGIN = { x: CW.panelX + 1 + 16, y: CW.title + PANEL_HEADER + 16 };
@@ -213,27 +220,15 @@ export const PdfPanel = ({
         overflow: 'hidden',
       }}
     >
-      <div
-        style={{
-          height: PANEL_HEADER,
-          boxSizing: 'border-box',
-          padding: '8px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          borderBottom: `1px solid ${tk.border}`,
-        }}
-      >
-        <FileText size={16} color={tk.mutedFg} />
-        <span style={{ fontSize: 14, fontWeight: 500, color: tk.foreground }}>高等数学（第七版）上册</span>
-        <span style={{ fontSize: 12, color: tk.mutedFg }}>PDF</span>
-        <span style={{ flex: 1 }} />
-        <span style={{ width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: tk.mutedFg }}>
-          <ArrowSquareOut size={14} />
+      {/* 头部（probe-clr-pdf，x 相对面板左缘）：文件图标 + 文件名 12px +「(文档)」… 外部打开 / 关闭 */}
+      <div style={{ position: 'relative', height: PANEL_HEADER, background: tk.background }}>
+        <FileIcon size={16} color={tk.mutedFg} style={{ position: 'absolute', left: 12.5, top: 12.3 }} />
+        <span style={{ position: 'absolute', left: 35.5, top: 11.3, display: 'inline-flex', alignItems: 'baseline', gap: 7, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 12, fontWeight: 500, lineHeight: '18px', color: tk.foreground }}>高等数学（第七版）上册.pdf</span>
+          <span style={{ fontSize: 11, lineHeight: '16.5px', color: tk.mutedFg }}>(文档)</span>
         </span>
-        <span style={{ width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: tk.mutedFg }}>
-          <X size={16} />
-        </span>
+        <ArrowSquareOut size={14} color={tk.mutedFg} style={{ position: 'absolute', left: 662.3, top: 13.3 }} />
+        <X size={16} color={tk.mutedFg} style={{ position: 'absolute', left: 689.3, top: 12.3 }} />
       </div>
       <div style={{ position: 'relative', height: bodyH - PDF_TOOLBAR, overflow: 'hidden', background: tk.dark ? 'hsl(0 0% 11%)' : 'hsl(0 0% 96%)' }}>
         <div style={{ position: 'absolute', left: 16, top: 16 - scrollY }}>
@@ -241,33 +236,43 @@ export const PdfPanel = ({
           <FillerPage style={{ marginTop: 16 }} n={133} />
           <TextbookPage page={134} style={{ marginTop: 16, boxShadow: pageShadow() }} />
         </div>
-        <div style={{ position: 'absolute', left: 0, bottom: 0, height: 3, width: `${((pageLabel - 1) / 486) * 100}%`, background: tk.primary }} />
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: 'rgb(240, 240, 240)' }} />
+        <div style={{ position: 'absolute', left: 0, bottom: 0, height: 3, width: `${(pageLabel / PDF_PAGES) * 100}%`, background: tk.primary }} />
+        <span style={{ position: 'absolute', right: 8, bottom: 4.5, padding: '0 4px', borderRadius: 4, background: tk.background, fontSize: 11, lineHeight: '16.5px', color: tk.mutedFg }}>{Math.round((pageLabel / PDF_PAGES) * 100)}%</span>
       </div>
-      <div
-        style={{
-          height: PDF_TOOLBAR,
-          boxSizing: 'border-box',
-          padding: '0 8px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          borderTop: `1px solid ${tk.border}`,
-          background: tk.card,
-          color: tk.mutedFg,
-          fontSize: 12,
-        }}
-      >
-        <CaretLeft size={14} />
-        <span style={{ color: tk.foreground, fontVariantNumeric: 'tabular-nums' }}>{pageLabel} / 486</span>
-        <CaretRight size={14} />
-        <span style={{ width: 1, height: 16, background: tk.border }} />
-        <MagnifyingGlassMinus size={14} />
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>100%</span>
-        <MagnifyingGlassPlus size={14} />
-      </div>
+      <PdfToolbar tk={tk} page={pageLabel} />
     </div>
   );
 };
+
+export const PDF_PAGES = 486;
+const tbIcon = (x: number): CSSProperties => ({ position: 'absolute', left: x, top: 10.5 });
+/** 底部工具条（居中一排，x 相对面板左缘）：缩略图 / 搜索 | 书签 / 批注笔（默认激活）/ − 100% ▾ + | ‹ [页] /总 › / 旋转 / 夜间 / 阅读 / 全屏。 */
+const PdfToolbar = ({ tk, page }: { tk: Tokens; page: number }) => (
+  <div style={{ position: 'relative', height: PDF_TOOLBAR, boxSizing: 'border-box', borderTop: '1px solid rgba(224, 224, 224, 0.5)', background: 'rgb(252, 252, 252)', color: tk.mutedFg }}>
+    <SquaresFour size={16} style={tbIcon(110.4)} />
+    <MagnifyingGlass size={16} style={tbIcon(140.4)} />
+    <span style={{ ...tbIcon(166.4), width: 1, height: 16, background: 'rgba(224, 224, 224, 0.4)' }} />
+    <BookmarkSimple size={16} style={tbIcon(177.4)} />
+    <span style={{ position: 'absolute', left: 201.4, top: 5.5, width: 28, height: 26, borderRadius: 6, background: 'rgba(30, 94, 184, 0.1)' }} />
+    <Highlighter size={16} color={tk.primary} style={tbIcon(207.4)} />
+    <MagnifyingGlassMinus size={16} style={tbIcon(237.4)} />
+    <span style={{ position: 'absolute', left: 264.4, top: 12.5, width: 42, textAlign: 'center', fontSize: 12, fontWeight: 500, lineHeight: '12px' }}>100%</span>
+    <CaretDown size={12} style={{ position: 'absolute', left: 313.4, top: 12.5 }} />
+    <MagnifyingGlassPlus size={16} style={tbIcon(336.4)} />
+    <span style={{ ...tbIcon(362.4), width: 1, height: 16, background: 'rgba(224, 224, 224, 0.4)' }} />
+    <CaretLeft size={16} style={tbIcon(373.4)} />
+    <span style={{ position: 'absolute', left: 397.4, top: 4.5, width: 44, height: 28, boxSizing: 'border-box', borderRadius: 6, border: '1px solid rgba(224, 224, 224, 0.7)', background: 'rgba(240, 240, 240, 0.3)', fontSize: 12, lineHeight: '26px', textAlign: 'center', color: tk.foreground, fontVariantNumeric: 'tabular-nums' }}>{page}</span>
+    <span style={{ position: 'absolute', left: 445.4, top: 9.5, fontSize: 12, lineHeight: '18px', fontVariantNumeric: 'tabular-nums' }}>/{PDF_PAGES}</span>
+    <CaretRight size={16} style={tbIcon(475.6 + PAGES_DX)} />
+    <ArrowClockwise size={16} style={tbIcon(505.6 + PAGES_DX)} />
+    <Moon size={16} style={tbIcon(535.6 + PAGES_DX)} />
+    <BookOpen size={16} style={tbIcon(565.6 + PAGES_DX)} />
+    <CornersOut size={16} style={tbIcon(595.6 + PAGES_DX)} />
+  </div>
+);
+/** 「/60」→「/486」多一位数字（12px 数字宽约 7px）。 */
+const PAGES_DX = 7;
 
 const FillerPage = ({ style, n }: { style?: CSSProperties; n: number }) => (
   <div style={{ width: 688, height: PAGE_H, background: '#fff', borderRadius: 4, position: 'relative', ...style }}>
