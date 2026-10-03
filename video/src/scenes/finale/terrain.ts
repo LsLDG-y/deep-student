@@ -149,13 +149,19 @@ const RIDGE_GAIN = 0.42;
 /** 噪声对包络的调制：高度 × (1 + 脊 × MUL − SUB)。 */
 const RIDGE_MUL = 0.95;
 const RIDGE_SUB = 0.3;
+/**
+ * 山脊用平滑绝对值 √(n² + ε²) 代替 |n|，再除以 (1 − ε) 让脊顶仍是 1。
+ * 硬 |n| 在每条噪声零线上留下一道折痕，四层叠起来满山都是棱：晕渲成一块块三角面，等高线在棱上折断。
+ */
+const RIDGE_SOFT = 0.12;
+const ridgeN = (s: number) => (1 - Math.sqrt(s * s + RIDGE_SOFT * RIDGE_SOFT)) / (1 - RIDGE_SOFT);
 export const ridged = (x: number, y: number) => {
   let sum = 0;
   let amp = 0.6;
   let f = RIDGE_FREQ;
   let prev = 1;
   for (let o = 0; o < 4; o++) {
-    let n = 1 - Math.abs(snoise(x * f + o * 17.3, y * f - o * 9.1));
+    let n = ridgeN(snoise(x * f + o * 17.3, y * f - o * 9.1));
     n *= n;
     sum += n * amp * prev;
     prev = n;
@@ -304,7 +310,8 @@ float ridged(vec2 p) {
   float prev = 1.0;
   for (int o = 0; o < 4; o++) {
     float fo = float(o);
-    float n = 1.0 - abs(snoise(vec2(p.x * f + fo * 17.3, p.y * f - fo * 9.1)));
+    float sn = snoise(vec2(p.x * f + fo * 17.3, p.y * f - fo * 9.1));
+    float n = (1.0 - sqrt(sn * sn + ${(RIDGE_SOFT * RIDGE_SOFT).toFixed(4)})) / ${(1 - RIDGE_SOFT).toFixed(4)};
     n *= n;
     sum += n * amp * prev;
     prev = n;
