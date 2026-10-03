@@ -22,7 +22,7 @@ import { lobeIconData } from '@app/utils/lobeIconData';
 import type { CSSProperties, ReactNode } from 'react';
 import { clamp, ease, PACE, prog } from '../lib/time';
 import { font, type Tokens } from '../theme';
-import { ChatSidebar, DockComposer, FG, LINE_SOFT, MUTED, PRI, T, UserBubble, type SidebarRow } from './research';
+import { AssistantFooter, ChatSidebar, DockComposer, FG, LINE_SOFT, MUTED, PRI, SourcesRow, T, ToolRow, UserBubble, type SidebarRow } from './research';
 import { at } from './resource';
 
 /**
@@ -30,54 +30,81 @@ import { at } from './resource';
  * 文案来自 learningHub（记忆）、skills.json builtinNames（58 个内置技能）、chatV2 blocks.mcpTool。
  */
 
-// ── 智能记忆 ──────────────────────────────────────────
-export const MEM_W = 1080;
-export const MEM_H = 540;
-const MEMORIES: Array<[string, string, string]> = [
-  ['学科状态', '中值定理里 ξ 的取值范围反复写成闭区间', '新增'],
-  ['学习偏好', '先看几何直观，再看严格证明', '新增'],
-  ['目标', '期末高数 90 分以上；雅思写作 7 分', '更新'],
-  ['写作', '主谓一致仍是主要失分点', '新增'],
-];
-const ANSWER = '按你的习惯，先看几何直观：连接 A、B 两点得到一条弦，曲线上一定有一点的切线和这条弦平行——那一点就是 ξ，而且它只可能在 a、b 之间，不会落在端点上。';
+// ── 记忆（对话里的「记忆搜索」工具 + [忆N] 引用） ─────────────
+/** 取证 probe-ymc-10：新会话里问概念，先跑记忆搜索，回答按画像里的偏好与易错点作答并带 [忆N] 角标，末尾「2 个结果」。 */
+export const MEM_Q = '拉格朗日中值定理到底在说什么？';
+export const MEM_TITLE = '拉格朗日中值定理';
+type Seg = string | { cite: string };
+const MEM_P1: Seg[][] = [['按你的习惯，先看几何直观', { cite: '[忆1]' }, '：连接 A、B 两点得到一条弦，曲线上一定有一点的'], ['切线和这条弦平行——那一点就是 ξ。']];
+const MEM_P2: Seg[][] = [['再看严格表述：f 在 [a, b] 上连续、在 (a, b) 内可导，则存在 ξ ∈ (a, b)，使 f′(ξ) ='], ['(f(b) − f(a)) / (b − a)。注意 ξ 落在开区间里，这正是你之前容易写错的地方', { cite: '[忆2]' }, '。']];
 
-export const MemoryPanel = ({ tk, k, answer }: { tk: Tokens; k: number; answer: number }) => (
-  <div style={{ position: 'absolute', inset: 0, fontFamily: font.ui, background: tk.background, display: 'flex' }}>
-    <div style={{ width: 470, borderRight: `1px solid ${tk.border}`, padding: '22px 24px', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Brain size={17} color={tk.primary} />
-        <span style={{ fontSize: 16, fontWeight: 600, color: tk.foreground }}>记忆</span>
-        <span style={{ fontSize: 12, color: tk.mutedFg }}>每轮对话后自动提取</span>
-      </div>
-      {MEMORIES.map(([cat, text, badge], i) => {
-        const kk = clamp(k * 4.4 - i);
-        return (
-          <div key={text} style={{ marginTop: 14, borderRadius: 10, border: `1px solid ${tk.border}`, background: tk.card, padding: '11px 14px', opacity: kk, transform: `translateX(${(1 - kk) * -14}px)` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: tk.mutedFg }}>
-              <span>{cat}</span>
-              <span style={{ flex: 1 }} />
-              <span style={{ padding: '1px 8px', borderRadius: 999, color: badge === '新增' ? tk.success : tk.primary, background: `color-mix(in hsl, ${badge === '新增' ? tk.success : tk.primary} 11%, transparent)` }}>{badge}</span>
-            </div>
-            <div style={{ marginTop: 5, fontSize: 14, lineHeight: 1.6, color: tk.foreground }}>{text}</div>
-          </div>
-        );
-      })}
-      <div style={{ marginTop: 16, fontSize: 12, lineHeight: 1.7, color: tk.mutedFg, opacity: clamp(k * 4.4 - 4) }}>分类汇总成画像，自动带进之后的对话；可随时浏览、编辑、删除。</div>
-    </div>
-    <div style={{ flex: 1, padding: '22px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ alignSelf: 'flex-end', maxWidth: '80%', borderRadius: 12, padding: '11px 16px', background: tk.muted, fontSize: 15, lineHeight: '24px', color: tk.foreground, opacity: clamp(answer * 6) }}>拉格朗日中值定理到底在说什么？</div>
-      {answer > 0.12 ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: tk.mutedFg }}>
-          <CheckCircle size={15} weight="fill" color={tk.success} />
-          已参考 2 条记忆：学习偏好 · 学科状态
-        </div>
-      ) : null}
-      <div style={{ fontSize: 16, lineHeight: '30px', color: tk.foreground }}>
-        {[...ANSWER].slice(0, Math.round([...ANSWER].length * clamp((answer - 0.18) / 0.82))).join('')}
-      </div>
-    </div>
-  </div>
+/** 记忆这段的时间轴（脚本秒）：工具 718ms（÷PACE）→ 两段流式 → 来源行 / 页脚 → 首轮结束起名。 */
+export const memoryTL = (a0: number) => {
+  const tool = a0 + 0.1;
+  const toolDone = tool + 0.718 / PACE;
+  const p1 = toolDone + 0.04;
+  const p2 = p1 + 0.5;
+  const done = p2 + 0.56;
+  return { tool, toolDone, p1, p2, done, title: done + 0.2 };
+};
+
+const Cite = ({ label }: { label: string }) => (
+  <span style={{ display: 'inline-block', height: 17.5, margin: '0 4px', padding: '0 4.5px', borderRadius: 9, background: 'rgba(30, 94, 184, 0.1)', color: PRI, fontSize: 11, fontWeight: 500, lineHeight: '17.5px', verticalAlign: 'middle', position: 'relative', top: -1.5 }}>{label}</span>
 );
+
+/** 按字数流式展开一段（角标算一个单位，流到它才出现）；返回已开始的行。 */
+const streamLines = (lines: Seg[][], k: number) => {
+  const units = lines.map((l) => l.reduce((s, g) => s + (typeof g === 'string' ? [...g].length : 1), 0));
+  let left = Math.round(units.reduce((s, u) => s + u, 0) * k);
+  const out: ReactNode[][] = [];
+  for (const l of lines) {
+    if (left <= 0) break;
+    const row: ReactNode[] = [];
+    for (const g of l) {
+      if (left <= 0) break;
+      if (typeof g === 'string') {
+        const cs = [...g];
+        row.push(cs.slice(0, left).join(''));
+        left -= cs.length;
+      } else {
+        row.push(<Cite key={g.cite} label={g.cite} />);
+        left -= 1;
+      }
+    }
+    out.push(row);
+  }
+  return out;
+};
+
+export const MemoryChat = ({ t, at: a0 }: { t: number; at: number }) => {
+  const tl = memoryTL(a0);
+  const streaming = t >= tl.tool && t < tl.done;
+  const l1 = streamLines(MEM_P1, clamp((t - tl.p1) / (tl.p2 - tl.p1 - 0.02)));
+  const l2 = streamLines(MEM_P2, clamp((t - tl.p2) / (tl.done - tl.p2)));
+  const yP1 = 208.9;
+  const yP2 = yP1 + l1.length * LH + 18.9;
+  const ySrc = (l2.length ? yP2 + l2.length * LH : yP1 + l1.length * LH) + 29.8;
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: '#fff', fontFamily: font.ui, color: FG }}>
+      <ChatSidebar rows={youSidebar('memory', { title: t >= tl.title ? MEM_TITLE : '未命名会话', time: '刚刚', active: true, streaming })} t={t} />
+      <UserBubble y={60} text={MEM_Q} time={YOU_CLOCK.memory} />
+      {t >= tl.tool ? <ToolRow y={172.4} label="记忆搜索" w={64} icon={MagnifyingGlass} done={t >= tl.toolDone} ms="718ms" /> : null}
+      {l1.map((row, j) => (
+        <T key={`a${j}`} x={368} y={yP1 + j * LH} size={16} lh={LH}>
+          {row}
+        </T>
+      ))}
+      {l2.map((row, j) => (
+        <T key={`b${j}`} x={368} y={yP2 + j * LH} size={16} lh={LH}>
+          {row}
+        </T>
+      ))}
+      {l1.length ? <SourcesRow y={ySrc} n={2} searching={false} /> : null}
+      {t >= tl.done ? <AssistantFooter y={ySrc + 39.6} time={YOU_CLOCK.memory} /> : null}
+      <DockComposer text="" caret={false} mode={streaming ? 'stop' : 'idle'} press={0} />
+    </div>
+  );
+};
 
 // ── 技能管理（system/skills 应用，SkillsManagementPage + SkillsList） ──────
 /** 技能管理窗默认 980×680；几何取自 probe-ysk（窗口坐标），卡片文案为技能注册表的中文描述。 */
@@ -266,7 +293,7 @@ export const youSidebar = (scene: 'memory' | 'mcp' | 'models', head: SidebarRow)
       : scene === 'mcp'
         ? [{ title: '拉格朗日中值定理', time: '2分钟前' }, { title: '大模型辅助数学证明', time: '9分钟前' }]
         : [{ title: 'Zotero 文献', time: '2分钟前' }, { title: '拉格朗日中值定理', time: '4分钟前' }, { title: '大模型辅助数学证明', time: '11分钟前' }];
-  return [head, ...older, { title: '讲透拉格朗日中值定理', time: '23小时前' }, { title: '线性代数：特征值的直觉', time: '2天前' }];
+  return [head, ...older, { title: '讲透拉格朗日中值定理', time: '23小时前' }, { title: '线性代数：特征值的直觉', time: '2天前' }, { title: '英语作文批改 · Task 2', time: '3天前' }];
 };
 
 /** ProviderIcon 单色图标：deepseek / zhipu 走 lobeIconData，moonshot 走 Lobe KimiMono。 */
