@@ -81,15 +81,15 @@ export const CHAT_H = 720;
 export const HUB_W = 980;
 export const HUB_H = 660;
 
-const FG = 'rgb(42, 45, 50)';
-const FG2 = 'rgb(59, 63, 69)';
-const MUTED = 'rgb(101, 105, 114)';
-const PRI = 'rgb(30, 94, 184)';
-const GREEN = 'rgb(37, 147, 95)';
+export const FG = 'rgb(42, 45, 50)';
+export const FG2 = 'rgb(59, 63, 69)';
+export const MUTED = 'rgb(101, 105, 114)';
+export const PRI = 'rgb(30, 94, 184)';
+export const GREEN = 'rgb(37, 147, 95)';
 const NAV_BG = 'rgb(242, 242, 242)';
 const SEL_BG = 'rgba(42, 45, 50, 0.1)';
-const LINE = 'rgba(224, 224, 224, 0.7)';
-const LINE_SOFT = 'rgba(224, 224, 224, 0.5)';
+export const LINE = 'rgba(224, 224, 224, 0.7)';
+export const LINE_SOFT = 'rgba(224, 224, 224, 0.5)';
 const SECTION_FG = 'rgba(101, 105, 114, 0.72)';
 const PANEL_LINE = 'rgba(224, 224, 224, 0.574)';
 
@@ -141,7 +141,7 @@ const typed = (text: string, t: number, a: number, b: number) => (t < a ? '' : t
 /** 产品动画按真实时长写，片中脚本秒 = 真实秒 / PACE */
 const spin = (t: number, periodS: number) => ((t * PACE) / periodS) * 360;
 
-const T = ({ x, y, size, weight = 400, lh, color = FG, style, children }: { x: number; y: number; size: number; weight?: number; lh: number; color?: string; style?: CSSProperties; children: ReactNode }) => (
+export const T = ({ x, y, size, weight = 400, lh, color = FG, style, children }: { x: number; y: number; size: number; weight?: number; lh: number; color?: string; style?: CSSProperties; children: ReactNode }) => (
   <span style={{ ...at(x, y), fontSize: size, fontWeight: weight, lineHeight: `${lh}px`, color, whiteSpace: 'nowrap', ...style }}>{children}</span>
 );
 
@@ -178,9 +178,9 @@ const StreamingRing = ({ x, y, t }: { x: number; y: number; t: number }) => {
   );
 };
 
-type SidebarRow = { title: string; time: string; active?: boolean; streaming?: boolean; enter?: number };
+export type SidebarRow = { title: string; time: string; active?: boolean; streaming?: boolean; enter?: number };
 
-const ChatSidebar = ({ rows, t }: { rows: SidebarRow[]; t: number }) => (
+export const ChatSidebar = ({ rows, t }: { rows: SidebarRow[]; t: number }) => (
   <>
     <span style={{ ...at(1, 39), width: 271, height: 681, background: NAV_BG }} />
     <T x={15} y={45.8} size={18} weight={600} lh={18} style={{ fontFamily: font.display }}>
@@ -278,7 +278,7 @@ const EmptyComposer = ({ text, caret, mode, press }: ComposerProps) => (
 );
 
 /** 对话态输入框（贴底 616 宽，上沿直角接任务面板）。 */
-const DockComposer = ({ text, caret, mode, press, hint }: ComposerProps) => (
+export const DockComposer = ({ text, caret, mode, press, hint }: ComposerProps) => (
   <>
     <span style={{ ...at(368, 613), width: 616, height: 98, boxSizing: 'border-box', borderRadius: '0 0 16px 16px', border: `1px solid ${LINE}`, background: '#fff' }} />
     <span style={{ ...at(383, 628.5), width: 586, fontSize: 15, lineHeight: '24.375px', color: text ? FG : 'rgba(101, 105, 114, 0.7)', whiteSpace: 'pre' }}>
@@ -353,12 +353,12 @@ const SlashPopover = ({ k }: { k: number }) => (
 );
 
 // ── 消息块 ────────────────────────────────────────────
-const UserBubble = ({ y, text }: { y: number; text: string }) => (
+export const UserBubble = ({ y, text, time = '20:05' }: { y: number; text: string; time?: string }) => (
   <>
     <span style={{ position: 'absolute', right: 1078 - 984 + 1, top: y - 39, maxWidth: 560, boxSizing: 'border-box', padding: '10.5px 14px', borderRadius: 12, background: 'rgb(240, 240, 240)', fontSize: 16, lineHeight: '26.4px', color: FG, whiteSpace: 'nowrap' }}>{text}</span>
     <Copy size={16} color={MUTED} style={at(917.1, y + 63.9)} />
     <T x={947.9} y={y + 65.3} size={11} lh={13.2} color="rgba(101, 105, 114, 0.5)">
-      20:05
+      {time}
     </T>
   </>
 );
@@ -375,7 +375,7 @@ const ThinkRow = ({ y }: { y: number }) => (
 );
 
 /** 工具摘要行（activity-timeline-tool-trigger），y = 文字顶。group：「已调用 N 个工具」，状态灰字、末尾折叠箭头。 */
-const ToolRow = ({ y, label, w, icon: Ico, done, ms, group }: { y: number; label: string; w: number; icon: Icon; done: boolean; ms?: string; group?: boolean }) => {
+export const ToolRow = ({ y, label, w, icon: Ico, done, ms, group }: { y: number; label: string; w: number; icon: Icon; done: boolean; ms?: string; group?: boolean }) => {
   const x2 = 398.8 + w + 5.2;
   return (
     <>
@@ -468,7 +468,7 @@ const TodoSnapshot = ({ y, st, t }: { y: number; st: StepSt[]; t: number }) => (
 );
 
 /** 「N 个结果」来源行：y = 图标顶。 */
-const SourcesRow = ({ y, n, searching }: { y: number; n: number; searching: boolean }) => (
+export const SourcesRow = ({ y, n, searching }: { y: number; n: number; searching: boolean }) => (
   <>
     <MagnifyingGlass size={16} color={MUTED} style={at(368, y)} />
     <T x={390} y={y + 1.3} size={13.3} weight={600} lh={13.3} color={FG2}>
@@ -484,7 +484,7 @@ const SourcesRow = ({ y, n, searching }: { y: number; n: number; searching: bool
 );
 
 /** 助手消息页脚：模型名 · 复制 / 重试 / 更多 · 时间。y = 图标按钮顶。 */
-const AssistantFooter = ({ y }: { y: number }) => (
+export const AssistantFooter = ({ y, time = '20:05' }: { y: number; time?: string }) => (
   <>
     <T x={368} y={y + 6.9} size={11} weight={500} lh={13.2} color="rgba(101, 105, 114, 0.7)">
       deepseek-v4
@@ -493,16 +493,16 @@ const AssistantFooter = ({ y }: { y: number }) => (
     <ArrowCounterClockwise size={16} color={MUTED} style={at(493.2, y + 6)} />
     <DotsThree size={16} weight="bold" color={MUTED} style={at(522.9, y + 6)} />
     <T x={551.9} y={y + 7.4} size={11} lh={13.2} color="rgba(101, 105, 114, 0.5)">
-      20:05
+      {time}
     </T>
   </>
 );
 
-const Badge = ({ x, y, label }: { x: number; y: number; label: string }) => (
+export const Badge = ({ x, y, label }: { x: number; y: number; label: string }) => (
   <span style={{ ...at(x, y), height: 17.5, padding: '0 4.5px', borderRadius: 9, background: 'rgba(30, 94, 184, 0.1)', color: PRI, fontSize: 11, fontWeight: 500, lineHeight: '17.5px' }}>{label}</span>
 );
 
-const P = ({ x = 368, y, text, weight = 400 }: { x?: number; y: number; text: ReactNode; weight?: number }) => (
+export const P = ({ x = 368, y, text, weight = 400 }: { x?: number; y: number; text: ReactNode; weight?: number }) => (
   <T x={x} y={y} size={16} weight={weight} lh={27.52}>
     {text}
   </T>

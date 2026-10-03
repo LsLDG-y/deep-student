@@ -2,7 +2,8 @@ import { AbsoluteFill } from 'remotion';
 import { camAt, CameraView, type CamKey } from '../../lib/camera';
 import { clamp, ease, FPS, PACE, prog } from '../../lib/time';
 import { brand, light } from '../../theme';
-import { MCP_H, MCP_W, McpPanel, MEM_H, MEM_W, MemoryPanel, MODELS_H, MODELS_W, ModelsPanel, SKILL_H, SKILL_W, SkillsPanel } from '../../ui/you';
+import { CHAT_H, CHAT_W, ChatTitlebar } from '../../ui/research';
+import { MCP_H, MCP_W, McpPanel, MEM_H, MEM_W, MemoryPanel, MODELS_TITLE, ModelsChat, modelsDoneAt, SKILL_H, SKILL_W, SkillsPanel } from '../../ui/you';
 import { WbWindow } from '../../ui/workbench';
 
 /**
@@ -30,7 +31,7 @@ const MODELS_CX = MCP_CX + 1450;
 const MEM_RECT = centered(MEM_CX, MEM_W, MEM_H);
 const SKILL_RECT = centered(SKILL_CX, SKILL_W, SKILL_H);
 const MCP_RECT = centered(MCP_CX, MCP_W, MCP_H);
-const MODELS_RECT = centered(MODELS_CX, MODELS_W, MODELS_H);
+const MODELS_RECT = centered(MODELS_CX, CHAT_W, CHAT_H);
 
 const CAM: CamKey[] = [
   [YOU.in0 - 0.1, { x: MEM_CX, y: 560, zoom: 1.08 }],
@@ -40,8 +41,8 @@ const CAM: CamKey[] = [
   [YOU.mcp - 0.2, { x: SKILL_CX + 30, y: 560, zoom: 1.25 }, ease.linear],
   [YOU.mcp + 0.06, { x: MCP_CX, y: 560, zoom: 1.34 }, ease.inOutCubic],
   [YOU.models - 0.2, { x: MCP_CX + 30, y: 560, zoom: 1.4 }, ease.linear],
-  [YOU.models + 0.08, { x: MODELS_CX, y: 560, zoom: 1.1 }, ease.inOutCubic],
-  [YOU.out1, { x: MODELS_CX + 30, y: 560, zoom: 1.16 }, ease.linear],
+  [YOU.models + 0.08, { x: MODELS_CX + 60, y: 590, zoom: 1.12 }, ease.inOutCubic],
+  [YOU.out1, { x: MODELS_CX + 80, y: 590, zoom: 1.16 }, ease.linear],
 ];
 
 const rise = (t: number, at: number) => {
@@ -96,8 +97,13 @@ export const SceneYou = ({ t }: { t: number }) => {
         <WbWindow tk={tk} rect={MCP_RECT} title="MCP 工具" style={rise(t, YOU.mcp - 0.1)}>
           <McpPanel tk={tk} k={prog(t, YOU.mcp, YOU.mcp + 0.3)} toggles={prog(t, YOU.mcp + 0.15, YOU.mcp + 0.6)} call={prog(t, YOU.mcp + 0.6, YOU.models - 0.2)} />
         </WbWindow>
-        <WbWindow tk={tk} rect={MODELS_RECT} title="对话 · 多模型对比" style={rise(t, YOU.models - 0.1)}>
-          <ModelsPanel tk={tk} k={prog(t, YOU.models, YOU.out0)} />
+        <WbWindow
+          tk={tk}
+          rect={MODELS_RECT}
+          toolbar={<ChatTitlebar title="新对话" next={MODELS_TITLE} k={prog(t, modelsDoneAt(YOU.models) + 0.12, modelsDoneAt(YOU.models) + 0.18)} />}
+          style={rise(t, YOU.models - 0.1)}
+        >
+          <ModelsChat t={t} at={YOU.models} />
         </WbWindow>
       </CameraView>
     </AbsoluteFill>

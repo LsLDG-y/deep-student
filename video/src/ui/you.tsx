@@ -1,7 +1,35 @@
-import { BookOpenText, Brain, Cards, ChatsCircle, CheckCircle, FileText, Globe, Lightning, MagnifyingGlass, NotePencil, PencilSimple, PlugsConnected, Plus, Target, TreeStructure, Wrench } from '@phosphor-icons/react';
+import {
+  ArrowCounterClockwise,
+  BookOpenText,
+  Brain,
+  Cards,
+  CaretLeft,
+  CaretRight,
+  ChatsCircle,
+  CheckCircle,
+  Copy,
+  DotsThree,
+  FileText,
+  GitBranch,
+  Globe,
+  Lightning,
+  MagnifyingGlass,
+  NotePencil,
+  PencilSimple,
+  PlugsConnected,
+  Plus,
+  Square,
+  Target,
+  Trash,
+  TreeStructure,
+  Wrench,
+} from '@phosphor-icons/react';
+import { lobeIconData } from '@app/utils/lobeIconData';
 import type { ReactNode } from 'react';
-import { clamp, ease, prog } from '../lib/time';
+import { clamp, ease, PACE, prog } from '../lib/time';
 import { font, type Tokens } from '../theme';
+import { ChatSidebar, DockComposer, FG, LINE_SOFT, MUTED, PRI, T, UserBubble, type SidebarRow } from './research';
+import { at } from './resource';
 
 /**
  * 第三幕「越用，越懂你」的四块面板：智能记忆、技能管理、MCP 工具、多模型并排。
@@ -158,46 +186,160 @@ export const McpPanel = ({ tk, k, toggles, call }: { tk: Tokens; k: number; togg
   </div>
 );
 
-// ── 多模型并排 ────────────────────────────────────────
-export const MODELS_W = 1560;
-export const MODELS_H = 500;
-const MODELS: Array<[string, string, string]> = [
-  ['GLM-5', '2.1s', '几何上看，拉格朗日中值定理说的是：光滑曲线上，总有一点的切线平行于连接两端点的弦。它把「平均变化率」和某一点的「瞬时变化率」联系了起来。'],
-  ['Kimi K2.5', '1.8s', '把 f(b) − f(a) 除以 b − a 看成弦的斜率，定理断言存在 ξ ∈ (a, b)，使 f′(ξ) 恰好等于这个斜率——平均速度总会在某一时刻被瞬时速度精确达到。'],
-  ['DeepSeek V4', '2.4s', '可以理解为罗尔定理的「倾斜版」：把弦拉平后就是罗尔定理的情形。注意 ξ 只保证存在、并且落在开区间内，定理并不告诉你它具体在哪里。'],
-];
+// ── 多模型并排（对话窗口里的并行变体 ParallelVariantView） ──────────
+/** 片中这段的会话时刻：接在 08（20:05）之后，记忆 → MCP → 多模型各隔两分钟。 */
+export const YOU_CLOCK = { memory: '20:12', mcp: '20:14', models: '20:16' } as const;
+export const MODELS_Q = '用一句话讲清拉格朗日中值定理的几何意义';
+export const MODELS_TITLE = '中值定理的几何意义';
 
-export const ModelsPanel = ({ tk, k }: { tk: Tokens; k: number }) => (
-  <div style={{ position: 'absolute', inset: 0, fontFamily: font.ui, background: tk.background, padding: '20px 24px', boxSizing: 'border-box' }}>
-    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-      <div style={{ borderRadius: 12, padding: '10px 16px', background: tk.muted, fontSize: 15, color: tk.foreground }}>用一句话讲清拉格朗日中值定理的几何意义</div>
-    </div>
-    <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
-      {MODELS.map(([name, sec, text], i) => {
-        const kk = clamp(k * 1.25 - i * 0.06);
-        const chars = [...text];
+/** 侧栏「对话」：09 三场新会话依次顶到最上面，下面是 08 的调研与第一幕那场。 */
+export const youSidebar = (scene: 'memory' | 'mcp' | 'models', head: SidebarRow): SidebarRow[] => {
+  const older: SidebarRow[] =
+    scene === 'memory'
+      ? [{ title: '大模型辅助数学证明', time: '7分钟前' }]
+      : scene === 'mcp'
+        ? [{ title: '拉格朗日中值定理', time: '2分钟前' }, { title: '大模型辅助数学证明', time: '9分钟前' }]
+        : [{ title: 'Zotero 文献', time: '2分钟前' }, { title: '拉格朗日中值定理', time: '4分钟前' }, { title: '大模型辅助数学证明', time: '11分钟前' }];
+  return [head, ...older, { title: '讲透拉格朗日中值定理', time: '23小时前' }, { title: '线性代数：特征值的直觉', time: '2天前' }];
+};
+
+/** ProviderIcon 单色图标：deepseek / zhipu 走 lobeIconData，moonshot 走 Lobe KimiMono。 */
+const KIMI_PATHS = [
+  'M21.846 0a1.923 1.923 0 110 3.846H20.15a.226.226 0 01-.227-.226V1.923C19.923.861 20.784 0 21.846 0z',
+  'M11.065 11.199l7.257-7.2c.137-.136.06-.41-.116-.41H14.3a.164.164 0 00-.117.051l-7.82 7.756c-.122.12-.302.013-.302-.179V3.82c0-.127-.083-.23-.185-.23H3.186c-.103 0-.186.103-.186.23V19.77c0 .128.083.23.186.23h2.69c.103 0 .186-.102.186-.23v-3.25c0-.069.025-.135.069-.178l2.424-2.406a.158.158 0 01.205-.023l6.484 4.772a7.677 7.677 0 003.453 1.283c.108.012.2-.095.2-.23v-3.06c0-.117-.07-.212-.164-.227a5.028 5.028 0 01-2.027-.807l-5.613-4.064c-.117-.078-.132-.279-.028-.381z',
+];
+type Brand = 'deepseek' | 'zhipu' | 'moonshot';
+const ProviderGlyph = ({ brand, x, y, size }: { brand: Brand; x: number; y: number; size: number }) => {
+  if (brand === 'moonshot') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={FG} fillRule="evenodd" style={at(x, y)}>
+        {KIMI_PATHS.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </svg>
+    );
+  }
+  const data = lobeIconData[brand];
+  return (
+    <svg width={size} height={size} viewBox={data.v} style={at(x, y)}>
+      {data.p.map((d, i) => (
+        <path key={i} d={d} fill={data.f[i] || data.f[0] || FG} />
+      ))}
+    </svg>
+  );
+};
+
+/** 三张变体卡（取证 probe-ymm-3：卡宽 240.7、间距 14，换行与真机一致）。 */
+const VARIANTS: Array<{ id: string; brand: Brand; x: number; dur: number; lines: string[] }> = [
+  { id: 'deepseek-v4', brand: 'deepseek', x: 301, dur: 0.6, lines: ['可以把它看成罗尔定理的「倾', '斜版」：把弦拉平就是罗尔定', '理。光滑曲线上总有一点的切', '线平行于连接两端点的弦，而', '且这一点只保证存在、落在开', '区间 (a, b) 内。'] },
+  { id: 'glm-5', brand: 'zhipu', x: 555.7, dur: 0.68, lines: ['几何上看，拉格朗日中值定理', '说的是：光滑曲线上，总有一', '点的切线平行于连接两端点的', '弦。它把「平均变化率」和某', '一点的「瞬时变化率」联系了', '起来。'] },
+  { id: 'kimi-k3', brand: 'moonshot', x: 810.3, dur: 0.52, lines: ['把 (f(b) − f(a)) / (b − a) 看成', '弦的斜率，定理断言存在 ξ ∈', '(a, b)，使 f′(ξ) 恰好等于这个', '斜率——平均速度总会在某一', '时刻被瞬时速度精确达到。'] },
+];
+const CARD_W = 240.7;
+const CARD_Y = 207.4;
+const LH = 27.52;
+const variantAt = (at: number, i: number) => at + 0.02 + i * 0.03;
+export const modelsDoneAt = (at: number) => Math.max(...VARIANTS.map((v, i) => variantAt(at, i) + v.dur));
+
+const CardBtn = ({ x, y, children }: { x: number; y: number; children: ReactNode }) => <span style={{ ...at(x, y), width: 16, height: 16, display: 'inline-flex', color: MUTED }}>{children}</span>;
+
+/** at = 发出后第一帧（脚本秒）：三张卡同时起流，各自写完后页脚从「复制 / 取消」换成「复制 / 删除 / ⋯」，卡片随最长的那张一起长高。 */
+export const ModelsChat = ({ t, at: a0 }: { t: number; at: number }) => {
+  const st = VARIANTS.map((v, i) => {
+    const p = clamp((t - variantAt(a0, i)) / v.dur);
+    const total = v.lines.reduce((s, l) => s + [...l].length, 0);
+    let left = Math.round(total * p);
+    const shown: string[] = [];
+    for (const l of v.lines) {
+      if (left <= 0) break;
+      const cs = [...l];
+      shown.push(cs.slice(0, left).join(''));
+      left -= cs.length;
+    }
+    return { p, shown, done: p >= 1 };
+  });
+  const streaming = st.some((s) => !s.done);
+  const area = Math.max(...st.map((s) => Math.max(100, 44.2 + s.shown.length * LH)));
+  const cardH = 103.5 + area;
+  const bottom = CARD_Y + cardH;
+  const titled = t >= modelsDoneAt(a0) + 0.12;
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: '#fff', fontFamily: font.ui, color: FG }}>
+      <ChatSidebar rows={youSidebar('models', { title: titled ? MODELS_TITLE : '未命名会话', time: '刚刚', active: true, streaming })} t={t} />
+      <UserBubble y={60} text={MODELS_Q} time={YOU_CLOCK.models} />
+      <CaretLeft size={16} color="rgba(101, 105, 114, 0.2)" style={at(613.5, 177.4)} />
+      <span style={{ ...at(640, 180.4), width: 24, height: 10, borderRadius: 9999, background: PRI }} />
+      <span style={{ ...at(678, 180.4), width: 10, height: 10, borderRadius: 9999, background: 'rgba(101, 105, 114, 0.3)' }} />
+      <span style={{ ...at(702, 180.4), width: 10, height: 10, borderRadius: 9999, background: 'rgba(101, 105, 114, 0.3)' }} />
+      <CaretRight size={16} color={MUTED} style={at(722.5, 177.4)} />
+      {VARIANTS.map((v, i) => {
+        const s = st[i];
+        const border = !s.done ? 'rgba(30, 94, 184, 0.3)' : i === 0 ? 'rgba(30, 94, 184, 0.5)' : 'rgb(224, 224, 224)';
+        const footY = bottom - 44;
         return (
-          <div key={name} style={{ borderRadius: 12, border: `1px solid ${tk.border}`, background: tk.card, padding: '14px 18px', minHeight: 330, boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: tk.foreground }}>{name}</span>
-              <span style={{ flex: 1 }} />
-              {kk >= 1 ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: tk.mutedFg }}>
-                  <CheckCircle size={13} weight="fill" color={tk.success} />
-                  {sec}
-                </span>
-              ) : (
-                <span style={{ fontSize: 12, color: tk.mutedFg }}>生成中...</span>
-              )}
-            </div>
-            <div style={{ marginTop: 12, fontSize: 16, lineHeight: '30px', color: tk.foreground }}>
-              {chars.slice(0, Math.round(chars.length * kk)).join('')}
-              {kk > 0 && kk < 1 ? <span style={{ display: 'inline-block', width: 2, height: 16, marginLeft: 1, verticalAlign: 'text-bottom', background: tk.primary }} /> : null}
-            </div>
+          <div key={v.id}>
+            <span style={{ ...at(v.x, CARD_Y), width: CARD_W, height: cardH, boxSizing: 'border-box', borderRadius: 10.5, border: `1px solid ${border}`, background: 'rgb(252, 252, 252)' }} />
+            <ProviderGlyph brand={v.brand} x={v.x + 15} y={222.1} size={28} />
+            <T x={v.x + 51.8} y={218.9} size={12} weight={500} lh={18}>
+              {v.id}
+            </T>
+            <T x={v.x + 51.8} y={236.9} size={11} lh={16.5} color={MUTED}>
+              10/03 {YOU_CLOCK.models}
+            </T>
+            <span style={{ ...at(v.x + 1, 265.9), width: CARD_W - 2, height: 1, background: LINE_SOFT }} />
+            {s.shown.length === 0 ? (
+              <>
+                <span style={{ ...at(v.x + 17, 284), width: 8, height: 16, background: PRI, opacity: 0.5 + 0.5 * Math.cos(t * PACE * Math.PI) }} />
+                <T x={v.x + 33} y={282} size={14} lh={20} color={MUTED}>
+                  生成中...
+                </T>
+              </>
+            ) : (
+              s.shown.map((l, j) => (
+                <T key={j} x={v.x + 15} y={288 + j * LH} size={16} lh={LH}>
+                  {l}
+                </T>
+              ))
+            )}
+            <span style={{ ...at(v.x + 1, footY), width: CARD_W - 2, height: 43, boxSizing: 'border-box', borderTop: `1px solid ${LINE_SOFT}`, background: 'rgba(240, 240, 240, 0.2)' }} />
+            <CardBtn x={v.x + 17.5} y={footY + 14}>
+              <Copy size={16} />
+            </CardBtn>
+            {s.done ? (
+              <>
+                <CardBtn x={v.x + 47.3} y={footY + 14}>
+                  <Trash size={16} />
+                </CardBtn>
+                <CardBtn x={v.x + 77} y={footY + 14}>
+                  <DotsThree size={16} weight="bold" />
+                </CardBtn>
+              </>
+            ) : (
+              <CardBtn x={v.x + 47.3} y={footY + 14}>
+                <Square size={16} />
+              </CardBtn>
+            )}
           </div>
         );
       })}
+      <CardBtn x={374} y={bottom + 23.5}>
+        <Copy size={16} />
+      </CardBtn>
+      <CardBtn x={405.5} y={bottom + 23.5}>
+        <GitBranch size={16} />
+      </CardBtn>
+      <span style={{ opacity: streaming ? 0.5 : 1 }}>
+        <CardBtn x={437} y={bottom + 23.5}>
+          <ArrowCounterClockwise size={16} />
+        </CardBtn>
+        <CardBtn x={468.5} y={bottom + 23.5}>
+          <Trash size={16} />
+        </CardBtn>
+      </span>
+      <T x={497.5} y={bottom + 24.9} size={11} lh={13.2} color="rgba(101, 105, 114, 0.5)">
+        {YOU_CLOCK.models}
+      </T>
+      <DockComposer text="" caret={false} mode={streaming ? 'stop' : 'idle'} press={0} />
     </div>
-    <div style={{ position: 'absolute', left: 24, bottom: 18, fontSize: 12, color: tk.mutedFg }}>同一问题并排比较 · 预置 12 家模型供应商，也可接入自建端点</div>
-  </div>
-);
+  );
+};
