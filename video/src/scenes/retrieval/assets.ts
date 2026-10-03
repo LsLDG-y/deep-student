@@ -13,6 +13,9 @@ const loadImage = (src: string) =>
     img.src = src;
   });
 
+/** 渲染倍率（`--scale=2` 出 4K 时 devicePixelRatio = 2）：3D 画布与命中贴图跟着它走，否则 4K 版这几段是 1080p 放大。 */
+export const renderDpr = () => Math.min(2, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1);
+
 export type ArchiveAssets = {
   cards: Record<CardType, CardTex[]>;
   hits: CardTex[];
@@ -43,13 +46,13 @@ const load = () =>
           Array.from({ length: VARIANTS[type] }, (_, v) => makeCardCanvas(type, v * 11 + type.length * 3)),
         ]),
       ) as Record<CardType, CardTex[]>;
-      const hits = HITS.map((h) => makeHitCanvas(h.kind));
+      const hits = HITS.map((h) => makeHitCanvas(h.kind, 640 * renderDpr()));
       STORE = { cards, hits, hitUrls: hits.map((h) => h.canvas.toDataURL('image/png')) };
       return STORE;
     }));
 
 /**
- * 纹理就绪后再放行截图，并多等两帧：3D 画布要等拿到纹理才挂载（见 Archive3D），
+ * 纹理就绪后再放行截图，并多等两帧：3D 画布要等拿到纹理才挂载（见 Archive3D / KnowledgeTerrain），
  * 挂载后 ThreeCanvas 自己的 delayRender 才登记上；放行得太早会截到一张空画布。
  */
 const release = (handle: number | null) => {

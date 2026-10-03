@@ -33,7 +33,7 @@ import {
   strip3D,
   type Card,
 } from './archive';
-import { useArchiveAssets, type ArchiveAssets } from './assets';
+import { renderDpr, useArchiveAssets, type ArchiveAssets } from './assets';
 import { BAR, barLen, cellRGB, cellValue, HITS, RV, STRIP } from './beats';
 import type { CardType } from './textures';
 
@@ -672,8 +672,7 @@ export const Archive3D = ({ t }: { t: number }) => {
         width={WIDTH}
         height={HEIGHT}
         flat
-        // 跟随渲染倍率（--scale=2 出 4K 时 devicePixelRatio = 2），否则 4K 版这段是 1080p 放大
-        dpr={Math.min(2, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)}
+        dpr={renderDpr()}
         gl={{ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: true }}
         camera={{ fov: FOV, near: 0.05, far: 400, position: camPose(RV.cut).pos.toArray() }}
       >

@@ -7,7 +7,7 @@ import { clamp, ease, HEIGHT, keys, lerp, prog, WIDTH } from '../../lib/time';
 import { brand, font } from '../../theme';
 import { Pupil } from '../../ui/brand';
 import { canvasTex } from '../retrieval/Archive3D';
-import { useArchiveAssets, type ArchiveAssets } from '../retrieval/assets';
+import { renderDpr, useArchiveAssets, type ArchiveAssets } from '../retrieval/assets';
 import { FN } from './beats';
 import { BUMP_UNIFORMS, CONTOUR, GLSL_TERRAIN, GROW, growthAt, SUMMITS, surfaceAt } from './terrain';
 
@@ -106,12 +106,13 @@ uniform float uSkyY1;
 uniform vec2 uRes;
 varying vec3 vWorld;
 
-// 抗锯齿等宽线：x 每过一个整数画一条，宽 wpx 像素；线挤得太密时自动淡出
+// 抗锯齿等宽线：x 每过一个整数画一条，宽 wpx 像素（按 1080p 计，4K 同比加粗）；线挤得太密时自动淡出
 float isoLine(float x, float wpx) {
+  float px = uRes.y / 1080.0;
   float fw = max(fwidth(x), 1e-5);
   float d = abs(fract(x - 0.5) - 0.5) / fw;
-  float a = 1.0 - smoothstep(wpx * 0.5 - 0.5, wpx * 0.5 + 0.5, d);
-  return a * (1.0 - smoothstep(0.24, 0.5, fw));
+  float a = 1.0 - smoothstep(wpx * px * 0.5 - 0.5, wpx * px * 0.5 + 0.5, d);
+  return a * (1.0 - smoothstep(0.24, 0.5, fw * px));
 }
 
 void main() {
@@ -292,20 +293,23 @@ export const KnowledgeTerrain = ({ t }: { t: number }) => {
   return (
     <AbsoluteFill>
       <AbsoluteFill style={{ opacity: fade }}>
-        <ThreeCanvas
-          width={WIDTH}
-          height={HEIGHT}
-          flat
-          dpr={1}
-          gl={{ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true }}
-          camera={{ fov: FOV, near: 0.05, far: 900, position: [0, 0, 2.05] }}
-        >
-          <Rig t={t} />
-          <hemisphereLight args={[0xffffff, 0xe6eaf0, 1.9]} />
-          <directionalLight position={[-3, 5, 9]} intensity={1.1} />
-          <Terrain t={t} />
-          {assets ? <Page t={t} assets={assets} /> : null}
-        </ThreeCanvas>
+        {/* 纹理到了才挂画布：先挂画布、后加纸页时 R3F 不补画，新标签页的第一帧会缺那页纸 */}
+        {assets ? (
+          <ThreeCanvas
+            width={WIDTH}
+            height={HEIGHT}
+            flat
+            dpr={renderDpr()}
+            gl={{ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true }}
+            camera={{ fov: FOV, near: 0.05, far: 900, position: [0, 0, 2.05] }}
+          >
+            <Rig t={t} />
+            <hemisphereLight args={[0xffffff, 0xe6eaf0, 1.9]} />
+            <directionalLight position={[-3, 5, 9]} intensity={1.1} />
+            <Terrain t={t} />
+            <Page t={t} assets={assets} />
+          </ThreeCanvas>
+        ) : null}
         <Labels t={t} />
         {veil > 0.001 ? <AbsoluteFill style={{ background: brand.paper, opacity: veil }} /> : null}
       </AbsoluteFill>
