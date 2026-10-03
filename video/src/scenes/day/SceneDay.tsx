@@ -8,17 +8,17 @@ import { Pupil, pathAt } from '../../ui/brand';
 import { agendaOpenCenter, AgendaWidget, BriefingWidget, DesktopShortcuts, shortcutCenter, type ShortcutId } from '../../ui/desk';
 import { ESSAY_H, ESSAY_PT, ESSAY_SCROLL, ESSAY_STREAM, ESSAY_W, EssayView, type EssayStage, type EssayState, type EssayTarget } from '../../ui/essay';
 import { EXAM_DROP_RIGHT, EXAM_H, EXAM_PT, EXAM_SCROLL, EXAM_W, ExamToast, ExamView, FileChip, type ExamStage, type ExamState, type ExamTarget } from '../../ui/exam';
-import { CHAT_H, CHAT_W, HUB_H, HUB_W, HubIndexView, NOTE_H, NOTE_W, NoteView, ResearchChat, type ResearchState } from '../../ui/research';
+import { CHAT_H, CHAT_PT, CHAT_W, ChatTitlebar, HUB_H, HUB_PT, HUB_W, HubTitlebar, HubWindow, ResearchChat, SESSION_TITLE, type ResearchTL } from '../../ui/research';
 import { POMO_RECT, PomodoroWindowBody, pomoTitle, TODO_H, TODO_ITEMS, TODO_W, TodoApp, todoPlayCenter, todoRowCenter, TodoToolbar, type TodoState } from '../../ui/todo';
 import { TRANS_H, TRANS_LEN, TRANS_PT, TRANS_W, TranslateView, type TransStage, type TransState, type TransTarget } from '../../ui/translate';
 import { APP_NAMES, Dock, dockBounceAt, dockIconCenter, type DockBadge, GENIE_S, IND_S, MenuBar, menuClock, TIP_DELAY_S, TIP_FADE_S, Wallpaper, WbWindow, winLife, type Rect } from '../../ui/workbench';
 import { nightDock, nightMenubar } from '../review/SceneReview';
-import { DAY, DBL, wallDrift } from './beats';
+import { DAY, DBL, RESEARCH_STEP, wallDrift } from './beats';
 
 /**
  * 第二幕「第二天」：夜里复习完的学习桌面迎来清晨，之后按产品里真实的路径打开应用：
  * 日程小组件「待办 →」→ 待办「今日」→ 开始专注 → 双击桌面「显示桌面」→ 双击桌面快捷方式打开题目集 / 作文批改 / 翻译
- * → 再次「显示桌面」→ Dock 还原对话 → 调研建出的笔记 → Dock 打开资源库。
+ * → 再次「显示桌面」→ Dock 还原对话（调研 + 追问论文）→ Dock 打开资源库 → 知识库索引。
  * 桌面（壁纸 / 快捷方式 / 小组件 / 菜单栏 / Dock）全程常驻，窗口在其上开合；镜头是 2D 推拉。
  */
 export const TODO_RECT: Rect = { x: 48, y: 88, w: TODO_W, h: TODO_H };
@@ -32,10 +32,12 @@ export const ESSAY_RECT: Rect = { x: 72, y: 112, w: ESSAY_W, h: ESSAY_H };
 export const TRANS_RECT: Rect = { x: 120, y: 160, w: TRANS_W, h: TRANS_H };
 const essayPt = (p: { x: number; y: number }) => ({ x: ESSAY_RECT.x + p.x, y: ESSAY_RECT.y + p.y });
 const transPt = (p: { x: number; y: number }) => ({ x: TRANS_RECT.x + p.x, y: TRANS_RECT.y + p.y });
-export const CHAT_RECT: Rect = { x: 230, y: 118, w: CHAT_W, h: CHAT_H };
-export const NOTE_RECT: Rect = { x: 1130, y: 150, w: NOTE_W, h: NOTE_H };
-export const HUB_RECT: Rect = { x: (1920 - HUB_W) / 2, y: 196, w: HUB_W, h: HUB_H };
-const DL_BTN = { x: CHAT_W - 126, y: 322 };
+/** 对话窗口昨晚就开着（最小化），位置不在级联槽上；默认尺寸 1080×720（chat/register.ts defaultFrame）。 */
+export const CHAT_RECT: Rect = { x: 560, y: 110, w: CHAT_W, h: CHAT_H };
+/** 资源库 980×660 级联落 4 号槽（0–3 号槽被待办 / 作文 / 题目集 / 翻译占着，最小化的也占槽）。 */
+export const HUB_RECT: Rect = { x: 144, y: 184, w: HUB_W, h: HUB_H };
+const chatPt = (p: { x: number; y: number }) => ({ x: CHAT_RECT.x + p.x, y: CHAT_RECT.y + p.y });
+const hubPt = (p: { x: number; y: number }) => ({ x: HUB_RECT.x + p.x, y: HUB_RECT.y + p.y });
 
 const pressAt = (t: number, at: number, w = 0.08) => Math.max(0, 1 - Math.abs(t - at) / w);
 
@@ -55,7 +57,6 @@ const runningAt = (t: number): string[] => {
   if (t >= DAY.examOpen) r.push('exam');
   if (t >= DAY.essayOpen) r.push('essay');
   if (t >= DAY.translateOpen) r.push('translation');
-  if (t >= DAY.researchNote) r.push('notes');
   if (t >= DAY.hubIndex) r.push('files');
   return r;
 };
@@ -65,7 +66,6 @@ const FIRST_OPEN: Record<string, number> = {
   exam: DAY.examOpen,
   essay: DAY.essayOpen,
   translation: DAY.translateOpen,
-  notes: DAY.researchNote,
   files: DAY.hubIndex,
 };
 
@@ -97,13 +97,9 @@ const dayMenubar = (t: number) => {
                 ? APP_NAMES.translation
                 : t < DAY.researchOpen
                   ? S.desk.appName
-                  : t < DAY.researchNote
+                  : t < DAY.hubIndex
                     ? APP_NAMES.chat
-                    : t < DAY.paperSend
-                      ? APP_NAMES.notes
-                      : t < DAY.hubIndex
-                        ? APP_NAMES.chat
-                        : APP_NAMES.files;
+                    : APP_NAMES.files;
   const clock = t < DAY.essayOpen ? menuClock(3, 7, 30) : t < DAY.translateOpen ? menuClock(3, 14, 10) : t < DAY.researchOpen ? menuClock(3, 15, 40) : menuClock(3, 20, 5);
   const pomo = t >= DAY.todayFocus && t < DAY.essayOpen ? focusLeft(t) : null;
   return { app, clock, due: dueAt(t), pomo };
@@ -195,16 +191,29 @@ const transState = (t: number): TransState => {
   };
 };
 
-const researchState = (t: number): ResearchState => ({
-  sent: prog(t, DAY.researchSend, DAY.researchSend + 0.2, ease.wbOut),
-  steps: prog(t, DAY.researchSteps, DAY.researchNote - 0.15),
-  noteTool: prog(t, DAY.researchNote - 0.15, DAY.researchNote + 0.1),
-  paperSent: prog(t, DAY.paperSend, DAY.paperSend + 0.25, ease.wbOut),
-  search: prog(t, DAY.paperSend + 0.3, DAY.paperSend + 0.62),
-  results: prog(t, DAY.paperSend + 0.62, DAY.paperSend + 1.0),
-  dlPress: pressAt(t, DAY.paperDownload),
-  dl: prog(t, DAY.paperDownload + 0.05, DAY.paperDownload + 0.62),
-});
+// 08：对话里的时间轴（打字、ask_user、任务面板、追问、论文下载）
+const RESEARCH_TL: ResearchTL = {
+  focus: DAY.researchType - 0.06,
+  type0: DAY.researchType,
+  tab: DAY.researchTab,
+  q0: DAY.researchTab + 0.04,
+  q1: DAY.researchSend - 0.08,
+  send: DAY.researchSend,
+  ask: DAY.researchAsk,
+  pick: DAY.researchPick,
+  submit: DAY.researchSubmit,
+  steps: DAY.researchSteps,
+  stepDur: RESEARCH_STEP,
+  done: DAY.researchDone,
+  collapse: DAY.researchCollapse,
+  title: DAY.researchTitle,
+  focus2: DAY.paperType - 0.04,
+  f0: DAY.paperType,
+  f1: DAY.paperSend - 0.07,
+  send2: DAY.paperSend,
+  save: DAY.paperSave,
+  saved: DAY.paperSaved,
+};
 
 // 06：判错后先滚出「AI 解析」按钮，流式输出时再往下滚一次；「已加入今日复习」是修正版提示
 const EXAM_SCROLL1: [number, number] = [DAY.examSubmit + 0.24, DAY.examSubmit + 0.48];
@@ -338,18 +347,29 @@ const DAY_CAM: CamKey[] = [
   [DAY.showDesk2 - 0.45, { x: 720, y: 500, zoom: 1.55 }, ease.linear],
   [DAY.showDesk2 - 0.1, FULL, ease.inOutCubic],
   [DAY.researchOpen + 0.1, FULL, ease.linear],
-  [DAY.researchSend - 0.15, { x: 760, y: 540, zoom: 1.12 }, ease.inOutCubic],
-  [DAY.researchSteps + 0.35, { x: 740, y: 470, zoom: 1.24 }, ease.inOutCubic],
-  [DAY.researchNote - 0.1, { x: 760, y: 500, zoom: 1.24 }, ease.linear],
-  [DAY.researchNote + 0.45, { x: 1300, y: 520, zoom: 1.18 }, ease.inOutCubic],
-  [DAY.paperSend - 0.05, { x: 1290, y: 520, zoom: 1.18 }, ease.linear],
-  [DAY.paperSend + 0.45, { x: 740, y: 540, zoom: 1.18 }, ease.inOutCubic],
-  [DAY.paperDownload + 0.3, { x: 820, y: 500, zoom: 1.26 }, ease.inOutCubic],
-  [DAY.hubIndex - 0.3, FULL, ease.inOutCubic],
-  [DAY.hubIndex + 0.1, FULL, ease.linear],
-  [DAY.hubIndex + 0.55, { x: 960, y: 520, zoom: 1.12 }, ease.inOutCubic],
-  [DAY.end - 0.3, { x: 1000, y: 500, zoom: 1.22 }, ease.linear],
-  [DAY.end + 0.4, { x: 1000, y: 500, zoom: 1.12 }, ease.inOutCubic],
+  // 08：空态输入框（技能命令补全）→ 消息与 ask_user 卡 → 任务面板 → 收起后整窗（侧栏 / 标题起名）→ 追问与论文下载卡
+  // → 退全景点 Dock → 资源库「全部文件」→ 知识库索引。主列在右、底边留给左下角字幕
+  [DAY.researchType - 0.08, { x: 1236, y: 430, zoom: 1.55 }, ease.inOutCubic],
+  [DAY.researchSend - 0.02, { x: 1236, y: 440, zoom: 1.55 }, ease.linear],
+  [DAY.researchSend + 0.25, { x: 1236, y: 470, zoom: 1.4 }, ease.inOutCubic],
+  [DAY.researchAsk + 0.04, { x: 1236, y: 560, zoom: 1.45 }, ease.inOutCubic],
+  [DAY.researchSubmit + 0.04, { x: 1236, y: 560, zoom: 1.45 }, ease.linear],
+  [DAY.researchSteps + 0.25, { x: 1236, y: 585, zoom: 1.45 }, ease.inOutCubic],
+  [DAY.researchDone - 0.02, { x: 1236, y: 585, zoom: 1.45 }, ease.linear],
+  [DAY.researchDone + 0.16, { x: 1236, y: 560, zoom: 1.4 }, ease.inOutCubic],
+  [DAY.researchCollapse - 0.02, { x: 1236, y: 560, zoom: 1.4 }, ease.linear],
+  [DAY.researchCollapse + 0.2, { x: 1085, y: 470, zoom: 1.15 }, ease.inOutCubic],
+  [DAY.paperType - 0.02, { x: 1085, y: 470, zoom: 1.15 }, ease.linear],
+  [DAY.paperSend + 0.12, { x: 1236, y: 480, zoom: 1.4 }, ease.inOutCubic],
+  [DAY.paperSaved + 0.2, { x: 1236, y: 470, zoom: 1.45 }, ease.inOutCubic],
+  [DAY.hubIndex - 0.5, { x: 1236, y: 470, zoom: 1.45 }, ease.linear],
+  [DAY.hubIndex - 0.12, FULL, ease.inOutCubic],
+  [DAY.hubIndex + 0.12, FULL, ease.linear],
+  [DAY.hubIndex + 0.45, { x: 640, y: 540, zoom: 1.2 }, ease.inOutCubic],
+  [DAY.hubKb + 0.05, { x: 640, y: 540, zoom: 1.2 }, ease.linear],
+  [DAY.hubKb + 0.4, { x: 720, y: 560, zoom: 1.3 }, ease.inOutCubic],
+  [DAY.end - 0.3, { x: 735, y: 560, zoom: 1.33 }, ease.linear],
+  [DAY.end + 0.4, { x: 735, y: 560, zoom: 1.25 }, ease.inOutCubic],
 ];
 
 // ── 瞳点 ──────────────────────────────────────────────
@@ -368,7 +388,8 @@ const PUPIL_PATH: Array<[number, number, number]> = (() => {
   const ex = Object.fromEntries(Object.entries(EXAM_PT).map(([k, p]) => [k, examPt(p)])) as Record<keyof typeof EXAM_PT, { x: number; y: number }>;
   const es = Object.fromEntries(Object.entries(ESSAY_PT).map(([k, p]) => [k, essayPt(p)])) as Record<keyof typeof ESSAY_PT, { x: number; y: number }>;
   const tp = Object.fromEntries(Object.entries(TRANS_PT).map(([k, p]) => [k, transPt(p)])) as Record<keyof typeof TRANS_PT, { x: number; y: number }>;
-  const dl = { x: CHAT_RECT.x + DL_BTN.x, y: CHAT_RECT.y + 38 + DL_BTN.y };
+  const cp = Object.fromEntries(Object.entries(CHAT_PT).map(([k, p]) => [k, chatPt(p)])) as Record<keyof typeof CHAT_PT, { x: number; y: number }>;
+  const kb = hubPt(HUB_PT.kb);
   const chatIcon = dockIconCenter('chat', runningAt(CHAT_CLICK));
   const filesIcon = dockIconCenter('files', runningAt(HUB_CLICK));
   return [
@@ -438,14 +459,31 @@ const PUPIL_PATH: Array<[number, number, number]> = (() => {
     [DAY.showDesk2 + DBL + 0.05, DESK_SPOT2.x, DESK_SPOT2.y],
     [CHAT_CLICK - 0.06, chatIcon.x, chatIcon.y],
     [CHAT_CLICK + 0.12, chatIcon.x, chatIcon.y],
-    [DAY.researchOpen + 0.35, CHAT_RECT.x + CHAT_W / 2, CHAT_RECT.y + CHAT_H - 120],
-    [DAY.paperDownload - 0.5, dl.x - 220, dl.y + 160],
-    [DAY.paperDownload - 0.06, dl.x, dl.y],
-    [DAY.paperDownload + 0.3, dl.x - 60, dl.y + 120],
+    // 08：点进输入框（打字时指针停着）→ 发送 →「中等深度」→「提交」→（任务进行中隐去）→ 面板 ^ → 输入框 → 发送 →
+    // Dock「资源库」→ 侧栏「知识库索引」
+    [RESEARCH_TL.focus - 0.07, cp.composer.x, cp.composer.y],
+    [RESEARCH_TL.focus + 0.06, cp.composer.x, cp.composer.y],
+    [DAY.researchSend - 0.07, cp.send.x, cp.send.y],
+    [DAY.researchSend + 0.06, cp.send.x, cp.send.y],
+    [DAY.researchPick - 0.07, cp.opt1.x, cp.opt1.y],
+    [DAY.researchPick + 0.05, cp.opt1.x, cp.opt1.y],
+    [DAY.researchSubmit - 0.07, cp.submit.x, cp.submit.y],
+    [DAY.researchSubmit + 0.06, cp.submit.x, cp.submit.y],
+    [DAY.researchSubmit + 0.32, cp.submit.x - 60, cp.submit.y - 40],
+    [DAY.researchCollapse - 0.3, cp.collapse.x - 80, cp.collapse.y + 120],
+    [DAY.researchCollapse - 0.07, cp.collapse.x, cp.collapse.y],
+    [DAY.researchCollapse + 0.06, cp.collapse.x, cp.collapse.y],
+    [RESEARCH_TL.focus2 - 0.08, cp.composer2.x, cp.composer2.y],
+    [RESEARCH_TL.focus2 + 0.05, cp.composer2.x, cp.composer2.y],
+    [DAY.paperSend - 0.07, cp.send2.x, cp.send2.y],
+    [DAY.paperSend + 0.06, cp.send2.x, cp.send2.y],
+    [DAY.paperSend + 0.32, cp.send2.x - 120, cp.send2.y - 60],
     [HUB_CLICK - 0.45, filesIcon.x + 150, filesIcon.y - 200],
     [HUB_CLICK - 0.06, filesIcon.x, filesIcon.y],
     [HUB_CLICK + 0.12, filesIcon.x, filesIcon.y],
-    [DAY.hubIndex + 0.45, filesIcon.x - 80, filesIcon.y - 260],
+    [DAY.hubKb - 0.07, kb.x, kb.y],
+    [DAY.hubKb + 0.06, kb.x, kb.y],
+    [DAY.hubKb + 0.4, kb.x + 160, kb.y + 120],
   ];
 })();
 
@@ -467,8 +505,15 @@ const CLICKS = [
   DAY.translateRun,
   ...dbl(DAY.showDesk2),
   CHAT_CLICK,
-  DAY.paperDownload,
+  RESEARCH_TL.focus,
+  DAY.researchSend,
+  DAY.researchPick,
+  DAY.researchSubmit,
+  DAY.researchCollapse,
+  RESEARCH_TL.focus2,
+  DAY.paperSend,
   HUB_CLICK,
+  DAY.hubKb,
 ];
 
 /** 瞳点可见区间：各段动作前后淡入淡出。 */
@@ -477,9 +522,10 @@ const PUPIL_SHOW: Array<[number, number]> = [
   [DAY.examGrab, EXAM_SCROLL2[1] + 0.35],
   [DAY.essayLaunch - 0.45, DAY.essayPolish + 0.5],
   [DAY.translateLaunch - 0.4, DAY.translateRun + 0.5],
-  [DAY.showDesk2 - 0.3, DAY.researchOpen + 0.45],
-  [DAY.paperDownload - 0.55, DAY.paperDownload + 0.5],
-  [HUB_CLICK - 0.45, DAY.hubIndex + 0.5],
+  [DAY.showDesk2 - 0.3, DAY.researchSend + 0.3],
+  [DAY.researchPick - 0.25, DAY.researchSubmit + 0.32],
+  [DAY.researchCollapse - 0.3, DAY.paperSend + 0.32],
+  [HUB_CLICK - 0.45, DAY.hubKb + 0.45],
 ];
 const pupilOpacity = (t: number) => Math.max(0, ...PUPIL_SHOW.map(([a, b]) => Math.min(prog(t, a, a + 0.12), 1 - prog(t, b - 0.14, b))));
 
@@ -571,8 +617,8 @@ export const SceneDay = ({ t }: { t: number }) => {
   const essay = winLife(t, ESSAY_RECT, { openAt: DAY.essayOpen, minimizeAt: SHOW_MIN2, minimizeTo: icon('essay', SHOW_MIN2) });
   const trans = winLife(t, TRANS_RECT, { openAt: DAY.translateOpen, minimizeAt: SHOW_MIN2, minimizeTo: icon('translation', SHOW_MIN2) });
   const chat = winLife(t, CHAT_RECT, { restoreAt: DAY.researchOpen, restoreFrom: icon('chat', DAY.researchOpen) });
-  const note = winLife(t, NOTE_RECT, { openAt: DAY.researchNote });
   const hub = winLife(t, HUB_RECT, { openAt: DAY.hubIndex, openFrom: icon('files', DAY.hubIndex) });
+  const hubView = t < DAY.hubKb + 0.01 ? 'all' : 'index';
 
   const exit = prog(t, DAY.end - 0.3, DAY.end + 0.2, ease.inOutCubic);
   const chip = chipPose(t);
@@ -610,23 +656,20 @@ export const SceneDay = ({ t }: { t: number }) => {
               <TranslateView tk={tk} s={transState(t)} />
             </WbWindow>
           ) : null}
-          {(() => {
-            const chatWin = chat.visible ? (
-              <WbWindow key="chat" tk={tk} rect={CHAT_RECT} title={APP_NAMES.chat} focused={t < DAY.researchNote || (t >= DAY.paperSend && t < DAY.hubIndex)} style={chat.style}>
-                <ResearchChat tk={tk} s={researchState(t)} t={t} />
-              </WbWindow>
-            ) : null;
-            const noteWin = note.visible ? (
-              <WbWindow key="note" tk={tk} rect={NOTE_RECT} title={APP_NAMES.notes} focused={t < DAY.paperSend} style={note.style}>
-                <NoteView tk={tk} k={prog(t, DAY.researchNote + 0.15, DAY.researchNote + 0.75)} />
-              </WbWindow>
-            ) : null;
-            // 焦点回到对话时，对话窗口提到最前
-            return t >= DAY.paperSend ? [noteWin, chatWin] : [chatWin, noteWin];
-          })()}
+          {chat.visible ? (
+            <WbWindow
+              tk={tk}
+              rect={CHAT_RECT}
+              focused={t < DAY.hubIndex}
+              toolbar={<ChatTitlebar title="新对话" next={SESSION_TITLE} k={prog(t, DAY.researchTitle, DAY.researchTitle + 0.06)} />}
+              style={chat.style}
+            >
+              <ResearchChat tk={tk} t={t} tl={RESEARCH_TL} />
+            </WbWindow>
+          ) : null}
           {hub.visible ? (
-            <WbWindow tk={tk} rect={HUB_RECT} title={APP_NAMES.files} style={hub.style}>
-              <HubIndexView tk={tk} k={prog(t, DAY.hubIndex + 0.3, DAY.end - 0.35)} />
+            <WbWindow tk={tk} rect={HUB_RECT} toolbar={<HubTitlebar view={hubView} />} style={hub.style}>
+              <HubWindow view={hubView} k={prog(t, DAY.hubKb + 0.01, DAY.hubKb + 0.06)} kbHover={t >= DAY.hubKb - 0.12 && t < DAY.hubKb + 0.02 ? 1 : 0} />
             </WbWindow>
           ) : null}
           {chip.opacity > 0.001 ? (

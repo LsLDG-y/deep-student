@@ -1,6 +1,6 @@
 import { Audio, Sequence, staticFile } from 'remotion';
 import { FPS, PACE } from '../lib/time';
-import { DAY, DBL } from '../scenes/day/beats';
+import { DAY, DBL, researchStepDone } from '../scenes/day/beats';
 import { FN } from '../scenes/finale/beats';
 import { YOU } from '../scenes/you/SceneYou';
 import { ESSAY_STREAM } from '../ui/essay';
@@ -133,19 +133,25 @@ const CUES: Cue[] = [
   [DAY.showDesk2, 'click', 0.26],
   [DAY.showDesk2 + DBL, 'click', 0.26],
   [DAY.showDesk2 + DBL + 0.03, 'whoosh-down', 0.2],
-  // 08 调研：Dock 还原对话 → 发出 → 步骤逐条打勾 → 存为笔记 → 搜论文 → 下载 → Dock 打开资源库 → 索引完成
+  // 08 调研：Dock 还原对话 → 点进输入框打 /res → 发出 → 选深度、提交 → 6 步逐条打勾 → 任务完成 → 收起面板 → 追问 → 论文已保存 → Dock 打开资源库 → 知识库索引
   [DAY.researchOpen - 0.02, 'click', 0.3],
   [DAY.researchOpen + 0.02, 'whoosh-up', 0.2],
-  [DAY.researchSend, 'whoosh-up', 0.16],
-  ...STEPS.map((_, i): Cue => [DAY.researchSteps + ((i + 1) * (DAY.researchNote - 0.15 - DAY.researchSteps)) / STEPS.length, 'tick', 0.16]),
-  [DAY.researchNote + 0.02, 'pop', 0.26],
-  [DAY.paperSend, 'whoosh-up', 0.16],
-  [DAY.paperSend + 0.62, 'ping', 0.16],
-  [DAY.paperDownload, 'click', 0.33],
-  [DAY.paperDownload + 0.64, 'note-mid', 0.22],
+  [DAY.researchType - 0.06, 'click', 0.22],
+  [DAY.researchSend, 'click', 0.26],
+  [DAY.researchSend + 0.02, 'whoosh-up', 0.16],
+  [DAY.researchAsk, 'pop', 0.18],
+  [DAY.researchPick, 'click', 0.26],
+  [DAY.researchSubmit, 'click', 0.26],
+  ...STEPS.map((_, i): Cue => [researchStepDone(i), 'tick', 0.16]),
+  [DAY.researchDone + 0.02, 'pop', 0.26],
+  [DAY.researchCollapse, 'click', 0.26],
+  [DAY.paperType - 0.04, 'click', 0.2],
+  [DAY.paperSend, 'click', 0.26],
+  [DAY.paperSend + 0.02, 'whoosh-up', 0.16],
+  [DAY.paperSaved, 'note-mid', 0.22],
   [DAY.hubIndex - 0.02, 'click', 0.3],
   [DAY.hubIndex + 0.02, 'pop', 0.24],
-  ...Array.from({ length: 4 }, (_, i): Cue => [DAY.hubIndex + 0.3 + ((i + 1) * (DAY.end - 0.65 - DAY.hubIndex)) / 4, 'tick', 0.14]),
+  [DAY.hubKb, 'click', 0.26],
   [DAY.end - 0.32, 'note-high', 0.24],
   // 09 懂你：记忆逐条写入 → 技能 → MCP → 多模型（每次横移一声）
   ...Array.from({ length: 4 }, (_, i): Cue => [YOU.memory + 0.15 + i * 0.24, 'tick', 0.12]),

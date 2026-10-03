@@ -50,16 +50,30 @@ export const DAY = {
   translateDone: 44.95, // 流完自动保存：引导条消失、「已保存」
   showDesk2: 45.45, // 再次「显示桌面」，收起 07 的窗口
   writingOut: 45.85,
-  // 08 调研
+  // 08 调研（对话窗口停在「新对话」空态）
   researchOpen: 46.0, // 点 Dock「对话」：最小化着的对话窗口还原
-  researchSend: 46.95, // 发出调研请求
-  researchSteps: 47.45, // 步骤逐条打勾
-  researchNote: 49.35, // 报告存为笔记
-  paperSend: 50.05, // 搜论文
-  paperDownload: 51.25, // 下载入库
-  hubIndex: 52.2, // 点 Dock「资源库」
+  researchType: 46.3, // 点进输入框打「/res」→ 弹出技能命令补全
+  researchTab: 46.46, // Tab 补全成「/research-mode 」，接着打问题
+  researchSend: 46.95, // 发出（令牌被剥掉、激活调研模式；侧栏顶部出现「未命名会话」）
+  researchAsk: 47.28, // ask_user 卡顶替输入框：这次调研希望做到多深？
+  researchPick: 47.52, // 点「中等深度」
+  researchSubmit: 47.7, // 点「提交」
+  researchSteps: 47.84, // 任务面板出现，6 步逐条打勾
+  researchDone: 49.12, // 6/6：产物 / 变更 / 任务完成（面板不会自动收起）
+  researchCollapse: 49.36, // 点 ^ 收起面板，露出回答
+  researchTitle: 49.52, // 首轮结束自动起名：侧栏与窗口标题一起变
+  paperType: 49.68, // 点进输入框打追问
+  paperSend: 50.05, // 发出追问 → arXiv 结果
+  paperSave: 50.86, // 论文下载卡：解析地址 → 下载中 → 去重 / 存储 / 文本提取 / 建立索引
+  paperSaved: 51.56, // 已保存 1/1 篇完成
+  hubIndex: 52.2, // 点 Dock「资源库」：打开「全部文件」
+  hubKb: 52.78, // 点侧栏「知识库索引」
   end: 54.0,
 } as const;
+
+/** 08 任务面板每步时长：第 6 步在 researchDone 前 0.06 打勾（一步 = 开始 0.02 后执行、0.88 处完成）。 */
+export const RESEARCH_STEP = (DAY.researchDone - 0.08 - DAY.researchSteps) / 5.88;
+export const researchStepDone = (i: number) => DAY.researchSteps + 0.02 + (i + 0.88) * RESEARCH_STEP;
 
 /** 双击两下的间隔（真实约 140ms）。 */
 export const DBL = 0.07;
