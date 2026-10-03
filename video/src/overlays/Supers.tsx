@@ -58,12 +58,13 @@ export const SUPERS: Super[] = [
   { s: 54.15, e: 55.55, text: '越用，越懂你。', kind: 'title', pos: { left: 0, right: 0, top: 380 }, align: 'center', scrim: false },
   { s: 55.6, e: 56.45, text: '09 懂你', kind: 'chapter' },
   { s: 56.5, e: 57.9, text: '记住你的薄弱点和习惯', kind: 'feature' },
-  { s: 58.0, e: 59.2, text: '40+ 技能，按需加载', kind: 'feature' },
+  // 与同一时刻画面里技能窗的「全部 55 · 内置 55」对得上
+  { s: 58.0, e: 59.2, text: '50+ 技能，按需加载', kind: 'feature' },
   { s: 59.3, e: 60.3, text: '接入 MCP，连上外部工具', kind: 'feature' },
   { s: 60.4, e: 61.5, text: '同一个问题，几个模型一起答', kind: 'feature' },
   // 收尾
   { s: 62.3, e: 69.55, text: '从一页纸，到一整座知识库。', kind: 'title', pos: { left: 0, right: 0, top: 112 }, align: 'center' },
-  { s: 65.6, e: 69.55, text: '内置 40+ 技能，支持 MCP，预置 12 家模型供应商；本地优先，开源。', kind: 'subtitle' },
+  { s: 65.6, e: 69.55, text: '内置 50+ 技能，支持 MCP，预置 12 家模型供应商；本地优先，开源。', kind: 'subtitle' },
 ];
 
 /** 逐字从一道看不见的基线下升起（遮罩揭示），收尾时整行轻轻下沉淡出。 */
