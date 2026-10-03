@@ -1,5 +1,7 @@
 import { ArrowClockwise, ClockCounterClockwise, GearSix, MagnifyingGlass, Plus, Rows, type Icon } from '@phosphor-icons/react';
 import type { CSSProperties, ReactNode } from 'react';
+import { Easing } from 'remotion';
+import { PACE } from '../lib/time';
 import { S } from '../strings';
 import type { Tokens } from '../theme';
 
@@ -124,6 +126,43 @@ export const ResourceHome = ({
     </Btn>
   </>
 );
+
+/**
+ * 题目集 / 翻译 / 作文窗口的标题栏：资源列表开关 portal 进标题栏、紧跟红绿灯（28×28），居中标题保留。
+ * 列表可见时图标带左栏线（SidebarFrameWithLeftRailIcon），收起后只剩外框（SidebarFrameIcon）。
+ */
+export const ResourceTitlebar = ({ title, rail }: { title: string; rail: boolean }) => (
+  <>
+    <span style={{ width: 28, height: 28, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}>
+        <rect x="4" y="5" width="16" height="14" rx="2" />
+        {rail ? <path d="M9 5v14" /> : null}
+      </svg>
+    </span>
+    <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontWeight: 600 }}>{title}</span>
+  </>
+);
+
+/**
+ * 资源列表自动收起（ResourceAppWorkspace：窗口窄于 1100 时打开资源即收起；.wb-sys-aside width 272 → 0、200ms）。
+ * 列表按原位绘制、外层裁切宽度收窄，主区内容已按收起后的全宽排好、从列表下露出来。
+ */
+export const SIDEBAR_COLLAPSE_S = 0.2 / PACE;
+const E_ASIDE = Easing.bezier(0.32, 0.72, 0.28, 1);
+export const CollapsingSidebar = ({ tk, k, children }: { tk: Tokens; k: number; children: ReactNode }) => {
+  if (k >= 1) return null;
+  const w = 272 * (1 - E_ASIDE(Math.min(1, Math.max(0, k))));
+  return (
+    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: w, overflow: 'hidden', background: tk.background }}>
+      {children}
+      <span style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 1, background: tk.border, opacity: 1 - k }} />
+    </div>
+  );
+};
+
+/** 收起列表后主区左缘与宽度（main x=2，877 宽）。 */
+export const FULL_X = 2;
+export const FULL_W = 877;
 
 /** 「＋ 新建…」按钮中心（窗口坐标）：两种文案宽度下都居中在主区。 */
 export const RESOURCE_NEW_PT = { x: MAIN_X + MAIN_W / 2, y: 377.6 } as const;

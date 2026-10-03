@@ -10,6 +10,7 @@ import { ESSAY_H, ESSAY_PT, ESSAY_SCROLL, ESSAY_STREAM, ESSAY_W, EssayView, type
 import { EXAM_DROP_RIGHT, EXAM_H, EXAM_PT, EXAM_SCROLL, EXAM_W, ExamToast, ExamView, FileChip, type ExamStage, type ExamState, type ExamTarget } from '../../ui/exam';
 import { CHAT_H, CHAT_PT, CHAT_W, ChatTitlebar, HUB_H, HUB_PT, HUB_W, HubTitlebar, HubWindow, ResearchChat, SESSION_TITLE, type ResearchTL } from '../../ui/research';
 import { POMO_RECT, PomodoroWindowBody, pomoTitle, TODO_H, TODO_ITEMS, TODO_W, TodoApp, todoPlayCenter, todoRowCenter, TodoToolbar, type TodoState } from '../../ui/todo';
+import { ResourceTitlebar, SIDEBAR_COLLAPSE_S } from '../../ui/resource';
 import { TRANS_H, TRANS_LEN, TRANS_PT, TRANS_W, TranslateView, type TransStage, type TransState, type TransTarget } from '../../ui/translate';
 import { APP_NAMES, Dock, dockBounceAt, dockIconCenter, type DockBadge, GENIE_S, IND_S, MenuBar, menuClock, TIP_DELAY_S, TIP_FADE_S, Wallpaper, WbWindow, winLife, type Rect } from '../../ui/workbench';
 import { nightDock, nightMenubar } from '../review/SceneReview';
@@ -181,6 +182,7 @@ const transState = (t: number): TransState => {
   return {
     stage,
     enter: stage === 'home' ? 1 : prog(t, DAY.translateNew + 0.02, DAY.translateNew + 0.07),
+    collapse: prog(t, DAY.translateNew + 0.02, DAY.translateNew + 0.02 + SIDEBAR_COLLAPSE_S),
     hint: prog(t, DAY.translateNew + 0.02, DAY.translateNew + 0.22),
     pasted: t >= DAY.translatePaste + 0.04,
     hover: TRANS_CLICKS.find(([, c]) => t >= c - 0.09 && t < c + 0.05)?.[0] ?? null,
@@ -652,7 +654,7 @@ export const SceneDay = ({ t }: { t: number }) => {
             </WbWindow>
           ) : null}
           {trans.visible ? (
-            <WbWindow tk={tk} rect={TRANS_RECT} title={APP_NAMES.translation} focused={t < SHOW_MIN2} style={trans.style}>
+            <WbWindow tk={tk} rect={TRANS_RECT} toolbar={<ResourceTitlebar title={APP_NAMES.translation} rail={t < DAY.translateNew + 0.02} />} focused={t < SHOW_MIN2} style={trans.style}>
               <TranslateView tk={tk} s={transState(t)} />
             </WbWindow>
           ) : null}
