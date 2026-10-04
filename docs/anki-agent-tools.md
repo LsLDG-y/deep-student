@@ -214,7 +214,7 @@ ChatV2 的工具结果外层带有 `success`。本文各工具的“返回值”
 | `goal` | 是 | 非空学习目标，影响拆卡粒度和模板生成提示 |
 | `maxCards` | 是 | 整数 `1..100`；表示上限，不保证精确生成该数量 |
 | `templateMode` | 是 | `single`、`multiple` 或 `all` |
-| `templateId` | `single` 时优先 | 来自 `list_templates` 的模板 ID；`single` 模式未传时自动读取用户设置的默认模板（settings 表 `default_template_id`），无默认模板或默认模板已删除则报错 |
+| `templateId` | `single` 时优先 | 来自 `list_templates` 的模板 ID，按内容选（见 `list_templates` 的 `selectionRule`）；`single` 模式未传时自动读取用户设置的默认模板（settings 表 `default_template_id`），无默认模板或默认模板已删除则回退内置 `design-footnote`（其次 `design-monograph`） |
 | `templateIds` | `multiple` 时是 | 非空模板 ID 数组 |
 | `content` | 否 | 无文件时的正文；有文件时只能作补充说明，不能替代材料主体 |
 | `route` | 否 | `simple_text`、`vlm_light`、`vlm_full`；省略则自动路由 |
@@ -1159,12 +1159,17 @@ APKG 支持同一包内按卡片 `templateId` 建立多个 Anki model。若某�
 | `page` | 否 | 默认 `1`；`0` 按 `1` 处理；负数参数无效 |
 | `pageSize` | 否 | 默认 `20`；限制为 `1..50` |
 
-系统先应用 `activeOnly/category` 筛选，再对筛选结果分页。成功返回 `status=ok`、`activeOnly`、`query`、`total`、`page`、`pageSize`、`count` 和 `templates`：`total` 是筛选后的总数，`count` 是当前页 `templates` 数量；尾页可少于 `pageSize`，越过尾页时 `templates=[]`、`count=0`，但 `total` 保持不变。每个模板项包含：
+系统先应用 `activeOnly/category` 筛选，再对筛选结果分页。成功返回 `status=ok`、`activeOnly`、`query`、`total`、`page`、`pageSize`、`count`、`selectionRule` 和 `templates`：`total` 是筛选后的总数，`count` 是当前页 `templates` 数量；尾页可少于 `pageSize`，越过尾页时 `templates=[]`、`count=0`，但 `total` 保持不变。每个模板项包含：
 
 - `id`、`name`、`description`、固定的 `category=general`；
-- `noteType`、`isCloze`、`fields`、`field_extraction_rules`；
+- `noteType`、`isCloze`、`fields`；
+- `fieldGuide`：按字段声明顺序的紧凑契约 `{name, required, purpose?, maxChars?, type?}`（`purpose` 来自规则 description，`maxChars` 来自规则 `max_length`，`type` 仅非 Text 时出现）。它取代了旧版整份 `field_extraction_rules` 回显；
 - `isActive`、`isBuiltIn`；
-- `complexityLevel`、`useCaseDescription`、`generation_prompt`。
+- `complexityLevel`、`generation_prompt`。
+
+**按内容选模板**：顶层 `selectionRule` 给出默认决策——多句答案、证明要点、推导、解释类问答用 `design-footnote`（或 `design-monograph`），定义/术语/关键结论填空用 `design-glass`（或 `design-exam`），其余展示型 `design-*` 只在内容完全符合其字段语义或用户点名风格时使用。内置模板的 `generation_prompt` 统一写成「适用：…。不适用：…（改用 …）。字段：…（≤N字）」，字段规则带 `max_length`；这些元数据同时进入生成提示词（字段说明、`json_schema` 的 `maxLength`，`strict=false` 仅作提示）和 QA 留痕（`_qa_flags` 的 `max_length` 违规）。内置模板元数据随 `version` 递增经启动时的 `import_builtin_templates` 同步到存量安装，用户改过（`user_modified`）或删过的内置模板不覆盖。
+
+**字段长度软校验**：`get_cards`、`add_cards`、`update_card`、`batch_update_cards` 对挂了模板的卡按模板规则的 `max_length` 检查字段可读长度（去掉 HTML 标签后按 Unicode 字符计；模板字段先按名匹配 `extraFields`，缺失时按别名回退到 `front/back/text`）。超限不拒写，只在输出追加 `fieldLimitWarnings`（`{cardId, templateId, field, length, maxChars, purpose}`，最多 30 条）、`fieldLimitWarningsTotal` 与 `fieldLimitHint`；无超限时输出形态不变。Agent 应精简字段，或在内容本身是多句解释/证明时换用问答/填空模板。
 
 失败包括参数解析、数据库不可用或模板查询失败，没有独立稳定错误码。
 
