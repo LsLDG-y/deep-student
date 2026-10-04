@@ -105,10 +105,12 @@
 
 ## 7. 待修正的不一致（截至 2026-10-04）
 
-- [x] 宣传片：片尾副标题（含「12 家」）删除；片尾口号换成 §1 口号；字幕第四版改为 Agent 视角（video 分支 c63a4d0e0）
+- [x] 宣传片：片尾副标题（含「12 家」）删除；片尾口号换成 §1 口号；字幕第四版改为 Agent 视角（video 分支 c63a4d0e0）；画面内界面文案同步 main 的 locale（ffaf1cd8b）
+- [ ] 宣传片：成片重新渲染（进行中）
+- [ ] 官网 promo/（30 秒短片，未提交）核心概念仍是「统一数据层」旧口径，待定
 - [x] 官网首屏换口号与品类、新增 Agent 一节、站内自有文案「知识导图」→「思维导图」（ds-web 分支 feat/messaging-agent 1b6eb65，未合并）
-- [ ] 官网：同步来的用户指南仍写「知识导图」——源头在本仓库 `docs/user-guide/08-知识导图.md` 等，改完跑 ds-web `scripts/sync-user-guide.mjs`（章节映射里的标题也要改）
+- [x] 官网：用户指南「知识导图」→「思维导图」、第 08 章改名（本仓库 8ec65cd21），ds-web 同步与英文应用名对齐（feat/messaging-agent 604fd26，未合并）
 - [ ] 官网：首屏演示海报（AppShell）仍是旧侧栏（「学习资源」）；分享图需跑 `scripts/gen-share-images.mjs` 重出
-- [ ] README：服务商 12 → 13；技能 40+ → 55；Linux arm64 删除、补 rpm；iOS 标注仅源码构建；Learning Hub / OS mode 等旧名；截图（2026-02）全部重拍
+- [x] README：事实与术语全部更正、中英重写（docs/readme-refresh 分支）；中文截图已真机重拍，英文截图进行中
 - [x] 应用内：Agent 控制中心「题库 / Question bank」→「题目集 / Exam Set」（ea02573b2）
 - [x] 应用内：`learningHub.json`（桌面快捷方式，宣传片画面里可见）与 `mcp.json` 的工具名仍写「知识导图」→「思维导图」（ea02573b2；模型侧 skill 描述里作为同义词保留）
