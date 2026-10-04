@@ -77,7 +77,7 @@
 | 对话 | Chat | |
 | 笔记 | Notes | |
 | 思维导图 | Mind Map | 知识导图 |
-| 题目集 | Exam Set | 题库（应用内 Agent 控制中心仍写「题库」，待统一） |
+| 题目集 | Exam Set | 题库 |
 | 闪卡 | Flashcards | |
 | Anki 制卡 | Anki Cards | |
 | 作文批改 | Essay Review | |
@@ -110,5 +110,5 @@
 - [ ] 官网：同步来的用户指南仍写「知识导图」——源头在本仓库 `docs/user-guide/08-知识导图.md` 等，改完跑 ds-web `scripts/sync-user-guide.mjs`（章节映射里的标题也要改）
 - [ ] 官网：首屏演示海报（AppShell）仍是旧侧栏（「学习资源」）；分享图需跑 `scripts/gen-share-images.mjs` 重出
 - [ ] README：服务商 12 → 13；技能 40+ → 55；Linux arm64 删除、补 rpm；iOS 标注仅源码构建；Learning Hub / OS mode 等旧名；截图（2026-02）全部重拍
-- [ ] 应用内：Agent 控制中心「题库 / Question bank」→「题目集 / Exam Set」
-- [ ] 应用内：`learningHub.json`（桌面快捷方式，宣传片画面里可见）与 `mcp.json` 的工具名仍写「知识导图」→「思维导图」
+- [x] 应用内：Agent 控制中心「题库 / Question bank」→「题目集 / Exam Set」（ea02573b2）
+- [x] 应用内：`learningHub.json`（桌面快捷方式，宣传片画面里可见）与 `mcp.json` 的工具名仍写「知识导图」→「思维导图」（ea02573b2；模型侧 skill 描述里作为同义词保留）
