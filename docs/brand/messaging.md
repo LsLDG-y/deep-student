@@ -106,7 +106,9 @@
 ## 7. 待修正的不一致（截至 2026-10-04）
 
 - [x] 宣传片：片尾副标题（含「12 家」）删除；片尾口号换成 §1 口号；字幕第四版改为 Agent 视角（video 分支 c63a4d0e0）
-- [ ] 官网首屏「开源的终身学习空间」→ §1 品类与口号；「知识导图」→「思维导图」
+- [x] 官网首屏换口号与品类、新增 Agent 一节、站内自有文案「知识导图」→「思维导图」（ds-web 分支 feat/messaging-agent 1b6eb65，未合并）
+- [ ] 官网：同步来的用户指南仍写「知识导图」——源头在本仓库 `docs/user-guide/08-知识导图.md` 等，改完跑 ds-web `scripts/sync-user-guide.mjs`（章节映射里的标题也要改）
+- [ ] 官网：首屏演示海报（AppShell）仍是旧侧栏（「学习资源」）；分享图需跑 `scripts/gen-share-images.mjs` 重出
 - [ ] README：服务商 12 → 13；技能 40+ → 55；Linux arm64 删除、补 rpm；iOS 标注仅源码构建；Learning Hub / OS mode 等旧名；截图（2026-02）全部重拍
 - [ ] 应用内：Agent 控制中心「题库 / Question bank」→「题目集 / Exam Set」
 - [ ] 应用内：`learningHub.json`（桌面快捷方式，宣传片画面里可见）与 `mcp.json` 的工具名仍写「知识导图」→「思维导图」
