@@ -253,3 +253,15 @@ schema tokens 6900（chars/4 估算），超出 6800 上限。
 同步更新 `tests/vitest/chat-v2/token-budget.test.ts` 常量注释。
 
 **后续建议**：同上——继续增长优先拆分工具组，不继续上调阈值。
+
+### 2026-10-04：qbank_import_document 支持 resource_id 后总上限 76500 → 76600
+
+**触发**：`17378ae2d` 让 `builtin-qbank_import_document` 直接接受资源库 `resource_id`
+（新增参数、互斥约束与配套说明），实测 schema+content 合计 76554，超出 76500 总上限，
+main CI 的 token-budget 用例失败。
+
+**处理**：先精简该工具 description / 参数说明与 qbank-tools、document-processing 技能正文
+新增段落（76554 → 76520）；剩余 20 tokens 属合理功能增长，总上限有意识上调至 **76600**
+（+0.13%）。单组 7000 与 schema 总 51500 不变。
+
+**后续建议**：同上——qbank-tools 继续增长时优先拆分工具组，不继续上调阈值。
