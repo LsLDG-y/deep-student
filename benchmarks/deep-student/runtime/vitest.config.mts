@@ -10,7 +10,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.join(root, 'src'),
-      'heic2any': path.join(root, 'tests/vitest/mocks/heic2any.mock.ts'),
       '@tauri-apps/api/core': path.join(root, 'tests/ct/mocks/tauri-core-mock.ts'),
       '@tauri-apps/api/event': path.join(root, 'tests/ct/mocks/tauri-event-mock.ts'),
       '@tauri-apps/api/window': path.join(root, 'tests/ct/mocks/tauri-window-mock.ts'),
