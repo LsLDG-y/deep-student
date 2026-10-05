@@ -13,7 +13,7 @@ npm run ui:lab -- iphone-15-pro
 
 会做两件事：
 
-1. 启动 `ui-bridge-server`（`127.0.0.1:17423`）
+1. 启动 `ui-bridge-server`（`127.0.0.1:17423`；并行多实例时用 `DS_UI_BRIDGE_PORT` 换端口，应用侧对应 `VITE_DS_UI_BRIDGE_PORT`，驱动侧 `DS_UI_BRIDGE_URL`）
 2. 以 `config/dev-phone-window.json` 里的手机比例启动 `VITE_DS_UI_BRIDGE=1 npm run dev:tauri`
 
 停止：
