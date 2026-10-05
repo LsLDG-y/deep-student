@@ -76,7 +76,9 @@ Chat browser_* → ApprovalManager → BrowserService → 注入桥
 | 密码/OTP | 强制 Take over；Bridge/Executor **硬拒** type |
 | CDP remote port | **默认关**；生产不默认开 |
 
-主 CSP **不改** `frame-src blob:`。
+主 CSP **不改** `frame-src blob:`（浏览器不靠放宽 iframe 实现）。另：2026-10-05 起主 CSP 的 `frame-src` 额外放开
+`https://player.bilibili.com`，只供「音视频」B 站链接条目的内嵌播放器（sandbox iframe），与浏览器无关，见
+`docs/dev/media-learning/README.md` §5。
 
 ### 1.5 工具 ↔ Rust 对齐
 
@@ -158,7 +160,7 @@ Chat browser_* → ApprovalManager → BrowserService → 注入桥
 - [ ] snapshot 包 `<untrusted_web_content>` + 截断  
 - [ ] 无 Playwright 运行时；无生产默认 CDP port  
 - [ ] 关 workbench/browser → 无孤儿 WebView / fallback 窗口  
-- [ ] 主 CSP `frame-src blob:` 未放宽  
+- [ ] 浏览器没有放宽主 CSP `frame-src`（现值 `blob: https://player.bilibili.com`，后者属音视频 B 站内嵌播放器）  
 
 ---
 

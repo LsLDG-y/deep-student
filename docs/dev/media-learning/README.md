@@ -12,8 +12,9 @@
   资源库（`FileContentView` 的媒体视图）、聊天右侧面板与子应用学习页共用它，转写/字幕/讲义能力只实现一份。
 - **不引入浏览器端重依赖**：解码在 Rust 后端（symphonia，纯 Rust，可交叉编译到 Android）；VAD 用自研能量 VAD；
   不用 onnxruntime / wasm（发布版 CSP 禁止 wasm 编译）。
-- **不做**：B 站等平台下载/Cookie/私有接口（法律与凭据风险）；飘屏弹幕与 AI 讨论区；PWA/浏览器存储层。
-  平台字幕只支持用户自行获得的字幕文件导入（`.srt/.vtt`，B 站 BCC JSON 解析）。
+- **不做**：B 站等平台的音视频下载、Cookie / 登录态（凭据风险）；飘屏弹幕与 AI 讨论区；PWA/浏览器存储层。
+  平台字幕：字幕文件导入（`.srt/.vtt`，B 站 BCC JSON 解析），以及 **B 站链接取字幕**（2026-10-05 用户决定放开，见 §5）——
+  只走匿名网页接口、不带 Cookie、不下载音视频；链接条目仍是 VFS `File`（特殊 MIME），不新增资源类型。
 
 ## 0.5 定位与入口
 
@@ -118,7 +119,11 @@ CREATE TABLE media_progress (
 | `media_transcript_export(resource_id, format, dest)` | 导出 `srt`/`vtt`/`txt`（含 content:// 目标） |
 | `media_progress_get/set(resource_id, …)` | 断点续播与观看时长 |
 | `study_time_add(seconds)` / `study_time_range(from,to)` | 学习时长 |
-| `media_library_list()` / `media_related_notes(resource_id)` | 子应用库页：列出音视频 File 资源（时长、转写状态、观看进度）；按来源媒体列讲义笔记 |
+| `media_library_list()` / `media_related_notes(resource_id)` | 子应用库页：列出音视频 File 资源（时长、转写状态、观看进度、`isLink`）；按来源媒体列讲义笔记 |
+| `media_bilibili_probe(input, page?)` | 解析 B 站链接：标题 / UP 主 / 封面 / 分 P / 该分 P 字幕轨 / 默认轨 / 已有链接条目（§5） |
+| `media_bilibili_create(input, page?, lan?)` | 新建（或复用同一视频同一分 P 的）链接条目并导入字幕 |
+| `media_bilibili_import_subtitle(resource_id, input, page?, lan?)` | 给已有媒体导入 B 站字幕（链接条目只能取自己的） |
+| `media_bilibili_link_get(resource_id)` | 读链接条目描述（内嵌播放器用） |
 
 事件：沿用 `media-processing-progress` / `-completed` / `-error`，payload 带 `mediaType: 'audio'|'video'`、`stage`、`completedSegments`、`totalSegments`。
 
@@ -149,4 +154,34 @@ CREATE TABLE media_progress (
 
 - symphonia 进 `mobile-slim`，只开必要 codec；Android 转写在前台进行，可续做（切后台被冻结后恢复继续）。
 - 大文件：媒体导入流式写入 blob（边拷边算 hash，不整文件进内存），上限 4 GB。
-- CSP 不变：`media-src` 已允许 `blob:`/`filestream:`；抽帧时 `<video crossOrigin="anonymous">` 读 `filestream`（其 CORS 白名单含应用源），canvas 不被污染。
+- CSP：`media-src` 已允许 `blob:`/`filestream:`；抽帧时 `<video crossOrigin="anonymous">` 读 `filestream`（其 CORS 白名单含应用源），canvas 不被污染。
+  `frame-src` 为 B 站链接条目的内嵌播放器加了 `https://player.bilibili.com` 这一个源（§5），其余不变。
+
+## 5. B 站链接（2026-10-05）
+
+用户决定：「链接导入取字幕」= **新建链接条目 + 给本地视频挂字幕**，链接条目**内嵌 B 站播放器**。实现在
+`src-tauri/src/media/bilibili.rs`（后端）与 `src/features/learning-hub/apps/views/media/{bilibiliLinkApi,BilibiliLinkDialog,BilibiliEmbedPlayer}`（前端）。
+
+- **接口（匿名，不带 Cookie）**：`x/web-interface/view`（BV/av → 标题、UP 主、封面、分 P 的 cid 与时长）→
+  `x/v2/dm/view?type=1&oid={cid}&pid={aid}`（字幕轨，含 UP 主字幕与 `ai-*` AI 字幕）→ 下载 BCC JSON → `parse_subtitle`。
+  播放器接口 `x/player/wbi/v2` 匿名时 `need_login_subtitle=true` 且列表为空，不用。请求带浏览器 UA 与
+  `Referer: https://www.bilibili.com/`，15 s 超时；HTTP 412 / code -412、-352 视为风控；字幕地址只接受 B 站域名
+  （`hdslb.com` / `bilibili.com` / `biliapi.net` / `bilivideo.*`）并升级为 https，≤ 20 MB。
+- **链接解析**：视频页 / 移动页 / 播放列表（`bvid=`）/ 分享文案里的 BV 号或 av 号，`?p=` 分 P；`b23.tv`、`bili2233.cn`
+  短链跟一次跳转。番剧·影视（`bangumi`）、课堂（`cheese`）、音频、直播报 `bilibili-unsupported-link`。
+- **默认字幕轨**：UP 主简体中文 > 其它中文 > AI 简体中文 > 其它 AI 中文 > 其它 UP 主字幕 > 其它 AI 字幕；弹窗可改。
+- **链接条目**：VFS `File`，文件名 `{标题}[ P{n} {分P标题}].bilibili`，MIME `video/x-bilibili`（`media_kind` 归为视频，
+  附件上传白名单已登记），内容是描述 JSON `{kind, version, bvid, aid, cid, page, pageCount, title, part, owner, cover, durationMs, url}`
+  （无导入时间）。同一 bvid + 分 P 再导入复用原条目、只替换字幕；时长写 `media_progress`；字幕写 `source='import'` 段
+  → 转写文本 → 索引，检索 / `resource_read` / 引用 / 讲义 / 制卡出题照常。
+- **不能解码**：估算、开始转写与 `transcribe_resource` 对链接条目（非导入计划）返回 `media-link-only`；Agent 的转写工具同样受拦。
+- **播放**：`player.bilibili.com/player.html?isOutside=true&bvid&p&t&autoplay&danmaku=0` 的 iframe，
+  `sandbox="allow-scripts allow-same-origin allow-presentation"`（跨源，碰不到应用；无弹窗、无顶层导航）。
+  外链播放器没有跳转 / 进度接口：句柄 `seekTo` = 带 `t=` 重载、`pause` 无效、`getElement()` 为 null（不能截帧、
+  不挂字幕轨、不记播放进度、字幕不随播放高亮）；不活跃的保活标签卸载 iframe 防后台出声；讲义按无画面生成（不抽帧）。
+  工具栏有「在 B 站打开」（`openUrl`，带当前秒数）。
+- **错误码**：`bilibili-invalid-link` / `bilibili-unsupported-link` / `bilibili-video-unavailable`（-404、62002 等）/
+  `bilibili-no-subtitle` / `bilibili-request-failed`（网络、风控、解析）。
+- **测试**：Rust `media::bilibili::tests`（mockito 模拟三段接口、短链跳转、错误码、链接条目新建 / 复用 / 不解码）；
+  真实接口冒烟 `cargo test --lib -- --ignored media::bilibili::tests::live_lookup_fetches_real_subtitles`；
+  前端 `media/__tests__/bilibiliLink.test.tsx`。
