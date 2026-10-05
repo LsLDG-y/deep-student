@@ -2,7 +2,7 @@
 
 > 官网（ds-web）、宣传片（video 分支）、README（中英）三处文案的唯一事实来源。
 > 改任何一处对外文案前先对照本文；本文与代码冲突时以代码为准，并回头修正本文。
-> 更新日期：2026-10-04（v0.10.0）
+> 更新日期：2026-10-05（按 v0.10.1 核对；0.10.2 待发）
 
 ## 1. 定位
 
@@ -15,10 +15,13 @@
 
 - 口号里的「我」是 DeepStudent 的学习 Agent。第一人称只用在口号，正文一律用第三人称「它 / Agent」。
 - 主角是 **Agent**，资料是它工作的对象，不是卖点本身。不要再写成「围绕资料问答的工具」。
-- 首屏标准组合（官网首屏、README 标题下）：
+- 首屏标准组合（官网首屏、README 标题下，两处逐字一致）：
 
   > **只专注学习本身就够了，剩下的都交给我。**
-  > DeepStudent 是开源、本地优先的 AI 学习工作台。它的学习 Agent 能直接操作笔记、思维导图、题目集、闪卡和待办，把整理、出题、制卡和复习安排都替你做好。
+  > 开源、本地优先的 AI 学习工作台。
+  > 它的学习 Agent，可直接操作学习桌面上的每一个应用。
+
+  English：**Just focus on learning. Leave the rest to me.** / An open-source, local-first AI learning workbench. / Its study agent works directly in every app on your Study Desktop.
 
 ## 2. 三条支撑 + 底座
 
@@ -60,7 +63,8 @@
 |---|---|---|
 | 内置技能 | **56**（对外写「56 个」或「50 多个」，不写 40+） | `builtinSkills`（8，`src/features/chat/skills/builtin/index.ts`）+ `builtinToolSkills`（48，`builtin-tools/index.ts`）；browser-tools 仅 Win/macOS，其他平台 55 |
 | 预置模型服务商 | **13** | `src-tauri/src/llm_manager/builtin_vendors.rs` 的 12 家 + Gemini（`scripts/gemini-model-registry.json` 注入） |
-| 联网搜索引擎 | 7 | `src-tauri/src/tools/web_search.rs` |
+| 联网搜索引擎 | **8**（Bing RSS 免费默认 + Google CSE / SerpAPI / Tavily / Brave / SearXNG / 智谱 / 博查） | `src-tauri/src/tools/web_search.rs` 的 `build_provider`；用户指南 03 章同为 8 |
+| OCR 引擎 | 6（DeepSeek-OCR、PaddleOCR-VL 1.5、PaddleOCR-VL 旧版、GLM-4.6V、通用多模态模型、系统 OCR） | `src-tauri/src/ocr_adapters/types.rs` 的 `OcrEngineType` |
 | 翻译领域预设 | 7 | 翻译应用预设 |
 | 平台 | macOS（Apple Silicon / Intel）、Windows x64、Linux x86_64（deb / rpm / AppImage）、Android ARM64；iOS 仅源码构建 | `.github/workflows/reusable-build-*.yml`；Linux **没有** arm64 |
 | 许可证 | AGPL-3.0-or-later | `package.json` |
@@ -74,18 +78,20 @@
 |---|---|---|
 | 学习桌面 | Study Desktop | OS 模式、Workbench mode、工作台模式 |
 | 学习 Agent / Agent | study agent / agent | AI 助手（泛称时可用「AI」） |
-| 资源库 | Files | 学习中心、学习资源、Learning Hub |
+| 资源库 | Files | 学习中心、学习资源、学习资源中心、Learning Hub |
 | 对话 | Chat | |
 | 笔记 | Notes | |
 | 思维导图 | Mind Map | 知识导图 |
 | 题目集 | Exam Set | 题库 |
 | 闪卡 | Flashcards | 经典外壳里「闪卡」页合并了复习 / 制卡 / 模板三个标签 |
-| 音视频学习 | Audio & Video | 视频学习、媒体转写 |
+| 音视频 | Media | 视频学习、媒体转写 |
 | Anki 制卡 | Anki Cards | |
 | 作文批改 | Essay Review | |
 | 翻译 | Translation | |
 | 待办 / 番茄钟 | Todo / Pomodoro | |
 | 技能 | Skills | |
+
+- 「音视频 / Media」是应用名（0.10.2 起为独立应用，经典侧栏与 Dock 里都有；v0.10.1 里还在资源库内）。应用列表、导航一律用应用名；正文描述这项能力时可写「音视频学习」。
 
 ## 5. 文案语体
 
@@ -105,7 +111,20 @@
 | 官网 | 首屏主标题 | 学习桌面之后第一节讲 Agent；应用列表放后面 |
 | 宣传片 | 片尾 Logo 下 | 字幕主语写「它」，让观众意识到动作是 Agent 做的；数字按 §3 |
 
-## 7. 待修正的不一致（截至 2026-10-04）
+## 7. 待修正的不一致
+
+### 2026-10-05 复查
+
+- [x] 本文：联网搜索引擎 7 → 8（漏了默认免费的 Bing RSS）；补 OCR 引擎 6；音视频改按应用名「音视频 / Media」；首屏标准组合按 README / 官网实际文案统一
+- [x] README：搜索引擎 8、音视频按应用名、架构图应用层补音视频、功能模块 23 → 26、「路线图」链接改为「项目历程」（docs/readme-refresh 6dcaed855，未推送）
+- [x] 官网：首页去掉「共用同一份数据」「而不是通用聊天」，题库 → 题目集，英文 Files / Study Desktop，首屏主张与 README 一致，站点默认描述改为学习 Agent（ds-web feat/messaging-agent da49273）；关于页重写、项目历程补到 v0.10（acbdcb8）；指南 04 / 11 标题（282d64a）——均未推送
+- [x] 用户指南：第 04 章「资源库」、第 11 章「题目集与练习」，只改标题与互链文字，文件名与官网 slug 不变（7a0406aa7）
+- [ ] 发布：README 开 PR；官网合并前要用「main + demo/site-i18n-hide（1ddb9a55c，未合进 main）」重出演示镜像，否则英文页演示退回中文界面、未发布功能重新露出；video 分支 4 个提交未推送
+- [ ] 0.10.2 发版后：官网应用列表加「音视频」并链第 19 章；官网指南全量同步（源仍是 44b223ea0）；演示镜像与宣传片经典侧栏 5 → 6 项；FSRS-6 等新功能写进 README / 官网 / 本文
+- [ ] 应用内：命令面板 `nav.goto.learning-hub` 仍是「集成的学习资源中心 / Go to Learning Hub」
+- [ ] 官网 flow / features / apps 区块语体按 §5 润色（口语虚词偏多）
+
+### 截至 2026-10-04
 
 - [x] 宣传片：片尾副标题（含「12 家」）删除；片尾口号换成 §1 口号；字幕第四版改为 Agent 视角（video 分支 c63a4d0e0）；画面内界面文案同步 main 的 locale（ffaf1cd8b）
 - [x] 宣传片：成片重新渲染（video/out/deep-student-pv-2026-10-04-v4.mp4，1080p 150s；video 分支 48b9dd0d7 修复复数键渲染中断）
