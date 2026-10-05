@@ -31,6 +31,7 @@
 - 每个应用都有 Agent 读写工具：笔记、思维导图、题目集、闪卡 / FSRS、待办、作文批改、翻译、模板、设置、备份（`docs/Agent工具面总览.md` §2）
 - 操作学习桌面窗口：打开应用、观察界面、执行动作（`builtin-workbench_*`）
 - 调研模式：检索、阅读文献、成稿写入笔记；论文下载入库并建立索引
+- 音视频学习：网课 / 录音转写为带时间戳字幕，回答引用到具体时刻（`[媒体@id:mm:ss]`），可整理成图文讲义
 - 浏览器自动化（Windows / macOS）、沙箱本地 shell、生成 Word / PPT / Excel 文件
 
 ### ② 可托付 —— 长任务自动推进，每一步可审批、可撤销
@@ -43,7 +44,7 @@
 ### ③ 懂你，可扩展
 
 - 记忆与学习者画像：记住薄弱点和学习习惯，后续回答会参考
-- 55 个内置技能，可安装、可自己写；接入 MCP；13 家预置模型服务商，可按功能分配模型
+- 56 个内置技能，可安装、可自己写；接入 MCP；13 家预置模型服务商，可按功能分配模型
 - 同一问题可让多个模型同时作答
 
 ### 底座 —— 数据在本机，开源可核对
@@ -57,7 +58,7 @@
 
 | 项 | 当前值 | 核对方式 |
 |---|---|---|
-| 内置技能 | **55**（对外写「55 个」或「50 多个」，不写 40+） | `builtinSkills`（7，`src/features/chat/skills/builtin/index.ts`）+ `builtinToolSkills`（48，`builtin-tools/index.ts`）；browser-tools 仅 Win/macOS，其他平台 54 |
+| 内置技能 | **56**（对外写「56 个」或「50 多个」，不写 40+） | `builtinSkills`（8，`src/features/chat/skills/builtin/index.ts`）+ `builtinToolSkills`（48，`builtin-tools/index.ts`）；browser-tools 仅 Win/macOS，其他平台 55 |
 | 预置模型服务商 | **13** | `src-tauri/src/llm_manager/builtin_vendors.rs` 的 12 家 + Gemini（`scripts/gemini-model-registry.json` 注入） |
 | 联网搜索引擎 | 7 | `src-tauri/src/tools/web_search.rs` |
 | 翻译领域预设 | 7 | 翻译应用预设 |
@@ -78,7 +79,8 @@
 | 笔记 | Notes | |
 | 思维导图 | Mind Map | 知识导图 |
 | 题目集 | Exam Set | 题库 |
-| 闪卡 | Flashcards | |
+| 闪卡 | Flashcards | 经典外壳里「闪卡」页合并了复习 / 制卡 / 模板三个标签 |
+| 音视频学习 | Audio & Video | 视频学习、媒体转写 |
 | Anki 制卡 | Anki Cards | |
 | 作文批改 | Essay Review | |
 | 翻译 | Translation | |
