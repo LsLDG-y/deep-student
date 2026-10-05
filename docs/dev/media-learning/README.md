@@ -97,6 +97,8 @@ CREATE TABLE media_progress (
    不支持的容器/编码给出明确提示（"请转为 MP4/M4A"）。
 2. **VAD**：能量 + 过零率的轻量 VAD；段合并参数：间隔 < 0.4 s 合并、单段 ≤ 15 s、< 0.5 s 并入前段。
 3. **ASR**：每段编码为 WAV，走 `voice_input` 同一套 ASR 配置与模型槽位（`voice_input_asr_model_config_id`）；
+   槽位里的模型用它所属供应商自己的 base_url / key（任何 OpenAI 兼容供应商，含中转站），`qwen3-asr-flash*` 走
+   `/chat/completions` + `input_audio`，其余走 `/audio/transcriptions`；未分配时回退硅基流动 `Qwen/Qwen3-ASR-1.7B`；
    AIMD 自适应并发（连续成功 +1，429 减半并按 Retry-After 冷却；400/401/403 不重试）；每次调用记入 llm_usage。
 4. **续做**：`status=1` 的段跳过；新 VAD 计划段数偏差 > 20% 时重建（`plan_version+1`）。
 5. **任务承载**：扩展 `vfs/pdf_processing_service.rs` 的 `MediaType` 增加 `Audio`/`Video`，阶段 `decode → vad → asr → indexing`，
