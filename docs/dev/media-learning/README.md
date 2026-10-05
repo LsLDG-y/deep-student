@@ -170,6 +170,11 @@ CREATE TABLE media_progress (
 - **链接解析**：视频页 / 移动页 / 播放列表（`bvid=`）/ 分享文案里的 BV 号或 av 号，`?p=` 分 P；`b23.tv`、`bili2233.cn`
   短链跟一次跳转。番剧·影视（`bangumi`）、课堂（`cheese`）、音频、直播报 `bilibili-unsupported-link`。
 - **默认字幕轨**：UP 主简体中文 > 其它中文 > AI 简体中文 > 其它 AI 中文 > 其它 UP 主字幕 > 其它 AI 字幕；弹窗可改。
+- **多 P 批量导入**（同日第二轮）：新建模式下多 P 视频显示分 P 勾选清单（默认勾链接里的 `?p=`，可全选 / 清空）。前端逐 P 调
+  `media_bilibili_create`（输入用规范的 `https://www.bilibili.com/video/{bvid}`，不再跟短链），每 P 间隔 400 ms，可停止
+  （做完当前 P）；`bilibili-no-subtitle` 跳过，`bilibili-request-failed` 等 3 s 重试一次、仍失败则停止并汇报剩余；
+  所选字幕语言作为每 P 的优先项，缺失时回到默认规则。后端对 `x/web-interface/view` 结果按 (api_base, 视频 id) 做 10 分钟进程内
+  缓存，批量时每 P 只请求字幕轨与字幕文件。
 - **链接条目**：VFS `File`，文件名 `{标题}[ P{n} {分P标题}].bilibili`，MIME `video/x-bilibili`（`media_kind` 归为视频，
   附件上传白名单已登记），内容是描述 JSON `{kind, version, bvid, aid, cid, page, pageCount, title, part, owner, cover, durationMs, url}`
   （无导入时间）。同一 bvid + 分 P 再导入复用原条目、只替换字幕；时长写 `media_progress`；字幕写 `source='import'` 段
